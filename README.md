@@ -1,56 +1,37 @@
-# Welcome to your Expo app 👋
+# Vedora Mobile
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Expo Router app using the visual system from `vedora-frontend`.
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Start
 
 ```bash
-npm run reset-project
+npm install
+npx expo start --clear
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Run `npx tsc --noEmit` and `npx expo lint` before merging changes.
 
-### Other setup steps
+## Styling and tokens
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- `src/global.css` is the Tailwind CSS v4 / NativeWind v5 theme. There is no `tailwind.config.js` in this CSS-first setup.
+- `src/constants/theme.ts` holds the same brand palette and light/dark semantic colors for React Native APIs that require JavaScript color values, such as navigation and native tabs.
+- `src/components/vedora-theme-provider.tsx` supplies semantic CSS variables to NativeWind based on the system color scheme. It is mounted in `src/app/_layout.tsx`.
+- `metro.config.js` keeps semantic color variables dynamic; `postcss.config.mjs` compiles Tailwind.
+- When a web color changes, update the matching value in both `src/global.css` and `src/constants/theme.ts` using `vedora-frontend/app/globals.css` as the source of truth.
 
-## Learn more
+Use semantic utilities for surfaces and text:
 
-To learn more about developing your project with Expo, look at the following resources:
+```tsx
+import { Text, View } from 'react-native';
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+<View className="rounded-lg border border-border bg-card p-4">
+  <Text className="font-heading text-lg text-card-foreground">Vedora</Text>
+  <Text className="font-sans text-muted-foreground">Sống xanh có ý thức</Text>
+</View>;
+```
 
-## Join the community
+Use `BrandColors`, `SemanticColors`, `Radius`, and `Spacing` from `src/constants/theme.ts` when a native prop or `StyleSheet` cannot use a Tailwind class. The matching Tailwind colors include `bg-primary`, `text-foreground`, and `bg-brand-forest`.
 
-Join our community of developers creating universal apps.
+Fonts match the frontend: Source Sans 3 for body text, Be Vietnam Pro for headings, Figtree for Latin display text, and Geist Mono for code. The root layout loads only the font weights listed in `src/global.css`. For a bold heading use `font-heading-bold`; React Native does not automatically select the correct font file from `font-bold`.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+NativeWind v5 is currently a release candidate. Its `nativewind` and `react-native-css` versions are pinned together for Expo SDK 57. After changing its config, restart Metro with `npx expo start --clear`. Native dependency changes also require a new development build.

@@ -1,0 +1,34 @@
+const { getDefaultConfig } = require('expo/metro-config');
+const { withNativewind } = require('nativewind/metro');
+
+const config = getDefaultConfig(__dirname);
+
+module.exports = withNativewind(config, {
+  inlineVariables: {
+    exclude: [
+      '--color-background',
+      '--color-foreground',
+      '--color-card',
+      '--color-card-foreground',
+      '--color-popover',
+      '--color-popover-foreground',
+      '--color-primary',
+      '--color-primary-foreground',
+      '--color-secondary',
+      '--color-secondary-foreground',
+      '--color-muted',
+      '--color-muted-foreground',
+      '--color-accent',
+      '--color-accent-foreground',
+      '--color-destructive',
+      '--color-border',
+      '--color-input',
+      '--color-ring',
+      '--color-chart-1',
+      '--color-chart-2',
+      '--color-chart-3',
+      '--color-chart-4',
+      '--color-chart-5',
+    ],
+  },
+});

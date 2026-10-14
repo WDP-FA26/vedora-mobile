@@ -1,5 +1,5 @@
 import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { Platform, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AnimatedIcon } from '@/components/animated-icon';
@@ -35,13 +35,13 @@ export default function HomeScreen() {
         <ThemedView style={styles.heroSection}>
           <AnimatedIcon />
           <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
+            Welcome to&nbsp;Vedora
           </ThemedText>
         </ThemedView>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        <Text className="rounded-full bg-secondary px-4 py-2 font-sans-semibold text-secondary-foreground">
+          Vedora mobile
+        </Text>
 
         <ThemedView type="backgroundElement" style={styles.stepContainer}>
           <HintRow
@@ -84,9 +84,6 @@ const styles = StyleSheet.create({
   },
   title: {
     textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
   },
   stepContainer: {
     gap: Spacing.three,
