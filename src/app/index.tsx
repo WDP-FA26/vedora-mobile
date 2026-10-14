@@ -1,3 +1,9 @@
-import { AuthHome } from '@/features/auth/components/auth-home';
+import { Redirect } from 'expo-router';
 
-export default AuthHome;
+import { AuthHome } from '@/features/auth/components/auth-home';
+import { useSessionStore } from '@/shared/stores/session-store';
+
+export default function Index() {
+  const accessToken = useSessionStore((state) => state.accessToken);
+  return accessToken ? <Redirect href="/explore" /> : <AuthHome />;
+}

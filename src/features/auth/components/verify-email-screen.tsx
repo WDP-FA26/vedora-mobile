@@ -12,7 +12,7 @@ import { AuthButton, AuthField, AuthLink, AuthMessage, AuthScreen } from './auth
 const RESEND_COOLDOWN_SECONDS = 120;
 
 export function VerifyEmailScreen() {
-  const params = useLocalSearchParams<{ email?: string; sent?: string }>();
+  const params = useLocalSearchParams<{ email?: string; sent?: string; returnTo?: string }>();
   const [email, setEmail] = useState(typeof params.email === 'string' ? params.email : '');
   const [code, setCode] = useState('');
   const [secondsLeft, setSecondsLeft] = useState(params.sent === '1' ? RESEND_COOLDOWN_SECONDS : 0);
@@ -36,7 +36,7 @@ export function VerifyEmailScreen() {
     setErrors({});
     try {
       await verify.mutateAsync(parsed.data);
-      router.replace('/');
+      router.replace('/explore');
     } catch (error) {
       setCode('');
       setErrors({ form: authErrorMessage(error, 'verify') });
@@ -71,8 +71,8 @@ export function VerifyEmailScreen() {
       {notice ? <AuthMessage message={notice} /> : null}
       <AuthButton label="Xác minh" onPress={submit} pending={verify.isPending} />
       <AuthButton label={secondsLeft > 0 ? `Gửi lại sau ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}` : 'Gửi lại mã'} onPress={resendCode} pending={resend.isPending} disabled={secondsLeft > 0} secondary />
-      <AuthLink label="Dùng email khác? Đăng ký lại" onPress={() => router.replace('/register')} />
-      <AuthLink label="Quay lại đăng nhập" onPress={() => router.replace('/login')} />
+      <AuthLink label="Dùng email khác? Đăng ký lại" onPress={() => router.replace({ pathname: '/register', params: params.returnTo === '/explore' ? { returnTo: params.returnTo } : {} })} />
+      <AuthLink label="Quay lại đăng nhập" onPress={() => router.replace({ pathname: '/login', params: params.returnTo === '/explore' ? { returnTo: params.returnTo } : {} })} />
     </AuthScreen>
   );
 }

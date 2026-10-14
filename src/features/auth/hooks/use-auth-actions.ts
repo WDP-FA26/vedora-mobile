@@ -1,8 +1,9 @@
 import { useMutation } from '@tanstack/react-query';
 
-import { acceptSession } from '@/shared/session/session-manager';
+import { acceptSession, clearSession } from '@/shared/session/session-manager';
+import { useSessionStore } from '@/shared/stores/session-store';
 
-import { login, register, resendVerification, verifyEmail } from '../services/auth.service';
+import { login, logout, register, resendVerification, verifyEmail } from '../services/auth.service';
 
 export function useLogin() {
   return useMutation({
@@ -24,4 +25,19 @@ export function useVerifyEmail() {
 
 export function useResendVerification() {
   return useMutation({ mutationFn: resendVerification });
+}
+
+export function useSignOut() {
+  return useMutation({
+    mutationFn: async () => {
+      const refreshToken = useSessionStore.getState().refreshToken;
+      const results = await Promise.allSettled([
+        clearSession(),
+        refreshToken ? logout(refreshToken) : Promise.resolve(),
+      ]);
+      if (results.some((result) => result.status === 'rejected')) {
+        throw new Error('Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.');
+      }
+    },
+  });
 }
