@@ -45,7 +45,8 @@ Copy `.env.example` to `.env.local`, then set `EXPO_PUBLIC_API_URL` to the API a
 - `src/shared/api/request-json.ts`: parses response data with a Zod schema before it reaches UI or the Query cache.
 - `src/shared/query/`: one TanStack Query provider per app root; native foreground and network events drive refetching. Changing the session token clears cached responses.
 - `src/shared/stores/session-store.ts`: in-memory session for UI and API requests. On Android/iOS, `src/shared/session/` stores only the refresh token in Expo SecureStore and rotates it when the app starts, on 401, or when the app returns to the foreground near token expiry. Web sessions remain in memory.
-- `src/features/auth/`: login, registration, email verification, resend code and sign-out. Routes live at `/login`, `/register` and `/verify-email`; the home screen links to them. The API must be reachable through `EXPO_PUBLIC_API_URL` on the device.
+- `src/features/auth/`: login, registration, email verification, resend code and sign-out. Routes live at `/login`, `/register` and `/verify-email`; the guest home screen links to them. Successful login or email verification opens `/explore`, and a restored session skips the guest home screen. The API must be reachable through `EXPO_PUBLIC_API_URL` on the device.
+- `src/features/feed/`: public Explore feed at `/explore`. `GET /posts` uses cursor pagination and separate filters for all posts, short posts and blogs. Cards show author, text, blog preview and Mux videos; signed-in viewers can like and bookmark. Video playback uses `expo-video`, so make a new development build after adding this native package.
 - `src/features/app-info/`: small reference module showing `types` (Zod), `data` (query key), `services` (Axios) and `hooks` (TanStack Query) for the existing `GET /api/v1` endpoint.
 
 See `docs/AGENT_RULES.md` for the required module layout and dependency direction when adding features.
