@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { ApiError } from '@/shared/api/api-error';
@@ -10,6 +10,7 @@ import { formErrors } from '../utils/form-errors';
 import { AuthButton, AuthField, AuthLink, AuthMessage, AuthScreen } from './auth-ui';
 
 export function LoginScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -24,11 +25,11 @@ export function LoginScreen() {
     setErrors({});
     try {
       await login.mutateAsync(parsed.data);
-      router.replace('/');
+      router.replace('/explore');
     } catch (error) {
       setPassword('');
       if (error instanceof ApiError && error.code === 'EMAIL_NOT_VERIFIED' && error.email) {
-        router.replace({ pathname: '/verify-email', params: { email: error.email, sent: '1' } });
+        router.replace({ pathname: '/verify-email', params: { email: error.email, sent: '1', ...(returnTo === '/explore' ? { returnTo } : {}) } });
         return;
       }
       setErrors({ form: authErrorMessage(error, 'login') });
@@ -41,7 +42,7 @@ export function LoginScreen() {
       <AuthField label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" error={errors.password} placeholder="Nhập mật khẩu" onSubmitEditing={submit} returnKeyType="done" />
       {errors.form ? <AuthMessage message={errors.form} error /> : null}
       <AuthButton label="Đăng nhập" onPress={submit} pending={login.isPending} />
-      <AuthLink label="Chưa có tài khoản? Đăng ký" onPress={() => router.push('/register')} />
+      <AuthLink label="Chưa có tài khoản? Đăng ký" onPress={() => router.push({ pathname: '/register', params: returnTo === '/explore' ? { returnTo } : {} })} />
     </AuthScreen>
   );
 }
