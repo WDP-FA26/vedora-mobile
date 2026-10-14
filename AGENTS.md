@@ -1,41 +1,49 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# Quy tắc Vedora Mobile
 
-## Expo has changed — do not trust your training data
+Ứng dụng dùng Expo/React Native. Ưu tiên trải nghiệm di động, hiệu năng và tương thích đa nền tảng.
 
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
+## Quy tắc dự án
 
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+- Đọc [docs/AGENT_RULES.md](docs/AGENT_RULES.md) trước khi thêm hoặc sửa tính năng. Tài liệu này quy định cấu trúc module và cách dùng Axios, TanStack Query, Zustand, Zod.
+- Sau mỗi task/tính năng, cập nhật [docs/PLAN.md](docs/PLAN.md) trước khi báo hoàn tất. Ghi ngắn gọn bằng tiếng Việt: **kết quả đã làm**, **các bước kiểm tra luồng trên UI**, **người thực hiện**.
 
-## Commands
+## Kiểm tra tài liệu Expo
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+Expo có thể thay đổi API qua mỗi phiên bản SDK. Trước khi viết code dùng API của Expo, EAS hoặc React Native:
+
+1. Xem phiên bản chính của `expo` trong `package.json`.
+2. Đọc tài liệu đúng phiên bản tại `https://docs.expo.dev/versions/v<major>.0.0/`.
+3. Với nội dung khác, tra `https://docs.expo.dev/llms.txt` rồi mở trang liên quan; không dựa vào trí nhớ.
+
+## Lệnh thường dùng
+
+Nếu dự án có `bun.lock`, dùng `bunx` thay cho `npx`.
 
 ```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
+npx expo install <package>  # Cài phiên bản tương thích SDK; không dùng npm/yarn/pnpm/bun add
+npx expo start              # Chạy môi trường phát triển
+npx expo lint               # Kiểm tra lint
+npx tsc --noEmit            # Kiểm tra kiểu dữ liệu
+npx expo-doctor             # Chẩn đoán cấu hình và thư viện
+npx expo install --fix      # Sửa phiên bản thư viện không tương thích
 ```
 
-Run lint and typecheck before declaring any task done.
+Chạy lint và kiểm tra kiểu dữ liệu trước khi kết thúc task.
 
-## Navigation & Routing
+## Điều hướng
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+- Dùng **Expo Router** cho mọi điều hướng. `src/app/` chỉ chứa route và layout; để components, hooks, utils ngoài thư mục này.
+- Import `Link`, `router`, `useLocalSearchParams` từ `expo-router`.
+- Tài liệu: https://docs.expo.dev/router/introduction.md
 
-## Building with EAS
+## Build với EAS
 
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+Dùng EAS để build, ký, gửi ứng dụng (`eas build`, `eas submit`) và cập nhật OTA (`eas update`). Chạy CLI bằng `bunx eas-cli <command>` nếu dùng Bun, hoặc `npx eas-cli@latest <command>` trong trường hợp khác.
 
-## Rules
+Tài liệu: https://docs.expo.dev/eas/index.md
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+## Quy tắc native
+
+- Nếu chưa có `ios/` và `android/`, đây là thư mục được sinh tự động. Không tạo hoặc sửa thủ công; cấu hình qua `app.json` và config plugin.
+- Sau khi thêm thư viện có mã native, tạo development build bằng `npx expo run:ios|android` hoặc `eas build --profile development`.
+- Ưu tiên module do Expo đề xuất và kiểm tra skill sẵn có trước khi thêm thư viện. Tài liệu: https://docs.expo.dev/versions/latest/index.md
