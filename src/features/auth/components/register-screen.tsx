@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 
 import { useRegister } from '../hooks/use-auth-actions';
@@ -8,6 +8,7 @@ import { formErrors } from '../utils/form-errors';
 import { AuthButton, AuthField, AuthLink, AuthMessage, AuthScreen } from './auth-ui';
 
 export function RegisterScreen() {
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -27,7 +28,7 @@ export function RegisterScreen() {
       const result = await register.mutateAsync(parsed.data);
       setPassword('');
       setConfirmPassword('');
-      router.replace({ pathname: '/verify-email', params: { email: result.email, sent: '1' } });
+      router.replace({ pathname: '/verify-email', params: { email: result.email, sent: '1', ...(returnTo === '/explore' ? { returnTo } : {}) } });
     } catch (error) {
       setErrors({ form: authErrorMessage(error, 'register') });
     }
@@ -42,7 +43,7 @@ export function RegisterScreen() {
       <AuthField label="Nhập lại mật khẩu" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoComplete="new-password" error={errors.confirmPassword} placeholder="Nhập lại mật khẩu" />
       {errors.form ? <AuthMessage message={errors.form} error /> : null}
       <AuthButton label="Tạo tài khoản" onPress={submit} pending={register.isPending} />
-      <AuthLink label="Đã có tài khoản? Đăng nhập" onPress={() => router.replace('/login')} />
+      <AuthLink label="Đã có tài khoản? Đăng nhập" onPress={() => router.replace({ pathname: '/login', params: returnTo === '/explore' ? { returnTo } : {} })} />
     </AuthScreen>
   );
 }

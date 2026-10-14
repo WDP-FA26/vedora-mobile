@@ -1,39 +1,14 @@
 import { router } from "expo-router";
-import { useState } from "react";
 import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { BrandColors, Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-import { clearSession } from "@/shared/session/session-manager";
-import { useSessionStore } from "@/shared/stores/session-store";
 
-import { logout } from "../services/auth.service";
-import { AuthButton, AuthMessage } from "./auth-ui";
+import { AuthButton } from "./auth-ui";
 
 export function AuthHome() {
   const theme = useTheme();
-  const accessToken = useSessionStore((state) => state.accessToken);
-  const refreshToken = useSessionStore((state) => state.refreshToken);
-  const displayName = useSessionStore((state) => state.displayName);
-  const [signingOut, setSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState("");
-
-  async function signOut() {
-    if (signingOut) return;
-    setSigningOut(true);
-    setSignOutError("");
-    const results = await Promise.allSettled([
-      clearSession(),
-      refreshToken ? logout(refreshToken) : Promise.resolve(),
-    ]);
-    if (results.some((result) => result.status === "rejected")) {
-      setSignOutError(
-        "Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.",
-      );
-    }
-    setSigningOut(false);
-  }
 
   return (
     <SafeAreaView
@@ -79,40 +54,18 @@ export function AuthHome() {
           ]}
         >
           <Text style={[styles.cardTitle, { color: theme.foreground }]}>
-            {accessToken
-              ? `Xin chào, ${displayName ?? "bạn"}!`
-              : "Chào mừng đến Vedora"}
+            Chào mừng đến Vedora
           </Text>
           <Text style={[styles.description, { color: theme.mutedForeground }]}>
-            {accessToken
-              ? "Bạn đã đăng nhập thành công."
-              : "Đăng nhập hoặc tạo tài khoản để bắt đầu."}
+            Đăng nhập hoặc tạo tài khoản để bắt đầu.
           </Text>
-          {signOutError && !accessToken ? (
-            <AuthMessage message={signOutError} error />
-          ) : null}
-          {accessToken ? (
-            <AuthButton
-              label="Đăng xuất"
-              onPress={() => {
-                void signOut();
-              }}
-              pending={signingOut}
-              secondary
-            />
-          ) : (
-            <>
-              <AuthButton
-                label="Đăng nhập"
-                onPress={() => router.push("/login")}
-              />
-              <AuthButton
-                label="Tạo tài khoản"
-                onPress={() => router.push("/register")}
-                secondary
-              />
-            </>
-          )}
+          <AuthButton label="Khám phá bài viết" onPress={() => router.push('/explore')} />
+          <AuthButton label="Đăng nhập" onPress={() => router.push('/login')} secondary />
+          <AuthButton
+            label="Tạo tài khoản"
+            onPress={() => router.push("/register")}
+            secondary
+          />
         </View>
       </ScrollView>
     </SafeAreaView>
