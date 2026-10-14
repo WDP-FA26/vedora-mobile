@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 // Keep these values in sync with vedora-frontend/app/globals.css.
 export const BrandColors = {
   forest: '#255d32',
@@ -70,23 +68,7 @@ export const SemanticColors = {
 
 export type ColorScheme = keyof typeof SemanticColors;
 
-// Legacy aliases keep the Expo starter components usable while screens migrate.
-export const Colors = {
-  light: {
-    ...SemanticColors.light,
-    text: SemanticColors.light.foreground,
-    backgroundElement: SemanticColors.light.muted,
-    backgroundSelected: SemanticColors.light.secondary,
-    textSecondary: SemanticColors.light.mutedForeground,
-  },
-  dark: {
-    ...SemanticColors.dark,
-    text: SemanticColors.dark.foreground,
-    backgroundElement: SemanticColors.dark.muted,
-    backgroundSelected: SemanticColors.dark.secondary,
-    textSecondary: SemanticColors.dark.mutedForeground,
-  },
-} as const;
+export const Colors = SemanticColors;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
@@ -131,6 +113,3 @@ export const Spacing = {
   five: 32,
   six: 64,
 } as const;
-
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
