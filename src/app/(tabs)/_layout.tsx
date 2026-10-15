@@ -6,18 +6,12 @@ import { StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTabBarVisibilityStore } from '@/features/navigation/stores/tab-bar-visibility-store';
+import { SproutPet } from '@/features/nutrition-chat/components/sprout-pet';
 import { useTheme } from '@/hooks/use-theme';
 
 type TabIconName = Extract<ComponentProps<typeof SymbolView>['name'], object>;
 
-function TabIcon({ name, color, highlighted = false }: { name: TabIconName; color: ColorValue; highlighted?: boolean }) {
-  if (highlighted) {
-    return (
-      <View style={styles.aiIcon}>
-        <SymbolView name={name} size={23} tintColor="#fffefa" />
-      </View>
-    );
-  }
+function TabIcon({ name, color }: { name: TabIconName; color: ColorValue }) {
   return <SymbolView name={name} size={24} tintColor={color} />;
 }
 
@@ -78,8 +72,10 @@ export default function MainTabsLayout() {
         options={{
           title: 'Vedora AI',
           tabBarAccessibilityLabel: 'Vedora AI',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} color={color} highlighted />
+          tabBarIcon: ({ focused }) => (
+            <View style={[styles.aiIcon, focused && { backgroundColor: theme.secondary, borderColor: theme.primary, borderWidth: 1 }]}>
+              <SproutPet size={30} accessible={false} />
+            </View>
           ),
         }}
       />
@@ -118,5 +114,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -3 },
   },
   item: { justifyContent: 'center' },
-  aiIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: '#255d32' },
+  aiIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
 });
