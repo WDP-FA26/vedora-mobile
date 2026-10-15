@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -36,12 +36,15 @@ export function PostCard({
   visible: boolean;
 }) {
   const theme = useTheme();
+  const dark = useColorScheme() === "dark";
   const accessToken = useSessionStore((state) => state.accessToken);
   const { like, bookmark } = useFeedActions(post.id);
   const [expanded, setExpanded] = useState(false);
   const body = post.body?.trim() ?? "";
   const canExpand = body.length > 240 || body.split("\n").length > 5;
   const videos = post.media.filter((media) => media.type === "VIDEO");
+  const imageCount = post.media.filter((media) => media.type === "IMAGE").length;
+  const bodyParts = body.split(/(#[^\s#]+)/g);
 
   function requireLogin(action: () => void) {
     if (accessToken) action();
@@ -94,6 +97,7 @@ export function PostCard({
         ) : null}
       </View>
 
+      <View style={styles.postContent}>
       {body && canExpand ? (
         <Pressable
           onPress={() => setExpanded((value) => !value)}
@@ -106,14 +110,20 @@ export function PostCard({
             numberOfLines={expanded ? undefined : 4}
             style={[styles.body, { color: theme.foreground }]}
           >
-            {body}
+            {bodyParts.map((part, index) => (
+              <Text key={index} style={part.startsWith("#") ? { color: theme.primary } : undefined}>{part}</Text>
+            ))}
           </Text>
           <Text style={[styles.expand, { color: theme.primary }]}>
             {expanded ? "Thu gọn" : "Xem thêm"}
           </Text>
         </Pressable>
       ) : body ? (
-        <Text style={[styles.body, { color: theme.foreground }]}>{body}</Text>
+        <Text style={[styles.body, { color: theme.foreground }]}>
+          {bodyParts.map((part, index) => (
+            <Text key={index} style={part.startsWith("#") ? { color: theme.primary } : undefined}>{part}</Text>
+          ))}
+        </Text>
       ) : null}
 
       {post.blog ? (
@@ -129,7 +139,11 @@ export function PostCard({
               style={styles.blogCover}
               contentFit="cover"
             />
-          ) : null}
+          ) : (
+            <View style={[styles.blogPlaceholder, { backgroundColor: dark ? "#51322e" : "#f9d8ce" }]}>
+              <SymbolView name={{ ios: "doc.text", android: "article", web: "article" }} size={30} tintColor={dark ? "#f0b6a9" : "#a87868"} />
+            </View>
+          )}
           <View style={styles.blogCopy}>
             <Text style={[styles.blogTitle, { color: theme.foreground }]}>
               {post.blog.title}
@@ -151,15 +165,22 @@ export function PostCard({
         </View>
       ) : null}
 
-      {videos.length > 0 ? (
+      {videos.length > 0 || imageCount > 0 ? (
         <View style={styles.mediaGroup}>
           {videos.map((media) => (
             <FeedVideo key={media.id} media={media} visible={visible} />
           ))}
+          {imageCount > 0 ? (
+            <View accessible accessibilityLabel={`${imageCount} ảnh đính kèm chưa thể hiển thị`} style={[styles.imageUnavailable, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
+              <SymbolView name={{ ios: "photo", android: "image", web: "image" }} size={28} tintColor={theme.primary} />
+              <Text style={[styles.imageUnavailableText, { color: theme.foreground }]}>Không thể hiển thị ảnh đính kèm</Text>
+              {imageCount > 1 ? <Text style={[styles.imageUnavailableCount, { color: theme.mutedForeground }]}>{imageCount} ảnh</Text> : null}
+            </View>
+          ) : null}
         </View>
       ) : null}
 
-      <View style={styles.actions} accessibilityRole="toolbar">
+      <View style={[styles.actions, { borderTopColor: theme.border }]} accessibilityRole="toolbar">
         <View accessible accessibilityLabel={`${post.commentCount} bình luận`} style={styles.statGroup}>
           <SymbolView name={{ ios: "bubble.left", android: "chat_bubble", web: "chat_bubble" }} size={19} tintColor={theme.mutedForeground} />
           <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.commentCount)}</Text>
@@ -186,6 +207,10 @@ export function PostCard({
           <SymbolView name={{ ios: post.isLiked ? "leaf.fill" : "leaf", android: "eco", web: "eco" }} size={21} tintColor={post.isLiked ? theme.primary : theme.mutedForeground} />
           <Text style={[styles.stat, { color: post.isLiked ? theme.primary : theme.mutedForeground }]}>{formatCount(post.likeCount)}</Text>
         </Pressable>
+        <View accessible accessibilityLabel={`${post.viewCount} lượt xem`} style={styles.statGroup}>
+          <SymbolView name={{ ios: "chart.bar", android: "bar_chart", web: "bar_chart" }} size={18} tintColor={theme.mutedForeground} />
+          <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.viewCount)}</Text>
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
@@ -212,6 +237,7 @@ export function PostCard({
           Không thể cập nhật bài viết. Vui lòng thử lại.
         </Text>
       ) : null}
+      </View>
     </View>
   );
 }
@@ -221,8 +247,8 @@ const styles = StyleSheet.create({
     width: "100%",
     borderBottomWidth: 1,
     paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.three,
-    paddingBottom: Spacing.two,
+    paddingTop: Spacing.four,
+    paddingBottom: Spacing.three,
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
   avatar: {
@@ -234,6 +260,7 @@ const styles = StyleSheet.create({
   },
   initial: { fontFamily: Fonts.headingBold, fontSize: 19 },
   authorDetails: { flex: 1, minWidth: 0 },
+  postContent: { marginLeft: 52 },
   authorName: { fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
   meta: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 17 },
   typePill: {
@@ -251,8 +278,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginTop: Spacing.one,
   },
-  blogCard: { borderWidth: 1, borderRadius: Radius.xl, overflow: "hidden", marginTop: Spacing.three },
-  blogCover: { width: "100%", aspectRatio: 16 / 9 },
+  blogCard: { borderWidth: 1, borderRadius: Radius["2xl"], overflow: "hidden", marginTop: Spacing.three },
+  blogCover: { width: "100%", aspectRatio: 1.91 },
+  blogPlaceholder: { width: "100%", aspectRatio: 1.91, alignItems: "center", justifyContent: "center" },
   blogCopy: { padding: Spacing.three, gap: Spacing.one },
   blogTitle: { fontFamily: Fonts.headingBold, fontSize: 17, lineHeight: 24 },
   excerpt: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
@@ -262,10 +290,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   mediaGroup: { gap: Spacing.two, marginTop: Spacing.three },
-  actions: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.two },
-  statGroup: { minHeight: 40, minWidth: 48, flexDirection: "row", alignItems: "center", gap: Spacing.one },
+  imageUnavailable: { width: "100%", aspectRatio: 16 / 10, borderRadius: Radius["2xl"], borderWidth: 1, alignItems: "center", justifyContent: "center", gap: Spacing.one },
+  imageUnavailableText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
+  imageUnavailableCount: { fontFamily: Fonts.sans, fontSize: 12 },
+  actions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.one },
+  statGroup: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: Spacing.one },
   actionButton: {
-    minWidth: 48,
+    minWidth: 40,
     minHeight: 40,
     flexDirection: "row",
     justifyContent: "center",
