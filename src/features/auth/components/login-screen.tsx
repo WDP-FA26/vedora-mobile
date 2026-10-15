@@ -7,10 +7,12 @@ import { useLogin } from '../hooks/use-auth-actions';
 import { loginSchema } from '../types/auth.schema';
 import { authErrorMessage } from '../utils/auth-errors';
 import { formErrors } from '../utils/form-errors';
+import { authReturnTo } from '../utils/return-to';
 import { AuthButton, AuthField, AuthLink, AuthMessage, AuthScreen } from './auth-ui';
 
 export function LoginScreen() {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const destination = authReturnTo(returnTo);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -25,11 +27,11 @@ export function LoginScreen() {
     setErrors({});
     try {
       await login.mutateAsync(parsed.data);
-      router.replace('/explore');
+      router.replace(destination);
     } catch (error) {
       setPassword('');
       if (error instanceof ApiError && error.code === 'EMAIL_NOT_VERIFIED' && error.email) {
-        router.replace({ pathname: '/verify-email', params: { email: error.email, sent: '1', ...(returnTo === '/explore' ? { returnTo } : {}) } });
+        router.replace({ pathname: '/verify-email', params: { email: error.email, sent: '1', returnTo: destination } });
         return;
       }
       setErrors({ form: authErrorMessage(error, 'login') });
@@ -42,7 +44,7 @@ export function LoginScreen() {
       <AuthField label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" textContentType="password" error={errors.password} placeholder="Nhập mật khẩu" onSubmitEditing={submit} returnKeyType="done" />
       {errors.form ? <AuthMessage message={errors.form} error /> : null}
       <AuthButton label="Đăng nhập" onPress={submit} pending={login.isPending} />
-      <AuthLink label="Chưa có tài khoản? Đăng ký" onPress={() => router.push({ pathname: '/register', params: returnTo === '/explore' ? { returnTo } : {} })} />
+      <AuthLink label="Chưa có tài khoản? Đăng ký" onPress={() => router.push({ pathname: '/register', params: { returnTo: destination } })} />
     </AuthScreen>
   );
 }
