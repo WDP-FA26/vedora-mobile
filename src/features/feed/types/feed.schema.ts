@@ -20,14 +20,14 @@ export const feedPostSchema = z.object({
     coverImageUrl: z.string().nullable(),
     excerpt: z.string(),
     recipes: z.array(z.object({ id: z.uuid(), title: z.string(), imageUrl: z.string().nullable() })),
-  }).nullable(),
+  }).nullish(),
   publishedAt: z.string().nullable(),
   createdAt: z.string(),
   author: z.object({
     id: z.uuid(),
     username: z.string(),
     fullName: z.string(),
-    avatarUrl: z.string().nullable(),
+    avatarUrl: z.string().nullable().optional(),
   }),
   media: z.array(mediaSchema),
   commentCount: z.number().int().nonnegative(),
@@ -45,13 +45,11 @@ export const feedPageSchema = z.object({
 });
 
 export const likeResponseSchema = z.object({
-  postId: z.uuid(),
   isLiked: z.boolean(),
   likeCount: z.number().int().nonnegative(),
 });
 
 export const bookmarkResponseSchema = z.object({
-  postId: z.uuid(),
   isBookmarked: z.boolean(),
 });
 
