@@ -65,6 +65,7 @@ export default function RootLayout() {
             <Stack.Screen name="login" />
             <Stack.Screen name="register" />
             <Stack.Screen name="verify-email" />
+            <Stack.Screen name="dietary-profile" />
           </Stack>
         </ThemeProvider>
       </VedoraThemeProvider>
