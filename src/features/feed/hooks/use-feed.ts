@@ -4,13 +4,14 @@ import { feedKeys } from '../data/feed.keys';
 import { getFeedPage, setPostBookmark, setPostLike } from '../services/feed.service';
 import type { FeedFilter, FeedPage, FeedPost } from '../types/feed.schema';
 
-export function useFeed(filter: FeedFilter) {
+export function useFeed(filter: FeedFilter, enabled = true) {
   const queryClient = useQueryClient();
   const query = useInfiniteQuery({
     queryKey: feedKeys.list(filter),
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => getFeedPage({ filter, cursor: pageParam, signal }),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled,
   });
   return {
     ...query,
