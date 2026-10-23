@@ -111,7 +111,12 @@ export function FeedScreen() {
               accessibilityLabel="Vedora"
             />
           </View>
-          <NotificationBell />
+          <View style={styles.headerActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Tìm bài viết" onPress={() => router.push("/search")} style={styles.searchButton}>
+              <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }} size={22} tintColor={theme.foreground} />
+            </Pressable>
+            <NotificationBell />
+          </View>
         </View>
         {accountOpen ? (
           <View style={[styles.accountMenu, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -355,7 +360,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     minHeight: 58,
   },
+  headerActions: { flexDirection: "row", width: 80, justifyContent: "flex-end" },
+  searchButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
   accountAvatar: {
+    marginRight: 40,
     width: 40,
     height: 40,
     borderRadius: 20,

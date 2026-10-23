@@ -4,6 +4,8 @@ import { feedPostSchema } from '@/features/feed/types/feed.schema';
 
 export const MAX_COMMENT_LENGTH = 1000;
 export const MAX_REPORT_DETAILS_LENGTH = 500;
+/** Mirrors the API's MAX_SEARCH_QUERY_LENGTH. */
+export const MAX_SEARCH_QUERY_LENGTH = 200;
 
 export const commentSchema = z.object({
   id: z.string(),

@@ -3,8 +3,10 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { feedKeys } from '@/features/feed/data/feed.keys';
 import { patchCachedPost } from '@/features/feed/hooks/use-feed';
 
+import { useSessionStore } from '@/shared/stores/session-store';
+
 import { postsKeys } from '../data/posts.keys';
-import { createComment, deleteComment, getCommentPage, getPost, reportPost, updateComment } from '../services/posts.service';
+import { createComment, deleteComment, getBookmarkPage, getCommentPage, getPost, reportPost, searchPostPage, updateComment } from '../services/posts.service';
 import type { ReportInput } from '../types/posts.schema';
 
 export function usePost(postId: string) {
@@ -47,4 +49,25 @@ export function useCommentActions(postId: string, commentCount: number) {
 
 export function useReportPost(postId: string) {
   return useMutation({ mutationFn: (input: ReportInput) => reportPost(postId, input) });
+}
+
+export function useBookmarks() {
+  const token = useSessionStore((state) => state.accessToken);
+  return useInfiniteQuery({
+    queryKey: postsKeys.bookmarks,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) => getBookmarkPage({ cursor: pageParam, signal }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: !!token,
+  });
+}
+
+export function usePostSearch(q: string) {
+  return useInfiniteQuery({
+    queryKey: postsKeys.search(q),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) => searchPostPage({ q, cursor: pageParam, signal }),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    enabled: q.length > 0,
+  });
 }
