@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Modal, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image, useWindowDimensions, ActivityIndicator, useColorScheme } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Modal, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image, useWindowDimensions, useColorScheme } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
 import { useVideoPlayer, VideoView } from "expo-video";
 
@@ -10,7 +10,6 @@ import { MAX_POST_LENGTH, MAX_VIDEO_DURATION_SECONDS, type SelectedComposeVideo 
 import { composeVideoBody, filledDescription } from "../utils/compose-body";
 
 type Mode = "choose" | "video";
-type PublicationStatus = "PUBLISHED" | "PROCESSING" | "FAILED";
 
 export type { SelectedComposeVideo } from "../types/compose.schema";
 
@@ -21,10 +20,8 @@ export type ComposeDialogProps = {
   onClose: () => void;
   onPickVideo: () => Promise<SelectedComposeVideo | null>;
   onRemoveVideo?: (video: SelectedComposeVideo) => void;
-  onPublishVideo: (
-    draft: { title: string; description: string; video: SelectedComposeVideo },
-    onProgress: (progress: number | null) => void,
-  ) => Promise<{ status: PublicationStatus }>;
+  /** Starts publishing in the background; the dialog closes right after. Throws a user-facing message when the draft is refused. */
+  onSubmitVideo: (draft: { title: string; description: string; video: SelectedComposeVideo }) => void;
 };
 
 type GuideTemplate = { id: string; name: string; headings: readonly string[] };
@@ -70,12 +67,14 @@ export function ComposeDialog({
   onClose,
   onPickVideo,
   onRemoveVideo,
-  onPublishVideo,
+  onSubmitVideo,
 }: ComposeDialogProps) {
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
   const { width, height } = useWindowDimensions();
   const compact = width < 700;
+  // Read outside the Modal: a SafeAreaView inside it reports zero insets, which pushed the close button under the status bar.
+  const insets = useSafeAreaInsets();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -86,24 +85,22 @@ export function ComposeDialog({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [pickingVideo, setPickingVideo] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [progress, setProgress] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ title?: string; description?: string; video?: string }>({});
-  const [published, setPublished] = useState<"PUBLISHED" | "PROCESSING" | null>(null);
 
   // Opening the video shortcut should select its form even if the dialog stays mounted.
   useEffect(() => {
-    if (visible && !title && !description && !video && !published) setMode(initialMode);
-  }, [visible, initialMode, title, description, video, published]);
+    if (visible && !title && !description && !video) setMode(initialMode);
+  }, [visible, initialMode, title, description, video]);
 
   const displayName = authorName?.trim() || "Thành viên Vedora";
   const hasDraft = Boolean(title.trim() || description.trim() || video);
   const body = composeVideoBody(title, description);
   const canPreview = Boolean(title.trim() || filledDescription(description) || video);
 
-  function resetAndClose() {
-    if (video) onRemoveVideo?.(video);
+  /** `handoff`: the video now belongs to the background publish, so the form must not release it. */
+  function resetAndClose(handoff = false) {
+    if (video && !handoff) onRemoveVideo?.(video);
     setMode("choose");
     setTitle("");
     setDescription("");
@@ -115,14 +112,12 @@ export function ComposeDialog({
     setConfirmDiscard(false);
     setSubmitError(null);
     setFieldErrors({});
-    setPublished(null);
-    setProgress(null);
     onClose();
   }
 
   function requestClose() {
-    if (submitting || pickingVideo) return;
-    if (published || !hasDraft) resetAndClose();
+    if (pickingVideo) return;
+    if (!hasDraft) resetAndClose();
     else {
       setPreviewOpen(false);
       setConfirmDiscard(true);
@@ -130,7 +125,7 @@ export function ComposeDialog({
   }
 
   async function selectVideo() {
-    if (pickingVideo || submitting) return;
+    if (pickingVideo) return;
     setPickingVideo(true);
     setSubmitError(null);
     try {
@@ -166,8 +161,8 @@ export function ComposeDialog({
     else applyTemplate(template);
   }
 
-  async function publish() {
-    if (submitting || pickingVideo) return;
+  function publish() {
+    if (pickingVideo) return;
     setSubmitError(null);
     if (mode === "video") {
       const next: typeof fieldErrors = {};
@@ -184,35 +179,30 @@ export function ComposeDialog({
       }
       if (!video) return;
       setFieldErrors({});
-      setSubmitting(true);
-      setProgress(null);
       try {
-        const result = await onPublishVideo({ title: title.trim(), description, video }, setProgress);
-        if (result.status === "FAILED") setSubmitError("Video chưa được đăng. Nội dung vẫn được giữ để bạn thử lại.");
-        else setPublished(result.status);
+        onSubmitVideo({ title: title.trim(), description, video });
       } catch (error) {
         setSubmitError(error instanceof Error ? error.message : "Chưa thể đăng video. Nội dung vẫn được giữ để bạn thử lại.");
-      } finally {
-        setSubmitting(false);
+        return;
       }
+      resetAndClose(true);
     }
   }
 
-  const dialogTitle = published ? "Đã gửi nội dung" : confirmDiscard ? "Bỏ bài viết đang soạn?" : previewOpen ? "Xem trước bài đăng" : mode === "video" ? "Tạo video hướng dẫn" : "Tạo nội dung";
+  const dialogTitle = confirmDiscard ? "Bỏ bài viết đang soạn?" : previewOpen ? "Xem trước bài đăng" : mode === "video" ? "Tạo video hướng dẫn" : "Tạo nội dung";
 
   return (
     <Modal visible={visible} animationType={compact ? "slide" : "fade"} transparent onRequestClose={requestClose} statusBarTranslucent>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={[styles.overlay, { backgroundColor: "rgba(14, 30, 18, 0.48)" }]}>
-        <SafeAreaView
-          edges={compact ? ["top", "bottom"] : []}
+        <View
           style={[
             styles.sheet,
-            { backgroundColor: isDark ? theme.background : "#f8f9f1", width: compact ? width : Math.min(width - 36, 740), height: compact ? height : undefined, maxHeight: compact ? height : Math.min(height * 0.9, 860), borderColor: theme.border, borderRadius: compact ? 0 : Radius["3xl"] },
+            { paddingBottom: compact ? insets.bottom : 0, backgroundColor: isDark ? theme.background : "#f8f9f1", width: compact ? width : Math.min(width - 36, 740), height: compact ? height : undefined, maxHeight: compact ? height : Math.min(height * 0.9, 860), borderColor: theme.border, borderRadius: compact ? 0 : Radius["3xl"] },
           ]}
         >
-          <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
-            {mode !== "choose" && !published && !confirmDiscard && !previewOpen ? (
-              <Pressable accessibilityRole="button" accessibilityLabel="Trở lại chọn loại bài" onPress={() => setMode("choose")} style={styles.headerIcon} disabled={submitting}>
+          <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.card, paddingTop: compact ? insets.top : 0, minHeight: 60 + (compact ? insets.top : 0) }]}>
+            {mode !== "choose" && !confirmDiscard && !previewOpen ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="Trở lại chọn loại bài" onPress={() => setMode("choose")} style={styles.headerIcon}>
                 <SymbolView name={{ ios: "arrow.left", android: "arrow_back", web: "arrow_back" }} size={22} tintColor={theme.foreground} />
               </Pressable>
             ) : previewOpen ? (
@@ -221,7 +211,7 @@ export function ComposeDialog({
               </Pressable>
             ) : <View style={styles.headerIcon} />}
             <Text numberOfLines={1} style={[styles.dialogTitle, { color: theme.foreground }]}>{dialogTitle}</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={requestClose} style={styles.headerIcon} disabled={submitting}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Đóng" onPress={requestClose} style={styles.headerIcon}>
               <SymbolView name={{ ios: "xmark", android: "close", web: "close" }} size={20} tintColor={theme.foreground} />
             </Pressable>
           </View>
@@ -232,16 +222,9 @@ export function ComposeDialog({
               <Pressable accessibilityRole="button" onPress={() => setConfirmDiscard(false)} style={[styles.primaryButton, { backgroundColor: theme.primary }]}>
                 <Text style={[styles.primaryButtonText, { color: theme.primaryForeground }]}>Tiếp tục chỉnh sửa</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={resetAndClose} style={[styles.secondaryButton, { borderColor: theme.border }]}>
+              <Pressable accessibilityRole="button" onPress={() => resetAndClose()} style={[styles.secondaryButton, { borderColor: theme.border }]}>
                 <Text style={[styles.secondaryButtonText, { color: theme.destructive }]}>Bỏ bài viết</Text>
               </Pressable>
-            </View>
-          ) : published ? (
-            <View style={styles.confirmPane}>
-              <View style={[styles.successIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: "checkmark", android: "check", web: "check" }} size={32} tintColor={theme.primary} /></View>
-              <Text style={[styles.successTitle, { color: theme.foreground }]}>{published === "PUBLISHED" ? "Đã đăng video" : "Đã nhận video"}</Text>
-              <Text style={[styles.confirmCopy, { color: theme.mutedForeground }]}>{published === "PUBLISHED" ? "Video đã được đăng thành công." : "Video đang được xử lý. Bài sẽ hiển thị theo trạng thái hệ thống trả về."}</Text>
-              <Pressable accessibilityRole="button" onPress={resetAndClose} style={[styles.primaryButton, { backgroundColor: theme.primary }]}><Text style={[styles.primaryButtonText, { color: theme.primaryForeground }]}>Đóng</Text></Pressable>
             </View>
           ) : previewOpen ? (
             <ScrollView style={[styles.body, compact && styles.bodyCompact]} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
@@ -308,20 +291,19 @@ export function ComposeDialog({
               <Text style={[styles.counter, { color: body.length > MAX_POST_LENGTH ? theme.destructive : theme.mutedForeground }]}>{body.length}/{MAX_POST_LENGTH} ký tự</Text>
               {fieldErrors.description ? <Text accessibilityRole="alert" style={[styles.errorText, { color: theme.destructive }]}>{fieldErrors.description}</Text> : null}
               <View style={styles.mediaHeading}><Text style={[styles.sectionTitle, { color: theme.foreground }]}>Video hướng dẫn</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Video tối đa 3 phút theo giới hạn hiện tại.</Text></View>
-              {video ? <View style={[styles.selectedVideo, { borderColor: theme.border, backgroundColor: theme.card }]}><LocalVideoPreview key={video.uri} uri={video.uri} /><View style={styles.videoMeta}><View style={styles.videoMetaText}><Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>{video.fileName || "Video đã chọn"}</Text>{videoDuration(video.durationSeconds) ? <Text style={[styles.caption, { color: theme.mutedForeground }]}>Thời lượng {videoDuration(video.durationSeconds)}</Text> : null}</View></View><View style={styles.inlineActions}><Pressable accessibilityRole="button" disabled={pickingVideo || submitting} onPress={() => { void selectVideo(); }}><Text style={[styles.inlineActionText, { color: theme.primary }]}>Thay video</Text></Pressable><Pressable accessibilityRole="button" disabled={pickingVideo || submitting} onPress={() => { onRemoveVideo?.(video); setVideo(null); }}><Text style={[styles.inlineActionText, { color: theme.destructive }]}>Xóa video</Text></Pressable></View></View> : <Pressable accessibilityRole="button" disabled={pickingVideo || submitting} onPress={() => { void selectVideo(); }} style={[styles.uploadZone, { backgroundColor: theme.card, borderColor: theme.primary }]}><SymbolView name={{ ios: "video", android: "videocam", web: "videocam" }} size={30} tintColor={theme.primary} /><Text style={[styles.uploadTitle, { color: theme.foreground }]}>Thêm video hướng dẫn nấu ăn</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Chọn video từ thiết bị của bạn.</Text><View style={[styles.pickButton, { borderColor: theme.border }]}><Text style={[styles.pickButtonText, { color: theme.foreground }]}>{pickingVideo ? "Đang mở thư viện..." : "Chọn video"}</Text></View></Pressable>}
+              {video ? <View style={[styles.selectedVideo, { borderColor: theme.border, backgroundColor: theme.card }]}><LocalVideoPreview key={video.uri} uri={video.uri} /><View style={styles.videoMeta}><View style={styles.videoMetaText}><Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>{video.fileName || "Video đã chọn"}</Text>{videoDuration(video.durationSeconds) ? <Text style={[styles.caption, { color: theme.mutedForeground }]}>Thời lượng {videoDuration(video.durationSeconds)}</Text> : null}</View></View><View style={styles.inlineActions}><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { void selectVideo(); }}><Text style={[styles.inlineActionText, { color: theme.primary }]}>Thay video</Text></Pressable><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { onRemoveVideo?.(video); setVideo(null); }}><Text style={[styles.inlineActionText, { color: theme.destructive }]}>Xóa video</Text></Pressable></View></View> : <Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { void selectVideo(); }} style={[styles.uploadZone, { backgroundColor: theme.card, borderColor: theme.primary }]}><SymbolView name={{ ios: "video", android: "videocam", web: "videocam" }} size={30} tintColor={theme.primary} /><Text style={[styles.uploadTitle, { color: theme.foreground }]}>Thêm video hướng dẫn nấu ăn</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Chọn video từ thiết bị của bạn.</Text><View style={[styles.pickButton, { borderColor: theme.border }]}><Text style={[styles.pickButtonText, { color: theme.foreground }]}>{pickingVideo ? "Đang mở thư viện..." : "Chọn video"}</Text></View></Pressable>}
               {fieldErrors.video ? <Text accessibilityRole="alert" style={[styles.errorText, { color: theme.destructive }]}>{fieldErrors.video}</Text> : null}
             </ScrollView>
           ) : null}
 
-          {!confirmDiscard && !published && mode === "video" ? <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.card }]}>
+          {!confirmDiscard && mode === "video" ? <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.card }]}>
             {submitError ? <Text accessibilityRole="alert" style={[styles.submitError, { color: theme.destructive }]}>{submitError}</Text> : null}
-            {submitting ? <View style={styles.uploadStatus}><ActivityIndicator color={theme.primary} /><Text style={[styles.uploadStatusText, { color: theme.mutedForeground }]}>{progress === null ? "Đang tải và đăng video..." : progress >= 100 ? "Đang gửi bài..." : `Đang tải video ${Math.round(progress)}%`}</Text></View> : null}
             <View style={styles.footerActions}>
-              <Pressable accessibilityRole="button" disabled={!canPreview || submitting} onPress={() => setPreviewOpen((open) => !open)} style={[styles.previewButton, { borderColor: theme.border, opacity: canPreview ? 1 : 0.55 }]}><SymbolView name={{ ios: "eye", android: "visibility", web: "visibility" }} size={17} tintColor={theme.foreground} /><Text style={[styles.previewButtonText, { color: theme.foreground }]}>{previewOpen ? "Chỉnh sửa" : "Xem trước"}</Text></Pressable>
-              <Pressable accessibilityRole="button" disabled={submitting || pickingVideo || previewOpen} onPress={() => { void publish(); }} style={[styles.publishButton, { backgroundColor: theme.primary, opacity: submitting || pickingVideo || previewOpen ? 0.6 : 1 }]}><Text style={[styles.publishButtonText, { color: theme.primaryForeground }]}>{submitting ? "Đang gửi..." : "Đăng video"}</Text></Pressable>
+              <Pressable accessibilityRole="button" disabled={!canPreview} onPress={() => setPreviewOpen((open) => !open)} style={[styles.previewButton, { borderColor: theme.border, opacity: canPreview ? 1 : 0.55 }]}><SymbolView name={{ ios: "eye", android: "visibility", web: "visibility" }} size={17} tintColor={theme.foreground} /><Text style={[styles.previewButtonText, { color: theme.foreground }]}>{previewOpen ? "Chỉnh sửa" : "Xem trước"}</Text></Pressable>
+              <Pressable accessibilityRole="button" disabled={pickingVideo || previewOpen} onPress={publish} style={[styles.publishButton, { backgroundColor: theme.primary, opacity: pickingVideo || previewOpen ? 0.6 : 1 }]}><Text style={[styles.publishButtonText, { color: theme.primaryForeground }]}>Đăng video</Text></Pressable>
             </View>
           </View> : null}
-        </SafeAreaView>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -399,16 +381,12 @@ const styles = StyleSheet.create({
   publishButton: { flex: 1, alignItems: "center", justifyContent: "center", minHeight: 44, borderRadius: 100 },
   publishButtonText: { fontFamily: Fonts.sansBold, fontSize: 14 },
   submitError: { fontFamily: Fonts.sans, fontSize: 12 },
-  uploadStatus: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
-  uploadStatusText: { fontFamily: Fonts.sans, fontSize: 12 },
   confirmPane: { padding: Spacing.four, alignItems: "center", gap: Spacing.three },
   confirmCopy: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 22, textAlign: "center" },
   primaryButton: { width: "100%", minHeight: 45, borderRadius: 100, alignItems: "center", justifyContent: "center" },
   primaryButtonText: { fontFamily: Fonts.sansBold, fontSize: 14 },
   secondaryButton: { width: "100%", minHeight: 45, borderRadius: 100, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   secondaryButtonText: { fontFamily: Fonts.sansSemibold, fontSize: 14 },
-  successIcon: { width: 62, height: 62, borderRadius: 31, alignItems: "center", justifyContent: "center" },
-  successTitle: { fontFamily: Fonts.headingBold, fontSize: 20 },
   previewHeadline: { fontFamily: Fonts.headingBold, fontSize: 17 },
   previewText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
 });
