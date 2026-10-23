@@ -1,13 +1,27 @@
 import { z } from 'zod';
 
+const captionSchema = z.object({
+  languageCode: z.string(),
+  name: z.string(),
+  isOriginal: z.boolean(),
+  /** Public WebVTT file. */
+  url: z.string(),
+});
+
 const mediaSchema = z.object({
   id: z.uuid(),
   type: z.enum(['VIDEO', 'IMAGE']),
   status: z.enum(['WAITING_UPLOAD', 'PROCESSING', 'READY', 'FAILED']),
   failureReason: z.string().nullable(),
-  playbackId: z.string().nullable(),
+  publicId: z.string().optional(),
+  /** Adaptive HLS stream, set once READY. */
+  playbackUrl: z.string().nullable(),
+  /** First frame as JPEG, set once READY. */
+  posterUrl: z.string().nullable(),
   durationSec: z.number().nullable(),
+  /** "width:height", for example "9:16". */
   aspectRatio: z.string().nullable(),
+  captions: z.array(captionSchema).default([]),
 });
 
 export const feedPostSchema = z.object({
