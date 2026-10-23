@@ -126,3 +126,23 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn tích hợp: màn hồ sơ người khác viết riêng, chưa tách chung với `profile-screen.tsx` của tôi (chỉ trùng phần header). Tab Công thức bỏ dữ liệu tĩnh cũ (`showcase-posts` vẫn dùng cho feed trống). Ảnh trong bài (IMAGE) vẫn chưa hiển thị như trước. Web hiện không có tab thông báo riêng nên badge ở header Khám phá.
 - Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web đạt. Bước UI: mở bài từ feed → bình luận, sửa, xóa; repost, chia sẻ, báo cáo bài người khác (không thấy với bài của mình); chạm tác giả → theo dõi/bỏ theo dõi, xem followers/following, kiểm tra feed Đang theo dõi; tab Công thức tìm “đậu”, bật lọc hợp với tôi, mở chi tiết; đăng nhập hai tài khoản, tài khoản A like/bình luận/theo dõi tài khoản B và xem badge/toast cập nhật realtime ở B. Chưa chạy trên thiết bị/API thật.
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Đồng bộ tính năng Đợt 3: bài đã lưu, tìm kiếm, ảnh hồ sơ/username, gợi ý theo dõi
+
+- Kết quả: (T6) Màn `/bookmarks` (`GET /posts/bookmarks`), vào từ tab Tôi; bỏ lưu ở thẻ bài cập nhật cả feed lẫn danh sách. (T7) Màn `/search` (`GET /posts/search?q=&cursor=`, debounce 350ms, tối đa 200 ký tự, phân trang), vào từ biểu tượng kính lúp ở header Khám phá. (T9) Trong form Chỉnh sửa hồ sơ: chọn/cắt ảnh bằng `expo-image-picker` (avatar 1:1, bìa 3:1), luồng `POST /profiles/me/images/uploads` → PUT lên storage → `activate` (thử lại khi 409), xóa ảnh `DELETE /profiles/me/images/:kind`, kiểm tra loại/dung lượng (5 MB avatar, 10 MB bìa); đổi tên đăng nhập `PATCH /users/:id`, báo trùng khi 409. (T10) Hàng “Gợi ý theo dõi” cuộn ngang ở đầu tab Đang theo dõi (`GET /profiles/suggestions`), theo dõi hoặc ẩn gợi ý (`DELETE /profiles/suggestions/:id`), cập nhật ngay trên giao diện và hoàn tác khi lỗi.
+- Giới hạn tích hợp: ảnh đã chọn đi qua bộ cắt gốc của hệ điều hành nên có thể được nén lại; dung lượng kiểm tra theo `fileSize` của picker. `userId` cho đổi username lấy từ `profile.id` (cùng id người dùng ở web). Header Khám phá dời chuông sang phải để chứa kính lúp.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web đạt. Bước UI: lưu/bỏ lưu bài ở feed rồi mở Tôi → Bài viết đã lưu; tìm “đậu” và cuộn tải thêm; Tôi → Chỉnh sửa hồ sơ → đổi/xóa avatar và ảnh bìa, đổi username (thử tên đã tồn tại); đăng nhập tài khoản chưa theo dõi ai, mở Đang theo dõi → theo dõi và ẩn một gợi ý. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Chặn người đã đăng nhập vào các trang xác thực
+
+- Kết quả: Thêm `GuestOnly` bọc các route đăng nhập, đăng ký, xác minh email, quên và đặt lại mật khẩu; người đã có phiên được chuyển thẳng về `returnTo` hợp lệ (mặc định Khám phá) thay vì thấy form. Trước đó chỉ trang chào `/` có kiểm tra phiên.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle web đạt. Bước UI: đăng nhập rồi vuốt/nhấn quay lại hoặc mở thẳng `/login`, `/register`, `/forgot-password` → vào Khám phá, không thấy form; đăng xuất → các trang này mở lại bình thường; đăng nhập từ tab Tôi → quay lại đúng tab Tôi. Chưa chạy trên thiết bị.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Thiết kế lại màn Chào mừng
+
+- Kết quả: Thay thẻ xanh phía trên bằng banner ảnh tràn từ mép trên (cả vùng status bar), cao khoảng nửa màn hình, chỉ bo hai góc dưới (36), phủ lớp tối nhẹ để chữ “Ăn sạch, Sống xanh.” dễ đọc. Bỏ hàng sticker và thẻ viền; phần dưới là tiêu đề chào mừng, nút chính “Khám phá bài viết” (kèm mũi tên), dải “hoặc”, rồi hai nút ngang hàng “Đăng nhập” (viền) và “Tạo tài khoản” (nền nhạt).
+- Giới hạn: ảnh banner lấy trực tiếp từ link Pinterest (`i.pinimg.com`), có thể bị chặn hoặc đổi link; nên tải về `assets/branding/` khi chốt ảnh. Khi ảnh chưa tải, nền xanh rừng hiện thay thế.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint` đạt. Bước UI: mở app khi chưa đăng nhập, kiểm tra banner tràn dưới status bar, hai góc dưới bo, chữ đọc rõ trên ảnh; bấm từng nút; thử màn nhỏ/lớn và chế độ tối. Chưa chạy trên thiết bị.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.

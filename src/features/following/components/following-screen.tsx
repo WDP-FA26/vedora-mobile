@@ -18,6 +18,7 @@ import {
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { PostCard } from "@/features/feed/components/post-card";
 import type { FeedPost } from "@/features/feed/types/feed.schema";
+import { SuggestionsRow } from "@/features/profile/components/suggestions-row";
 import { useTheme } from "@/hooks/use-theme";
 
 import { useFollowingFeed } from "../hooks/use-following-feed";
@@ -72,6 +73,8 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
               </Text>
             </View>
           </View>
+
+          <SuggestionsRow />
 
           {feed.authors.length > 0 ? (
             <View style={styles.creators}>

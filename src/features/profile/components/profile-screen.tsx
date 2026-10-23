@@ -14,6 +14,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useMyProfile, useProfilePosts, useUpdateMyProfile } from '../hooks/use-profile';
 import { profileEditSchema, type Profile } from '../types/profile.schema';
+import { ProfileAccountEditor } from './profile-account-editor';
 
 function joinedOn(value: string) {
   const date = new Date(value);
@@ -101,6 +102,7 @@ export function ProfileScreen() {
 
         {editing ? <View style={[styles.editCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Chỉnh sửa hồ sơ</Text>
+          <ProfileAccountEditor profile={profile} />
           <Text style={[styles.fieldLabel, { color: theme.foreground }]}>Tên hiển thị</Text><TextInput accessibilityLabel="Tên hiển thị" value={fullName} onChangeText={setFullName} maxLength={100} style={[styles.input, { color: theme.foreground, borderColor: theme.border }]} />
           <Text style={[styles.fieldLabel, { color: theme.foreground }]}>Giới thiệu</Text><TextInput accessibilityLabel="Giới thiệu" value={bio} onChangeText={setBio} maxLength={500} multiline textAlignVertical="top" style={[styles.input, styles.bioInput, { color: theme.foreground, borderColor: theme.border }]} />
           <Text style={[styles.helper, { color: theme.mutedForeground }]}>{bio.length}/500 ký tự</Text>
@@ -134,6 +136,7 @@ export function ProfileScreen() {
         {!postsQuery.isPending && !postsQuery.isError && shownPosts.length === 0 ? <View style={[styles.empty, { backgroundColor: theme.card }]}><View style={[styles.emptyIcon, { backgroundColor: theme.muted }]}><SymbolView name={contentTab === 'posts' ? { ios: 'leaf', android: 'eco', web: 'eco' } : { ios: 'video', android: 'videocam', web: 'videocam' }} size={25} tintColor={theme.primary} /></View><Text style={[styles.stateTitle, { color: theme.foreground }]}>{contentTab === 'posts' ? 'Chưa có bài viết' : 'Chưa có video đã đăng'}</Text><Text style={[styles.helper, { color: theme.mutedForeground }]}>{contentTab === 'posts' ? 'Bài đăng công khai sẽ hiện ở đây.' : 'Video trong những bài đăng gần đây sẽ hiện ở đây.'}</Text></View> : null}
         {contentTab === 'videos' && shownPosts.length > 0 ? <Text style={[styles.helper, styles.videoNote, { color: theme.mutedForeground }]}>Video từ những bài viết gần đây của bạn.</Text> : null}
         {shownPosts.map((post) => <PostCard key={post.id} post={post} visible />)}
+        <Pressable accessibilityRole="button" onPress={() => router.push('/bookmarks')} style={[styles.signOut, { borderColor: theme.border }]}><SymbolView name={{ ios: 'bookmark', android: 'bookmark', web: 'bookmark' }} size={20} tintColor={theme.primary} /><Text style={[styles.signOutText, { color: theme.primary }]}>Bài viết đã lưu</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={signOut.isPending} onPress={() => signOut.mutate(undefined, { onSuccess: () => router.replace('/') })} style={[styles.signOut, { borderColor: theme.border }]}><SymbolView name={{ ios: 'arrow.right.square', android: 'logout', web: 'logout' }} size={20} tintColor={theme.destructive} /><Text style={[styles.signOutText, { color: theme.destructive }]}>{signOut.isPending ? 'Đang đăng xuất…' : 'Đăng xuất'}</Text></Pressable>
         {signOut.isError ? <Text accessibilityRole="alert" style={[styles.helper, { color: theme.destructive }]}>Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.</Text> : null}
       </> : null}
