@@ -53,6 +53,11 @@ export const bookmarkResponseSchema = z.object({
   isBookmarked: z.boolean(),
 });
 
+export const repostResponseSchema = z.object({
+  isReposted: z.boolean(),
+  repostCount: z.number().int().nonnegative(),
+});
+
 export type FeedPost = z.output<typeof feedPostSchema>;
 export type FeedPage = z.output<typeof feedPageSchema>;
 export type FeedFilter = 'all' | 'posts' | 'blogs';
