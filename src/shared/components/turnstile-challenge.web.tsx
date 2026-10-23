@@ -51,7 +51,10 @@ export function TurnstileChallenge({ onToken, onFailure }: TurnstileChallengePro
         widgetId = turnstile.render(element, {
           sitekey: TURNSTILE_SITE_KEY,
           callback: (token: string) => callbacks.current.onToken(token),
-          'error-callback': () => callbacks.current.onFailure('Xác minh bảo mật gặp lỗi. Vui lòng thử lại.'),
+          'error-callback': (code: unknown) => {
+            callbacks.current.onFailure(`Xác minh bảo mật gặp lỗi (mã ${String(code)}). Vui lòng thử lại.`);
+            return true;
+          },
           'expired-callback': () => callbacks.current.onFailure('Xác minh đã hết hạn. Vui lòng xác minh lại.'),
           'timeout-callback': () => callbacks.current.onFailure('Xác minh quá thời gian. Vui lòng thử lại.'),
         });
