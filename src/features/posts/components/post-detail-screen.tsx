@@ -40,7 +40,7 @@ export function PostDetailScreen() {
         {post.data ? (
           <>
             <PostCard post={post.data} visible detail />
-            <CommentSection postId={post.data.id} commentCount={post.data.commentCount} />
+            <CommentSection postId={post.data.id} postAuthorId={post.data.author.id} commentCount={post.data.commentCount} />
           </>
         ) : null}
       </ScrollView>

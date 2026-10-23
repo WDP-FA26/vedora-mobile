@@ -27,7 +27,8 @@ function confirmDelete(onConfirm: () => void) {
   ]);
 }
 
-export function CommentSection({ postId, commentCount }: { postId: string; commentCount: number }) {
+/** Only the comment author may edit; the comment author or the post author may delete (`DELETE /posts/:id/comments/:commentId`). */
+export function CommentSection({ postId, postAuthorId, commentCount }: { postId: string; postAuthorId: string; commentCount: number }) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
   const me = useMyProfile(token);
@@ -106,7 +107,8 @@ export function CommentSection({ postId, commentCount }: { postId: string; comme
       ) : null}
 
       {items.map((comment) => {
-        const mine = me.data?.id === comment.author.id;
+        const mine = !!me.data && me.data.id === comment.author.id;
+        const canDelete = mine || (!!me.data && me.data.id === postAuthorId);
         return (
           <View key={comment.id} style={styles.comment}>
             <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/profile/[id]', params: { id: comment.author.id } })}>
@@ -115,12 +117,14 @@ export function CommentSection({ postId, commentCount }: { postId: string; comme
               </Text>
             </Pressable>
             <Text style={[styles.body, { color: theme.foreground }]}>{comment.body}</Text>
-            {mine ? (
+            {canDelete ? (
               <View style={styles.commentActions}>
-                <Pressable accessibilityRole="button" onPress={() => { setEditingId(comment.id); setDraft(comment.body); setError(''); }}>
-                  <Text style={[styles.action, { color: theme.primary }]}>Sửa</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" disabled={actions.remove.isPending} onPress={() => confirmDelete(() => actions.remove.mutate(comment.id))}>
+                {mine ? (
+                  <Pressable accessibilityRole="button" onPress={() => { setEditingId(comment.id); setDraft(comment.body); setError(''); }}>
+                    <Text style={[styles.action, { color: theme.primary }]}>Sửa</Text>
+                  </Pressable>
+                ) : null}
+                <Pressable accessibilityRole="button" accessibilityLabel={mine ? 'Xóa bình luận' : `Xóa bình luận của ${comment.author.fullName}`} disabled={actions.remove.isPending} onPress={() => confirmDelete(() => actions.remove.mutate(comment.id))}>
                   <Text style={[styles.action, { color: theme.destructive }]}>Xóa</Text>
                 </Pressable>
               </View>
