@@ -5,10 +5,12 @@ import { useRegister } from '../hooks/use-auth-actions';
 import { registerSchema } from '../types/auth.schema';
 import { authErrorMessage } from '../utils/auth-errors';
 import { formErrors } from '../utils/form-errors';
+import { authReturnTo } from '../utils/return-to';
 import { AuthButton, AuthField, AuthLink, AuthMessage, AuthScreen } from './auth-ui';
 
 export function RegisterScreen() {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
+  const destination = authReturnTo(returnTo);
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -28,7 +30,7 @@ export function RegisterScreen() {
       const result = await register.mutateAsync(parsed.data);
       setPassword('');
       setConfirmPassword('');
-      router.replace({ pathname: '/verify-email', params: { email: result.email, sent: '1', ...(returnTo === '/explore' ? { returnTo } : {}) } });
+      router.replace({ pathname: '/verify-email', params: { email: result.email, sent: '1', returnTo: destination } });
     } catch (error) {
       setErrors({ form: authErrorMessage(error, 'register') });
     }
@@ -43,7 +45,7 @@ export function RegisterScreen() {
       <AuthField label="Nhập lại mật khẩu" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoComplete="new-password" error={errors.confirmPassword} placeholder="Nhập lại mật khẩu" />
       {errors.form ? <AuthMessage message={errors.form} error /> : null}
       <AuthButton label="Tạo tài khoản" onPress={submit} pending={register.isPending} />
-      <AuthLink label="Đã có tài khoản? Đăng nhập" onPress={() => router.replace({ pathname: '/login', params: returnTo === '/explore' ? { returnTo } : {} })} />
+      <AuthLink label="Đã có tài khoản? Đăng nhập" onPress={() => router.replace({ pathname: '/login', params: { returnTo: destination } })} />
     </AuthScreen>
   );
 }

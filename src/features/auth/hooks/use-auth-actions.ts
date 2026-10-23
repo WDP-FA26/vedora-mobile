@@ -3,7 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { acceptSession, clearSession } from '@/shared/session/session-manager';
 import { useSessionStore } from '@/shared/stores/session-store';
 
-import { login, logout, register, resendVerification, verifyEmail } from '../services/auth.service';
+import { login, logout, register, requestPasswordReset, resendVerification, resetPassword, verifyEmail } from '../services/auth.service';
 
 export function useLogin() {
   return useMutation({
@@ -40,4 +40,12 @@ export function useSignOut() {
       }
     },
   });
+}
+
+export function useRequestPasswordReset() {
+  return useMutation({ mutationFn: requestPasswordReset });
+}
+
+export function useResetPassword() {
+  return useMutation({ mutationFn: resetPassword });
 }
