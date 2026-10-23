@@ -95,7 +95,7 @@ export function DietaryProfileScreen() {
   </SafeAreaView>;
 
   return <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
-    <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+    <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
       <Pressable accessibilityRole="button" accessibilityLabel="Quay lại hồ sơ" onPress={goBack} style={styles.back}><SymbolView name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }} size={22} tintColor={theme.foreground} /></Pressable>
       <Text style={[styles.headerTitle, { color: theme.foreground }]}>Hồ sơ ăn uống</Text>
     </View>

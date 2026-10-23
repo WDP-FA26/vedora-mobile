@@ -172,7 +172,7 @@ export function MealPlannerScreen() {
   </View></SafeAreaView>;
 
   return <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
-    <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+    <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
       <View style={styles.headerText}><Text style={[styles.eyebrow, { color: theme.primary }]}>TRỢ LÝ VEDORA</Text><Text style={[styles.title, { color: theme.foreground }]}>Lên thực đơn</Text><Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Chọn món và lên kế hoạch bữa ăn mỗi tuần</Text></View>
       <Image source={require('@/assets/branding/tomato-sticker.png')} style={styles.sticker} resizeMode="contain" accessibilityLabel="Hình cà chua Vedora" />
     </View>

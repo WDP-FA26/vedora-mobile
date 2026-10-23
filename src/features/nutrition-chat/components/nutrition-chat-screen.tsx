@@ -55,7 +55,7 @@ export function NutritionChatScreen({
         <View
           style={[
             styles.header,
-            { backgroundColor: theme.card, borderBottomColor: theme.border },
+            { backgroundColor: theme.background, borderBottomColor: theme.border },
           ]}
         >
           <View
