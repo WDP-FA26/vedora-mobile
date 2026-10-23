@@ -301,7 +301,7 @@ export function NutritionChatScreen({
               >
                 {chat.canVerify
                   ? "Một bước kiểm tra ngắn giúp bảo vệ lượt hỏi miễn phí cho mọi người."
-                  : "Ứng dụng đang chờ kết nối bước xác minh khách. Bạn có thể quay lại sau."}
+                  : "Bước xác minh chưa sẵn sàng. Bạn có thể quay lại sau."}
               </Text>
               {chat.canVerify && (
                 <Pressable
