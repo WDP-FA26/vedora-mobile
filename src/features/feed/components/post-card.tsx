@@ -8,6 +8,8 @@ import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { useSessionStore } from "@/shared/stores/session-store";
 
+import { PostMenu } from "@/features/posts/components/post-menu";
+
 import { useFeedActions } from "../hooks/use-feed";
 import type { FeedPost } from "../types/feed.schema";
 import { FeedVideo } from "./feed-video";
@@ -31,14 +33,17 @@ function formatCount(value: number): string {
 export function PostCard({
   post,
   visible,
+  detail = false,
 }: {
   post: FeedPost;
   visible: boolean;
+  /** Rendered inside the post detail screen: no navigation to itself. */
+  detail?: boolean;
 }) {
   const theme = useTheme();
   const dark = useColorScheme() === "dark";
   const accessToken = useSessionStore((state) => state.accessToken);
-  const { like, bookmark } = useFeedActions(post.id);
+  const { like, bookmark, repost } = useFeedActions(post.id);
   const [expanded, setExpanded] = useState(false);
   const body = post.body?.trim() ?? "";
   const canExpand = body.length > 240 || body.split("\n").length > 5;
@@ -51,6 +56,14 @@ export function PostCard({
     else router.push({ pathname: "/login", params: { returnTo: "/explore" } });
   }
 
+  function openDetail() {
+    if (!detail) router.push({ pathname: "/posts/[id]", params: { id: post.id } });
+  }
+
+  function openAuthor() {
+    router.push({ pathname: "/profile/[id]", params: { id: post.author.id } });
+  }
+
   return (
     <View
       style={[
@@ -59,6 +72,7 @@ export function PostCard({
       ]}
     >
       <View style={styles.authorRow}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Xem hồ sơ ${post.author.fullName}`} onPress={openAuthor} style={styles.authorLink}>
         {post.author.avatarUrl ? (
           <Image
             source={{ uri: post.author.avatarUrl }}
@@ -89,12 +103,14 @@ export function PostCard({
             {formatDate(post.publishedAt ?? post.createdAt)}
           </Text>
         </View>
+        </Pressable>
         {post.type === "BLOG" ? (
           <View style={[styles.typePill, { backgroundColor: theme.secondary }]}>
             <SymbolView name={{ ios: "book.closed", android: "menu_book", web: "menu_book" }} size={14} tintColor={theme.primary} />
             <Text style={[styles.typeText, { color: theme.primary }]}>Blog</Text>
           </View>
         ) : null}
+        <PostMenu postId={post.id} authorId={post.author.id} returnTo="/explore" />
       </View>
 
       <View style={styles.postContent}>
@@ -181,14 +197,21 @@ export function PostCard({
       ) : null}
 
       <View style={[styles.actions, { borderTopColor: theme.border }]} accessibilityRole="toolbar">
-        <View accessible accessibilityLabel={`${post.commentCount} bình luận`} style={styles.statGroup}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${post.commentCount} bình luận`} onPress={openDetail} style={styles.actionButton}>
           <SymbolView name={{ ios: "bubble.left", android: "chat_bubble", web: "chat_bubble" }} size={19} tintColor={theme.mutedForeground} />
           <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.commentCount)}</Text>
-        </View>
-        <View accessible accessibilityLabel={`${post.repostCount} lượt đăng lại`} style={styles.statGroup}>
-          <SymbolView name={{ ios: "arrow.2.squarepath", android: "repeat", web: "repeat" }} size={20} tintColor={theme.mutedForeground} />
-          <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.repostCount)}</Text>
-        </View>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={post.isReposted ? `Bỏ đăng lại, ${post.repostCount} lượt` : `Đăng lại, ${post.repostCount} lượt`}
+          accessibilityState={{ selected: post.isReposted, disabled: repost.isPending }}
+          disabled={repost.isPending}
+          onPress={() => requireLogin(() => repost.mutate(!post.isReposted))}
+          style={styles.actionButton}
+        >
+          <SymbolView name={{ ios: "arrow.2.squarepath", android: "repeat", web: "repeat" }} size={20} tintColor={post.isReposted ? theme.primary : theme.mutedForeground} />
+          <Text style={[styles.stat, { color: post.isReposted ? theme.primary : theme.mutedForeground }]}>{formatCount(post.repostCount)}</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
@@ -229,7 +252,7 @@ export function PostCard({
           <SymbolView name={{ ios: post.isBookmarked ? "bookmark.fill" : "bookmark", android: "bookmark", web: "bookmark" }} size={20} tintColor={post.isBookmarked ? theme.primary : theme.mutedForeground} />
         </Pressable>
       </View>
-      {like.isError || bookmark.isError ? (
+      {like.isError || bookmark.isError || repost.isError ? (
         <Text
           accessibilityRole="alert"
           style={[styles.actionError, { color: theme.destructive }]}
@@ -259,6 +282,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   initial: { fontFamily: Fonts.headingBold, fontSize: 19 },
+  authorLink: { flex: 1, flexDirection: "row", alignItems: "center", gap: Spacing.two, minWidth: 0 },
   authorDetails: { flex: 1, minWidth: 0 },
   postContent: { marginLeft: 52 },
   authorName: { fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },

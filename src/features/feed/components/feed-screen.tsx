@@ -21,6 +21,7 @@ import { useSessionStore } from "@/shared/stores/session-store";
 
 import { useSignOut } from "@/features/auth/hooks/use-auth-actions";
 import { FollowingScreen } from "@/features/following/components/following-screen";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { useExploreTabBarScroll } from "@/features/navigation/hooks/use-explore-tab-bar-scroll";
 import { getShowcasePosts, type ShowcasePost } from "../data/showcase-posts";
 import { useComposeActions } from "../hooks/use-compose-actions";
@@ -110,7 +111,7 @@ export function FeedScreen() {
               accessibilityLabel="Vedora"
             />
           </View>
-          <View style={styles.headerSpacer} />
+          <NotificationBell />
         </View>
         {accountOpen ? (
           <View style={[styles.accountMenu, { backgroundColor: theme.card, borderColor: theme.border }]}>
