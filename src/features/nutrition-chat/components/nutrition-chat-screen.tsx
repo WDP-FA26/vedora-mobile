@@ -55,7 +55,7 @@ export function NutritionChatScreen({ getTurnstileToken }: NutritionChatScreenPr
                 <View style={[styles.bubble, message.role === 'user'
                   ? { backgroundColor: theme.primary, borderBottomRightRadius: Radius.sm }
                   : { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1, borderBottomLeftRadius: Radius.sm }]}>
-                  <Text style={[styles.messageText, { color: message.role === 'user' ? theme.primaryForeground : theme.foreground }]}>{message.text}</Text>
+                  <Text style={[styles.messageText, { color: message.role === 'user' ? theme.primaryForeground : theme.foreground }]}>{message.text}{message.streaming ? " ▍" : ""}</Text>
                 </View>
               </View>
             </View>
@@ -74,7 +74,7 @@ export function NutritionChatScreen({ getTurnstileToken }: NutritionChatScreenPr
             </View>
           )}
 
-          {chat.busy && <Text style={[styles.status, { color: theme.mutedForeground }]}>Trợ lý đang suy nghĩ…</Text>}
+          {chat.thinking && <Text style={[styles.status, { color: theme.mutedForeground }]}>Trợ lý đang suy nghĩ…</Text>}
           {chat.error && <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>{chat.error}</Text>}
 
           {chat.limit && (

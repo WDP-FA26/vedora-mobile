@@ -40,7 +40,11 @@ export async function startGuestSession(turnstileToken: string) {
 }
 
 /** The backend owns quota and all policy decisions. No local allowance is inferred. */
-export async function askNutritionChat(messages: NutritionChatRequest['messages'], signal?: AbortSignal) {
+export async function askNutritionChat(
+  messages: NutritionChatRequest['messages'],
+  signal?: AbortSignal,
+  onText?: (text: string) => void,
+) {
   const token = getGuestSessionToken();
   if (!token) throw new Error('Phiên hỏi thử đã hết hạn. Vui lòng xác minh lại.');
   const body = nutritionChatRequestSchema.parse({ messages });
@@ -52,5 +56,6 @@ export async function askNutritionChat(messages: NutritionChatRequest['messages'
     skipAuthRefresh: true,
     timeout: 120_000,
     signal,
+    onText,
   });
 }
