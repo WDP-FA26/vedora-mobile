@@ -5,8 +5,15 @@ export const MAX_VIDEO_DURATION_SECONDS = 180;
 
 export const videoUploadTargetSchema = z.object({
   media: z.object({ id: z.string().min(1) }),
-  uploadUrl: z.url(),
+  upload: z.object({
+    url: z.url(),
+    fields: z.record(z.string(), z.string()),
+    /** Larger files go in chunks of this many bytes. */
+    chunkSize: z.number().positive(),
+  }),
 });
+
+export type VideoUploadTarget = z.output<typeof videoUploadTargetSchema>;
 
 export const createdPostSchema = z.object({
   id: z.string().min(1),
