@@ -100,7 +100,7 @@ export function ProfileEditScreen() {
               <BasicInfoForm key={profile.id} profile={profile} token={token} />
             </Section>
             <Section title="Tài khoản">
-              <UsernameEditor key={profile.username} profile={profile} />
+              <UsernameEditor profile={profile} />
             </Section>
           </> : null}
         </ScrollView>
