@@ -96,7 +96,7 @@ export function NutritionChatScreen({ getTurnstileToken }: NutritionChatScreenPr
             <View style={[styles.noticeCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <Text style={[styles.noticeTitle, { color: theme.foreground }]}>Xác minh để hỏi thử</Text>
               <Text style={[styles.noticeText, { color: theme.mutedForeground }]}>
-                {chat.canVerify ? 'Một bước kiểm tra ngắn giúp bảo vệ lượt hỏi miễn phí cho mọi người.' : 'Ứng dụng đang chờ kết nối bước xác minh khách. Bạn có thể quay lại sau.'}
+                {chat.canVerify ? 'Một bước kiểm tra ngắn giúp bảo vệ lượt hỏi miễn phí cho mọi người.' : 'Bước xác minh chưa sẵn sàng. Bạn có thể quay lại sau.'}
               </Text>
               {chat.canVerify && <Pressable accessibilityRole="button" disabled={chat.verifying} onPress={() => void chat.verify()} style={[styles.primaryAction, { backgroundColor: theme.primary, opacity: chat.verifying ? 0.55 : 1 }]}>
                 <Text style={[styles.actionText, { color: theme.primaryForeground }]}>{chat.verifying ? 'Đang xác minh…' : 'Xác minh và bắt đầu'}</Text>
