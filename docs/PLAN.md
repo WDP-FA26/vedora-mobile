@@ -174,3 +174,45 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn: quyền xóa của admin chưa hiển thị vì mobile chưa lưu `role` của người dùng (admin thao tác trên web).
 - Bước kiểm tra UI: (1) Tài khoản A đăng bài, tài khoản B bình luận vào bài đó. (2) Đăng nhập A → mở bài → bình luận của B có nút “Xóa”, không có “Sửa”. (3) Chạm Xóa → xác nhận → bình luận biến mất, số bình luận giảm 1. (4) Đăng nhập B → mở bài của người khác → chỉ thấy Sửa/Xóa trên bình luận của mình. (5) Like, lưu, repost, báo cáo trên thẻ bài vẫn hoạt động như trước. Chưa chạy trên thiết bị/API thật.
 - Người thực hiện: Claude (Opus 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Sửa lỗi đăng video hướng dẫn trên Android/iOS (lỗi Blob, treo 0%)
+
+- Kết quả: (1) Lỗi “Creating blobs from ArrayBuffer and ArrayBufferView are not supported” do `File.slice()` của `expo-file-system` tạo `Blob` từ byte, mà React Native không hỗ trợ. (2) Bản vá đầu tự dựng multipart rồi gửi `Uint8Array` qua XHR thì treo ở 0%, vì RN mã hóa base64 bằng vòng lặp JS và API trả `chunkSize` = 20 MB. Giờ trên native video đi bằng upload task multipart gốc của `expo-file-system` (`createUploadTask`, `UploadType.MULTIPART`, `sessionType: foreground`), không còn byte nào đi qua JS: video ≤ `chunkSize` gửi thẳng file gốc; video lớn hơn được chép từng đoạn ra file tạm trong cache rồi gửi kèm `X-Unique-Upload-Id`/`Content-Range`, xóa file tạm khi xong hoặc lỗi. Tiến độ lấy từ `onProgress` của task, hủy bằng `AbortSignal`. Web giữ nguyên `File.slice` + `FormData` qua XHR.
+- Giới hạn: chưa chạy trên thiết bị thật nên chưa xác nhận Cloudinary nhận multipart native (các trường đã ký được gửi dạng tham số form) và chưa đo tốc độ; tiến độ native có thể gồm cả phần khung multipart nên chỉ xấp xỉ.
+- Bước kiểm tra UI: (1) Đăng nhập trên Android hoặc iOS (Expo Go hoặc development build) → Khám phá → soạn bài → chọn video ≤ 3 phút. (2) Nhập tiêu đề, mô tả → đăng → phần trăm phải nhích lên và đạt 100%, không treo ở 0%, không báo lỗi Blob. (3) Thử video nhỏ hơn 20 MB (một lần gửi) và lớn hơn 20 MB (nhiều đoạn). (4) Bài chuyển sang trạng thái đang xử lý rồi phát được video. (5) Tắt mạng giữa chừng → báo lỗi, đăng lại được. (6) Trên web đăng video vẫn bình thường.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Đăng video chạy nền, thoát form vẫn xem được tiến độ
+
+- Kết quả: Bấm “Đăng video” giờ kiểm tra nội dung rồi đóng form ngay, việc tải video và tạo bài chạy nền trong store \`video-publish-store\` (không phụ thuộc form). Trang chính hiện thẻ trạng thái dưới thanh lọc: đang tải (thanh tiến độ + %), đang đăng bài, thành công (tự ẩn sau 8 giây), đang xử lý, hoặc lỗi kèm nút “Thử lại” và dấu ✕ để bỏ. Thử lại sau lỗi bỏ qua bước tải nếu video đã lên Cloudinary; bỏ một job lỗi thì xóa media đã tải. Chỉ cho một video đăng cùng lúc (đăng tiếp sẽ báo “đang được đăng”). Form không còn màn “Đã gửi nội dung” và trạng thái đang gửi.
+- Giới hạn: thẻ trạng thái chỉ hiện ở tab Khám phá (kể cả khi đang ở “Đang theo dõi”); job mất nếu thoát hẳn app, và việc tải có thể dừng khi app xuống nền. Bài ở trạng thái “đang xử lý” không tự làm mới feed.
+- Bước kiểm tra UI: (1) Đăng nhập → Khám phá → soạn → Video hướng dẫn → chọn video, nhập tiêu đề, mô tả → “Đăng video”. (2) Form đóng ngay, thẻ trạng thái hiện ở trang chính với % tăng dần. (3) Trong lúc tải, chuyển tab khác rồi quay lại Khám phá → thẻ vẫn còn và tiếp tục tăng. (4) Mở form soạn khi video đang tải, đăng tiếp → báo đang có video khác. (5) Xong → “Đã đăng video thành công”, tự ẩn; kéo làm mới thấy bài. (6) Tắt mạng giữa chừng → thẻ đỏ, bấm Thử lại → tiếp tục; bấm ✕ → thẻ biến mất. (7) Chọn video quá 3 phút vẫn báo lỗi ngay trong form.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Sửa schema bản tin sau khi API chuyển video sang Cloudinary
+
+- Kết quả: API đã bỏ `playbackId` (Mux) ở `media`, thay bằng `publicId`, `playbackUrl` (HLS), `posterUrl` và `captions`. Schema cũ đòi `playbackId` nên cả trang bản tin bị Zod từ chối, không tải được. Cập nhật `feed.schema.ts` theo `MediaResponseDto` (thêm `playbackUrl`, `posterUrl`, `publicId`, `captions` mặc định rỗng). `feed-video.tsx` phát thẳng `playbackUrl`, dùng `posterUrl` làm ảnh bìa (bỏ link Mux) và lấy khung hình theo `aspectRatio` (giới hạn 9:16 – 16:9), nên video dọc không còn bị thu nhỏ trong khung 16:9. Đã kiểm tra bằng đúng JSON mẫu: schema cũ lỗi ở `media.0.playbackId`, schema mới hợp lệ.
+- Giới hạn: phụ đề (`captions`) mới được nhận vào dữ liệu, chưa hiển thị trong trình phát; chưa phát thử HLS Cloudinary trên thiết bị.
+- Bước kiểm tra UI: (1) Mở tab Khám phá → bản tin tải được, bài có video hiện ảnh bìa và nút phát. (2) Chạm phát → video chạy; video dọc có khung cao hơn video ngang. (3) Bài có video đang xử lý hiện “Video đang được xử lý”. (4) Mở chi tiết bài, hồ sơ, bài đã lưu, tìm kiếm → vẫn hiển thị bài có video.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Thu nhỏ video trong bài và sửa ô bình luận bị bàn phím che
+
+- Kết quả: (1) Video trong bài không còn chiếm hết chiều ngang: khung vừa với tỉ lệ thật (`aspectRatio`), cao tối đa 240 và rộng tối đa 85% bề ngang bài, canh trái; nút phát, huy hiệu và thời lượng thu nhỏ theo, ô “đang xử lý” cũng gọn hơn. (2) Màn chi tiết bài: tách bình luận thành danh sách cuộn được (`CommentList`) và ô nhập ghim cố định ở đáy (`CommentComposer`), đặt trong `KeyboardAvoidingView` nên bàn phím đẩy ô nhập lên, không che; ô nhập tự giãn tới 120 chữ cao, nút Gửi bên cạnh, bỏ khoảng đệm an toàn đáy khi bàn phím mở. Trạng thái nháp dùng chung qua hook `useCommentDraft` (sửa bình luận từ danh sách vẫn nạp vào ô nhập).
+- Giới hạn: không đặt keyboardVerticalOffset vì view cha nằm ở đỉnh màn hình (đặt offset sẽ làm ô nhập cách bàn phím một khoảng); chưa thử trên thiết bị thật (đặc biệt Android edge-to-edge).
+- Bước kiểm tra UI: (1) Khám phá → bài có video: video nhỏ hơn, video dọc cao tối đa 240; chạm phát vẫn chạy trong cùng khung. (2) Chạm biểu tượng bình luận để mở chi tiết bài → ô “Viết bình luận…” nằm cố định ở đáy. (3) Chạm vào ô nhập → bàn phím mở, ô nhập nằm ngay trên bàn phím, không bị che; gõ nhiều dòng thấy ô giãn. (4) Gửi bình luận → xuất hiện trong danh sách. (5) Chạm “Sửa” ở bình luận của mình → nội dung nạp vào ô nhập, hiện “Đang sửa bình luận / Hủy sửa”. (6) Khách chưa đăng nhập: đáy hiện “Đăng nhập để bình luận”.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Gọn thẻ tạo nội dung và sửa nút đóng bị đẩy ra ngoài vùng an toàn
+
+- Kết quả: Thẻ tạo nội dung ở trang Khám phá chỉ còn avatar và thanh “Chia sẻ cách nấu món chay của bạn” (chạm để mở màn chọn loại bài); bỏ hàng hai nút “Thêm video” và “Tạo nội dung” cùng mã/kiểu liên quan. Màn chọn loại bài đăng: `SafeAreaView` đặt bên trong `Modal` trả về inset bằng 0 nên thanh tiêu đề và nút đóng (X) chui dưới thanh trạng thái. Nay đọc inset bằng `useSafeAreaInsets` ở ngoài Modal rồi đệm trên/dưới cho tờ đăng bài toàn màn hình (màn rộng không đệm).
+- Giới hạn: chưa thử trên thiết bị có tai thỏ/đảo động và điều hướng 3 nút.
+- Bước kiểm tra UI: (1) Đăng nhập → Khám phá: thẻ trên cùng chỉ có avatar và thanh “Chia sẻ cách nấu món chay của bạn”. (2) Chạm thanh đó → màn Tạo nội dung mở; tiêu đề và nút X nằm dưới thanh trạng thái, chạm được. (3) Chọn “Tạo video hướng dẫn” → nút quay lại và X vẫn trong vùng an toàn; nút “Đăng video” ở đáy không bị thanh điều hướng che. (4) Xoay ngang/màn rộng: tờ đăng bài dạng hộp giữa vẫn bình thường. (5) Khách chưa đăng nhập chạm thanh → chuyển sang đăng nhập.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Đồng bộ màu vùng an toàn với thanh tiêu đề và hiện lại đồng hồ/biểu tượng trạng thái
+
+- Kết quả: (1) Vùng an toàn phía trên (nền `background`) khác màu thanh tiêu đề (nền `card`) ở nhiều màn nên thấy hai dải màu lệch nhau; nay thanh tiêu đề của Khám phá, Hồ sơ ăn uống, Trợ lý/Lên thực đơn, Thông báo, Bài đã lưu, Chi tiết bài, Tìm kiếm, danh sách theo dõi, Hồ sơ người khác, Chi tiết công thức và Trợ lý Vedora dùng cùng màu `background` với vùng an toàn. (2) Tờ đăng bài toàn màn hình: đệm trên chuyển vào chính thanh tiêu đề nên màu thanh tiêu đề chạy lên tận mép trên. (3) Thêm `StatusBar style="auto"` ở layout gốc để đồng hồ, pin, sóng luôn tương phản với nền (chữ đậm trên nền sáng, chữ sáng trên nền tối); màn Chào mừng vẫn tự đặt chữ sáng trên banner ảnh.
+- Giới hạn: chưa thử trên thiết bị thật (Android edge-to-edge, iOS có tai thỏ, chế độ tối); các thẻ bên trong màn vẫn dùng màu `card` như cũ.
+- Bước kiểm tra UI: (1) Khám phá, Hồ sơ, Thông báo, Chi tiết bài, Tìm kiếm, Bài đã lưu: dải trên cùng và thanh tiêu đề cùng một màu liền mạch, không có đường lệch màu. (2) Đồng hồ, pin, sóng hiển thị rõ ở chế độ sáng và tối. (3) Mở màn Tạo nội dung: thanh tiêu đề phủ tới mép trên, nút X chạm được. (4) Màn Chào mừng: biểu tượng trạng thái màu sáng trên ảnh banner; vào màn khác thì đổi lại cho đúng.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
