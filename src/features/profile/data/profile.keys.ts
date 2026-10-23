@@ -6,4 +6,5 @@ export const profileKeys = {
   relationship: (id: string) => ['profile', 'relationship', id] as const,
   followers: (id: string) => ['profile', 'followers', id] as const,
   following: (id: string) => ['profile', 'following', id] as const,
+  suggestions: (limit: number) => ['profile', 'suggestions', limit] as const,
 };
