@@ -154,6 +154,7 @@ export function NutritionChatScreen({
                     ]}
                   >
                     {message.text}
+                    {message.streaming ? " ▍" : ""}
                   </Text>
                 </View>
               </View>
@@ -204,7 +205,7 @@ export function NutritionChatScreen({
             </View>
           )}
 
-          {chat.busy && (
+          {chat.thinking && (
             <Text style={[styles.status, { color: theme.mutedForeground }]}>
               Trợ lý đang suy nghĩ…
             </Text>
