@@ -8,11 +8,17 @@ import { useColorScheme } from 'react-native';
 
 import { VedoraThemeProvider } from '@/components/vedora-theme-provider';
 import { Colors } from '@/constants/theme';
+import { useNotificationStream } from '@/features/notifications/hooks/use-notification-stream';
 import { AppQueryProvider } from '@/shared/query/app-query-provider';
 import { hydrateSession } from '@/shared/api/api-client';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 SplashScreen.preventAutoHideAsync();
+
+function NotificationStreamHost() {
+  useNotificationStream();
+  return null;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -59,6 +65,7 @@ export default function RootLayout() {
               border: colors.border,
             },
           }}>
+          <NotificationStreamHost />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="(tabs)" />

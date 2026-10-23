@@ -21,3 +21,23 @@ export const profileEditSchema = z.object({
 
 export type Profile = z.output<typeof profileSchema>;
 export type ProfileEdit = z.output<typeof profileEditSchema>;
+
+export const profileSummarySchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  fullName: z.string(),
+  bio: z.string().nullable(),
+  avatarUrl: z.string().nullable(),
+  coverUrl: z.string().nullable(),
+  isProfessional: z.boolean(),
+});
+
+export const profilePageSchema = z.object({
+  items: z.array(profileSummarySchema),
+  nextCursor: z.string().nullable(),
+});
+
+export const relationshipSchema = z.object({ isFollowing: z.boolean() });
+
+export type ProfileSummary = z.output<typeof profileSummarySchema>;
+export type ProfileListKind = 'followers' | 'following';

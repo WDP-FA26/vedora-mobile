@@ -1,6 +1,12 @@
 import { requestJson } from '@/shared/api/request-json';
 
-import { bookmarkResponseSchema, feedPageSchema, likeResponseSchema, type FeedFilter } from '../types/feed.schema';
+import {
+  bookmarkResponseSchema,
+  feedPageSchema,
+  likeResponseSchema,
+  repostResponseSchema,
+  type FeedFilter,
+} from '../types/feed.schema';
 
 export function getFeedPage({ filter, cursor, signal }: {
   filter: FeedFilter;
@@ -26,5 +32,12 @@ export function setPostBookmark(postId: string, bookmarked: boolean) {
   return requestJson(bookmarkResponseSchema, {
     method: bookmarked ? 'PUT' : 'DELETE',
     url: `/posts/${postId}/bookmark`,
+  });
+}
+
+export function setPostRepost(postId: string, reposted: boolean) {
+  return requestJson(repostResponseSchema, {
+    method: reposted ? 'PUT' : 'DELETE',
+    url: `/posts/${postId}/repost`,
   });
 }
