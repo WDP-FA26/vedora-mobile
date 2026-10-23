@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 
 import { feedKeys } from '../data/feed.keys';
-import { getFeedPage, setPostBookmark, setPostLike } from '../services/feed.service';
+import { getFeedPage, setPostBookmark, setPostLike, setPostRepost } from '../services/feed.service';
 import type { FeedFilter, FeedPage, FeedPost } from '../types/feed.schema';
 
 export function useFeed(filter: FeedFilter, enabled = true) {
@@ -19,17 +19,29 @@ export function useFeed(filter: FeedFilter, enabled = true) {
   };
 }
 
-function patchCachedPost(queryClient: ReturnType<typeof useQueryClient>, postId: string, patch: Partial<FeedPost>) {
-  queryClient.setQueriesData<InfiniteData<FeedPage, string | null>>(
-    { queryKey: feedKeys.all },
-    (previous) => previous ? {
-      ...previous,
-      pages: previous.pages.map((page) => ({
-        ...page,
-        items: page.items.map((post) => post.id === postId ? { ...post, ...patch } : post),
-      })),
-    } : previous,
-  );
+function isInfinitePosts(data: unknown): data is InfiniteData<FeedPage, string | null> {
+  return !!data && typeof data === 'object' && Array.isArray((data as { pages?: unknown }).pages);
+}
+
+function isPostPage(data: unknown): data is FeedPage {
+  return !!data && typeof data === 'object' && Array.isArray((data as { items?: unknown }).items)
+    && typeof (data as { nextCursor?: unknown }).nextCursor !== 'undefined';
+}
+
+/** Keeps every cached copy of a post (feed pages, search, bookmarks, profile, detail) in step. */
+export function patchCachedPost(queryClient: ReturnType<typeof useQueryClient>, postId: string, patch: Partial<FeedPost>) {
+  const patchPage = (page: FeedPage): FeedPage => ({
+    ...page,
+    items: page.items.map((post) => post.id === postId ? { ...post, ...patch } : post),
+  });
+  for (const [key, data] of queryClient.getQueriesData({})) {
+    if (isInfinitePosts(data) && data.pages.every(isPostPage)) {
+      queryClient.setQueryData(key, { ...data, pages: data.pages.map(patchPage) });
+    } else if (isPostPage(data)) {
+      queryClient.setQueryData(key, patchPage(data));
+    }
+  }
+  queryClient.setQueryData<FeedPost>(feedKeys.detail(postId), (previous) => previous ? { ...previous, ...patch } : previous);
 }
 
 export function useFeedActions(postId: string) {
@@ -40,7 +52,14 @@ export function useFeedActions(postId: string) {
   });
   const bookmark = useMutation({
     mutationFn: (bookmarked: boolean) => setPostBookmark(postId, bookmarked),
-    onSuccess: (result) => patchCachedPost(queryClient, postId, { isBookmarked: result.isBookmarked }),
+    onSuccess: (result) => {
+      patchCachedPost(queryClient, postId, { isBookmarked: result.isBookmarked });
+      void queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    },
   });
-  return { like, bookmark };
+  const repost = useMutation({
+    mutationFn: (reposted: boolean) => setPostRepost(postId, reposted),
+    onSuccess: (result) => patchCachedPost(queryClient, postId, { isReposted: result.isReposted, repostCount: result.repostCount }),
+  });
+  return { like, bookmark, repost };
 }
