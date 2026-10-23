@@ -3,11 +3,15 @@ import { requestJson } from '@/shared/api/request-json';
 import { authResponseSchema } from '@/shared/types/auth-response';
 
 import {
+  forgotPasswordSchema,
   loginSchema,
+  resetPasswordSchema,
   registerSchema,
   verificationRequiredSchema,
   verifyEmailSchema,
+  type ForgotPasswordInput,
   type LoginInput,
+  type ResetPasswordInput,
   type RegisterInput,
   type VerifyEmailInput,
 } from '../types/auth.schema';
@@ -46,4 +50,13 @@ export async function resendVerification(email: string): Promise<void> {
 
 export async function logout(refreshToken: string): Promise<void> {
   await apiClient.post('/auth/logout', { refreshToken }, { skipAuthRefresh: true });
+}
+
+export async function requestPasswordReset(input: ForgotPasswordInput): Promise<void> {
+  await apiClient.post('/auth/password/forgot', forgotPasswordSchema.parse(input), { skipAuthRefresh: true });
+}
+
+export async function resetPassword(input: ResetPasswordInput): Promise<void> {
+  const { confirmPassword: _, ...payload } = resetPasswordSchema.parse(input);
+  await apiClient.post('/auth/password/reset', payload, { skipAuthRefresh: true });
 }

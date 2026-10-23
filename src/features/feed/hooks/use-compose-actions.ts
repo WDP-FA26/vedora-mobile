@@ -8,7 +8,7 @@ import {
   createPost,
   discardVideoUpload,
   requestVideoUpload,
-  uploadVideoToMux,
+  uploadVideoToCloudinary,
 } from '../services/compose.service';
 import { MAX_POST_LENGTH, MAX_VIDEO_DURATION_SECONDS, type SelectedComposeVideo } from '../types/compose.schema';
 import { composeVideoBody, filledDescription } from '../utils/compose-body';
@@ -82,7 +82,7 @@ export function useComposeActions() {
       if (!mediaId) {
         const target = await requestVideoUpload();
         try {
-          await uploadVideoToMux(draft.video, target.uploadUrl, onProgress);
+          await uploadVideoToCloudinary(draft.video, target.upload, onProgress);
         } catch (error) {
           void discardVideoUpload(target.media.id).catch(() => undefined);
           throw error;

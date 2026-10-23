@@ -6,6 +6,7 @@ const email = z.string().trim().toLowerCase().pipe(z.email('Email không hợp l
 export const loginSchema = z.object({
   username,
   password: z.string().min(1, 'Nhập mật khẩu'),
+  turnstileToken: z.string().trim().min(1, 'Vui lòng hoàn tất xác minh bảo mật').max(2048),
 });
 
 export const registerSchema = z.object({
@@ -29,3 +30,18 @@ export const verificationRequiredSchema = z.object({ email });
 export type LoginInput = z.output<typeof loginSchema>;
 export type RegisterInput = z.output<typeof registerSchema>;
 export type VerifyEmailInput = z.output<typeof verifyEmailSchema>;
+
+export const forgotPasswordSchema = z.object({ email });
+
+export const resetPasswordSchema = z.object({
+  email,
+  code: z.string().regex(/^\d{6}$/, 'Nhập đủ 6 chữ số'),
+  password: z.string().min(8, 'Mật khẩu cần ít nhất 8 ký tự').max(72, 'Mật khẩu tối đa 72 ký tự'),
+  confirmPassword: z.string(),
+}).refine((value) => value.password === value.confirmPassword, {
+  path: ['confirmPassword'],
+  message: 'Mật khẩu nhập lại không khớp',
+});
+
+export type ForgotPasswordInput = z.output<typeof forgotPasswordSchema>;
+export type ResetPasswordInput = z.output<typeof resetPasswordSchema>;
