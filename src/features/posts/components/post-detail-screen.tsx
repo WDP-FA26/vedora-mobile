@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -8,24 +8,27 @@ import { PostCard } from '@/features/feed/components/post-card';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
 
+import { useCommentDraft } from '../hooks/use-comment-draft';
 import { usePost } from '../hooks/use-posts';
-import { CommentSection } from './comment-section';
+import { CommentComposer, CommentList } from './comment-section';
 
 export function PostDetailScreen() {
   const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const post = usePost(id);
+  const draft = useCommentDraft(id, post.data?.commentCount ?? 0);
   const notFound = post.error instanceof ApiError && post.error.status === 404;
 
   return (
     <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))} hitSlop={10} style={styles.back}>
           <SymbolView name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }} size={22} tintColor={theme.foreground} />
         </Pressable>
         <Text style={[styles.title, { color: theme.foreground }]}>Bài viết</Text>
       </View>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView style={styles.screen} behavior="padding" enabled={Platform.OS !== 'web'}>
+      <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={styles.content}>
         {post.isPending ? <ActivityIndicator color={theme.primary} style={styles.loading} /> : null}
         {post.isError ? (
           <View style={styles.state}>
@@ -40,10 +43,12 @@ export function PostDetailScreen() {
         {post.data ? (
           <>
             <PostCard post={post.data} visible detail />
-            <CommentSection postId={post.data.id} postAuthorId={post.data.author.id} commentCount={post.data.commentCount} />
+            <CommentList postId={post.data.id} postAuthorId={post.data.author.id} commentCount={post.data.commentCount} draft={draft} />
           </>
         ) : null}
       </ScrollView>
+      {post.data ? <CommentComposer draft={draft} /> : null}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
