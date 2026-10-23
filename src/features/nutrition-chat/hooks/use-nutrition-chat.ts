@@ -10,6 +10,8 @@ export type NutritionMessage = {
   role: 'user' | 'assistant';
   text: string;
   refused?: boolean;
+  /** The answer is still arriving. */
+  streaming?: boolean;
 };
 
 export type GuestLimit = 'quota' | 'closed';
@@ -34,6 +36,13 @@ function messageForError(error: unknown) {
     if (error.status === 503) return 'Trợ lý Vedora đang tạm nghỉ. Bạn quay lại sau nhé.';
   }
   return 'Mình chưa trả lời được. Bạn thử lại nhé.';
+}
+
+/** Replaces the message with the same id, or appends it. */
+function upsert(messages: NutritionMessage[], next: NutritionMessage) {
+  return messages.some((message) => message.id === next.id)
+    ? messages.map((message) => message.id === next.id ? next : message)
+    : [...messages, next];
 }
 
 function contextWithoutRefusals(messages: NutritionMessage[]) {
@@ -95,25 +104,29 @@ export function useNutritionChat(getTurnstileToken?: () => Promise<string>) {
     const controller = new AbortController();
     abortRef.current = controller;
     const requestId = ++requestIdRef.current;
+    const assistantId = `assistant-${requestId}-${Date.now()}`;
     busyRef.current = true;
     setBusy(true);
     setError(null);
     setMessages((previous) => [...previous, { id, role: 'user', text }]);
 
     try {
-      const reply = await askNutritionChat(nextContext, controller.signal);
+      const reply = await askNutritionChat(nextContext, controller.signal, (partial) => {
+        if (requestId !== requestIdRef.current) return;
+        setMessages((previous) => upsert(previous, { id: assistantId, role: 'assistant', text: partial, streaming: true }));
+      });
       if (requestId !== requestIdRef.current) return false;
       if (!reply.text.trim() && !reply.refused) throw new Error('Trợ lý chưa trả lời được.');
-      setMessages((previous) => [...previous, {
-        id: `assistant-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      setMessages((previous) => upsert(previous, {
+        id: assistantId,
         role: 'assistant',
         text: reply.text || (reply.refused ? 'Mình chưa thể trả lời câu hỏi này.' : ''),
         refused: reply.refused,
-      }]);
+      }));
       return true;
     } catch (caught) {
       if (requestId !== requestIdRef.current) return false;
-      setMessages((previous) => previous.filter((message) => message.id !== id));
+      setMessages((previous) => previous.filter((message) => message.id !== id && message.id !== assistantId));
       const serverLimit = limitFromError(caught);
       if (serverLimit) {
         setLimit(serverLimit);
@@ -144,5 +157,6 @@ export function useNutritionChat(getTurnstileToken?: () => Promise<string>) {
     setError(null);
   }, []);
 
-  return { messages, ready, verifying, busy, error, limit, verify, send, reset, canVerify: !!getTurnstileToken };
+  const thinking = busy && !messages.some((message) => message.streaming);
+  return { messages, ready, verifying, busy, thinking, error, limit, verify, send, reset, canVerify: !!getTurnstileToken };
 }

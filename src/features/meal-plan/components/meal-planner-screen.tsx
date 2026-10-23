@@ -16,7 +16,12 @@ import { changedDayInputs, dayLabels, displayDays, sectionLabels } from '../util
 import { MealRequestForm } from './meal-request-form';
 
 type Proposal = MealPlanProposal & { id: string };
-type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; refused?: boolean; proposal?: Proposal };
+type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; refused?: boolean; proposal?: Proposal; streaming?: boolean };
+
+/** Replaces the turn with the same id, or appends it. */
+function upsertTurn(turns: ChatTurn[], next: ChatTurn) {
+  return turns.some((turn) => turn.id === next.id) ? turns.map((turn) => turn.id === next.id ? next : turn) : [...turns, next];
+}
 type ProposalStatus = 'staged' | 'saved' | 'dismissed';
 type PlanMode = 'auto' | 'form' | 'timetable';
 type Preset = 'week' | 'quick' | 'pantry';
@@ -67,6 +72,7 @@ export function MealPlannerScreen() {
   const scroll = useRef<ScrollView>(null);
   const sending = useRef(false);
   const nextId = useRef(1);
+  const streamIds = useRef<number[]>([]);
   const savedHasMeals = !!plan.data?.days.some((day) => day.sections.some((section) => section.recipes.length));
   const mode = draft ? 'timetable' : planMode === 'auto' ? (savedHasMeals ? 'timetable' : 'form') : planMode;
   const days = useMemo(() => displayDays(plan.data, draft), [plan.data, draft]);
@@ -86,6 +92,7 @@ export function MealPlannerScreen() {
     if (!text) { setChatError('Nhập câu hỏi hoặc yêu cầu trước khi gửi.'); return; }
     if (text.length > 4000) { setChatError('Tin nhắn tối đa 4.000 ký tự.'); return; }
     sending.current = true;
+    streamIds.current = [];
     setBusy(true);
     setChatError('');
     try {
@@ -93,20 +100,32 @@ export function MealPlannerScreen() {
         role: turn.role,
         text: [turn.text, turn.proposal ? proposalContext(turn.proposal, statuses[turn.proposal.id]) : ''].filter(Boolean).join('\n').slice(0, 4000),
       }));
-      const result = await askMealPlanner([...context, { role: 'user', text }]);
+      const userId = nextId.current++;
+      const assistantId = nextId.current++;
+      streamIds.current = [userId, assistantId];
+      setTurns((old) => [...old, { id: userId, role: 'user', text }]);
+      setComposer('');
+      const result = await askMealPlanner([...context, { role: 'user', text }], (partial) => {
+        setTurns((old) => upsertTurn(old, { id: assistantId, role: 'assistant', text: partial, streaming: true }));
+      });
       const proposed = result.tools.filter((tool) => tool.name.replace(/^tool-/, '') === 'proposeMealPlan')
         .map((tool) => ({ tool, output: proposalSchema.safeParse(tool.output) }))
         .find(({ output }) => output.success && output.data.ok);
       const proposal: Proposal | undefined = proposed?.output.success
         ? { ...proposed.output.data, id: proposed.tool.callId } : undefined;
-      setTurns((old) => [
-        ...old,
-        { id: nextId.current++, role: 'user', text, refused: result.refused },
-        { id: nextId.current++, role: 'assistant', text: result.text || (proposal ? 'Mình đã chuẩn bị đề xuất thực đơn để bạn xem trước.' : 'Mình chưa thể đề xuất thực đơn lúc này.'), refused: result.refused, proposal },
-      ]);
+      setTurns((old) => upsertTurn(old.map((turn) => turn.id === userId ? { ...turn, refused: result.refused } : turn), {
+        id: assistantId,
+        role: 'assistant',
+        text: result.text || (proposal ? 'Mình đã chuẩn bị đề xuất thực đơn để bạn xem trước.' : 'Mình chưa thể đề xuất thực đơn lúc này.'),
+        refused: result.refused,
+        proposal,
+      }));
       if (proposal) setSuggestion(proposal);
-      setComposer('');
     } catch (error) {
+      // Drop the question and any partial answer, and give the text back so it can be resent.
+      const failed = streamIds.current;
+      setTurns((old) => old.filter((turn) => !failed.includes(turn.id)));
+      setComposer(text);
       setChatError(friendlyError(error, 'Chưa gửi được yêu cầu. Nội dung vẫn còn để bạn thử lại.'));
     } finally {
       sending.current = false;
@@ -173,10 +192,10 @@ export function MealPlannerScreen() {
           <Pressable accessibilityRole="button" onPress={() => setComposer('Mình muốn hỏi về nguyên liệu và dinh dưỡng.')} style={[styles.quickChip, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.quickText, { color: theme.foreground }]}>Hỏi về nguyên liệu và dinh dưỡng</Text></Pressable>
         </View> : null}
         {turns.map((turn) => <View key={turn.id} style={[styles.bubble, turn.role === 'user' ? styles.userBubble : styles.aiBubble, { borderColor: theme.border, backgroundColor: turn.role === 'user' ? theme.secondary : theme.card }]}>
-          <Text style={[styles.bubbleBy, { color: theme.primary }]}>{turn.role === 'user' ? 'Bạn' : 'Trợ lý Vedora'}</Text><Text style={[styles.bubbleText, { color: theme.foreground }]}>{turn.text}</Text>
+          <Text style={[styles.bubbleBy, { color: theme.primary }]}>{turn.role === 'user' ? 'Bạn' : 'Trợ lý Vedora'}</Text><Text style={[styles.bubbleText, { color: theme.foreground }]}>{turn.text}{turn.streaming ? ' ▍' : ''}</Text>
           {turn.proposal?.id === latestProposalId && !statuses[turn.proposal.id] ? <Pressable accessibilityRole="button" onPress={() => previewProposal(turn.proposal!)} style={[styles.smallPrimary, { backgroundColor: theme.primary }]}><Text style={[styles.smallPrimaryText, { color: theme.primaryForeground }]}>Xem đề xuất  →</Text></Pressable> : null}
         </View>)}
-        {busy ? <View style={styles.loadingRow}><ActivityIndicator size="small" color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Trợ lý đang trả lời…</Text></View> : null}
+        {busy && !turns.some((turn) => turn.streaming) ? <View style={styles.loadingRow}><ActivityIndicator size="small" color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Trợ lý đang trả lời…</Text></View> : null}
         {chatError ? <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>{chatError}</Text> : null}
         {chatError.includes('đăng nhập') ? <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/login', params: { returnTo: '/meal-plan' } })}><Text style={[styles.link, { color: theme.primary }]}>Đăng nhập lại</Text></Pressable> : null}
       </ScrollView>
