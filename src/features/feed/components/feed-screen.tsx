@@ -28,6 +28,7 @@ import { useComposeActions } from "../hooks/use-compose-actions";
 import { useFeed } from "../hooks/use-feed";
 import type { FeedFilter, FeedPost } from "../types/feed.schema";
 import { ComposeDialog } from "./compose-dialog";
+import { VideoPublishBanner } from "./video-publish-banner";
 import { PostCard } from "./post-card";
 import { ShowcasePostCard } from "./showcase-post-card";
 
@@ -52,7 +53,6 @@ export function FeedScreen() {
   const [filter, setFilter] = useState<FeedFilter | "following">("all");
   const [accountOpen, setAccountOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
-  const [composerMode, setComposerMode] = useState<"choose" | "video">("choose");
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const { onScroll: onHomeScroll, reset: resetHomeScroll } = useExploreTabBarScroll();
   const onViewableItemsChanged = useCallback(
@@ -76,12 +76,11 @@ export function FeedScreen() {
     ...showcase.map((post) => ({ key: `showcase:${post.id}`, kind: "showcase" as const, post })),
   ];
 
-  function openComposer(mode: "choose" | "video") {
+  function openComposer() {
     if (!accessToken) {
       router.push({ pathname: "/login", params: { returnTo: "/explore" } });
       return;
     }
-    setComposerMode(mode);
     setComposerOpen(true);
   }
 
@@ -90,7 +89,7 @@ export function FeedScreen() {
       edges={["top"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.card }]}>
+      <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.background }]}>
         <View style={styles.headerTop}>
           <Pressable
             accessibilityRole="button"
@@ -175,6 +174,8 @@ export function FeedScreen() {
         </View>
       </View>
 
+      <VideoPublishBanner onRetry={compose.retryVideoPublish} onDismiss={compose.dismissVideoPublish} />
+
       {filter === "following" ? <FollowingScreen onScroll={onHomeScroll} /> : <FlatList
         key={filter}
         style={styles.timeline}
@@ -213,20 +214,10 @@ export function FeedScreen() {
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Tạo nội dung"
-                  onPress={() => openComposer("choose")}
+                  onPress={openComposer}
                   style={[styles.composerPrompt, { backgroundColor: theme.background, borderColor: theme.border }]}
                 >
                   <Text numberOfLines={1} style={[styles.composerPromptText, { color: theme.mutedForeground }]}>Chia sẻ cách nấu món chay của bạn</Text>
-                </Pressable>
-              </View>
-              <View style={[styles.composerBottom, { borderTopColor: theme.border }]}>
-                <Pressable accessibilityRole="button" onPress={() => openComposer("video")} style={styles.videoShortcut}>
-                  <SymbolView name={{ ios: "video", android: "videocam", web: "videocam" }} size={18} tintColor={theme.primary} />
-                  <Text style={[styles.videoShortcutText, { color: theme.primary }]}>Thêm video</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => openComposer("choose")} style={styles.videoShortcut}>
-                  <SymbolView name={{ ios: "square.and.pencil", android: "edit", web: "edit" }} size={17} tintColor={theme.primary} />
-                  <Text style={[styles.videoShortcutText, { color: theme.primary }]}>Tạo nội dung</Text>
                 </Pressable>
               </View>
             </View>
@@ -334,12 +325,11 @@ export function FeedScreen() {
       />}
       <ComposeDialog
         visible={composerOpen}
-        initialMode={composerMode}
         authorName={displayName}
-        onClose={() => { compose.discardDraftUpload(); setComposerOpen(false); }}
+        onClose={() => setComposerOpen(false)}
         onPickVideo={compose.pickVideo}
         onRemoveVideo={compose.removeVideo}
-        onPublishVideo={compose.publishVideo}
+        onSubmitVideo={compose.startVideoPublish}
       />
     </SafeAreaView>
   );
@@ -441,16 +431,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   composerPromptText: { fontFamily: Fonts.sans, fontSize: 13 },
-  composerBottom: {
-    borderTopWidth: 1,
-    marginTop: Spacing.three,
-    paddingTop: Spacing.two,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  videoShortcut: { minHeight: 34, flexDirection: "row", alignItems: "center", gap: Spacing.two },
-  videoShortcutText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   empty: {
     marginTop: Spacing.five,
     marginHorizontal: Spacing.three,
