@@ -146,3 +146,10 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn: ảnh banner lấy trực tiếp từ link Pinterest (`i.pinimg.com`), có thể bị chặn hoặc đổi link; nên tải về `assets/branding/` khi chốt ảnh. Khi ảnh chưa tải, nền xanh rừng hiện thay thế.
 - Kiểm tra: `npx tsc --noEmit`, `npx expo lint` đạt. Bước UI: mở app khi chưa đăng nhập, kiểm tra banner tràn dưới status bar, hai góc dưới bo, chữ đọc rõ trên ảnh; bấm từng nút; thử màn nhỏ/lớn và chế độ tối. Chưa chạy trên thiết bị.
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Trợ lý Vedora trả lời dạng stream (gõ dần)
+
+- Kết quả: Viết lại `requestAiStream` dùng `fetch` của `expo/fetch` và đọc `response.body` từng đoạn thay vì chờ Axios trả đủ. Parser SSE chạy tăng dần (`AiStreamParser`), gọi `onText` sau mỗi `text-delta`; vẫn giữ Bearer của khách, refresh một lần khi 401 với phiên tài khoản, mã lỗi quota/`ApiError`, timeout 120s và huỷ bằng `AbortSignal`. Chat khách (tab Vedora AI) và chat Lên thực đơn hiển thị chữ hiện dần kèm con trỏ ▍; chỉ hiện “đang suy nghĩ” cho tới khi có chữ đầu tiên. Lỗi giữa chừng gỡ câu hỏi và phần trả lời dở, trả lại nội dung để gửi lại. Đề xuất thực đơn và cờ `refused` vẫn lấy ở cuối stream.
+- Giới hạn: nếu server hoặc proxy (Cloudflare/Nginx) gom đệm phản hồi thì chữ vẫn có thể ra thành cục lớn, chỉ kiểm chứng được với server thật.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web đạt. Bước UI: tab Vedora AI → xác minh → hỏi một câu, xem chữ hiện dần; bấm làm mới giữa chừng; tab Lên thực đơn → Trò chuyện → yêu cầu đổi món, xem chữ dần rồi nút “Xem đề xuất”; tắt mạng giữa chừng để kiểm tra khôi phục nội dung. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.

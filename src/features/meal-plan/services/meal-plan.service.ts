@@ -21,6 +21,6 @@ export function saveMealDays(days: MealDayInput[]) {
   return requestJson(mealPlanSchema, { method: 'PUT', url: '/meal-plan/days', data: payload });
 }
 
-export function askMealPlanner(messages: { role: 'user' | 'assistant'; text: string }[]) {
-  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { messages: messages.slice(-10) } });
+export function askMealPlanner(messages: { role: 'user' | 'assistant'; text: string }[], onText?: (text: string) => void) {
+  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { messages: messages.slice(-10) }, onText });
 }
