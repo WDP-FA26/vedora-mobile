@@ -1,8 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { ApiError } from '@/shared/api/api-error';
+import { useSessionStore } from '@/shared/stores/session-store';
 
-import { askNutritionChat, clearGuestSession, getGuestSessionToken, startGuestSession } from '../services/nutrition-chat.service';
+import { askAccountAssistant, askNutritionChat, clearGuestSession, getGuestSessionToken, startGuestSession } from '../services/nutrition-chat.service';
 import { chatQuestionSchema, MAX_CONTEXT_MESSAGES } from '../types/nutrition-chat.schema';
 
 export type NutritionMessage = {
@@ -29,8 +30,9 @@ function limitFromError(error: unknown): GuestLimit | null {
   return null;
 }
 
-function messageForError(error: unknown) {
+function messageForError(error: unknown, signedIn: boolean) {
   if (error instanceof ApiError) {
+    if (error.status === 401 && signedIn) return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
     if (error.status === 401) return 'Phiên hỏi thử đã hết hạn. Xác minh lại rồi gửi câu hỏi nhé.';
     if (error.status === 429) return 'Bạn gửi hơi nhanh. Đợi một chút rồi hỏi tiếp nhé.';
     if (error.status === 503) return 'Trợ lý Vedora đang tạm nghỉ. Bạn quay lại sau nhé.';
@@ -54,11 +56,15 @@ function contextWithoutRefusals(messages: NutritionMessage[]) {
 /** Conversation state is local to this screen; quota and verification are decided by the API. */
 export function useNutritionChat(getTurnstileToken?: () => Promise<string>) {
   const [messages, setMessages] = useState<NutritionMessage[]>([WELCOME]);
-  const [ready, setReady] = useState(() => getGuestSessionToken() !== null);
+  const signedIn = useSessionStore((state) => !!state.accessToken);
+  const [guestReady, setReady] = useState(() => getGuestSessionToken() !== null);
   const [verifying, setVerifying] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [limit, setLimit] = useState<GuestLimit | null>(null);
+  const [guestLimit, setLimit] = useState<GuestLimit | null>(null);
+  // Accounts are not guests: no verification step and no guest quota.
+  const ready = signedIn || guestReady;
+  const limit = signedIn ? null : guestLimit;
   const requestIdRef = useRef(0);
   const busyRef = useRef(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -89,7 +95,7 @@ export function useNutritionChat(getTurnstileToken?: () => Promise<string>) {
       return false;
     }
     if (busyRef.current || limit) return false;
-    if (!getGuestSessionToken()) {
+    if (!signedIn && !getGuestSessionToken()) {
       setReady(false);
       setError('Phiên hỏi thử đã hết hạn. Xác minh lại rồi gửi câu hỏi nhé.');
       return false;
@@ -111,10 +117,13 @@ export function useNutritionChat(getTurnstileToken?: () => Promise<string>) {
     setMessages((previous) => [...previous, { id, role: 'user', text }]);
 
     try {
-      const reply = await askNutritionChat(nextContext, controller.signal, (partial) => {
+      const onText = (partial: string) => {
         if (requestId !== requestIdRef.current) return;
         setMessages((previous) => upsert(previous, { id: assistantId, role: 'assistant', text: partial, streaming: true }));
-      });
+      };
+      const reply = signedIn
+        ? await askAccountAssistant(nextContext, controller.signal, onText)
+        : await askNutritionChat(nextContext, controller.signal, onText);
       if (requestId !== requestIdRef.current) return false;
       if (!reply.text.trim() && !reply.refused) throw new Error('Trợ lý chưa trả lời được.');
       setMessages((previous) => upsert(previous, {
@@ -127,15 +136,15 @@ export function useNutritionChat(getTurnstileToken?: () => Promise<string>) {
     } catch (caught) {
       if (requestId !== requestIdRef.current) return false;
       setMessages((previous) => previous.filter((message) => message.id !== id && message.id !== assistantId));
-      const serverLimit = limitFromError(caught);
+      const serverLimit = signedIn ? null : limitFromError(caught);
       if (serverLimit) {
         setLimit(serverLimit);
       } else {
-        if (caught instanceof ApiError && caught.status === 401) {
+        if (!signedIn && caught instanceof ApiError && caught.status === 401) {
           clearGuestSession();
           setReady(false);
         }
-        setError(messageForError(caught));
+        setError(messageForError(caught, signedIn));
       }
       return false;
     } finally {
@@ -145,7 +154,7 @@ export function useNutritionChat(getTurnstileToken?: () => Promise<string>) {
         abortRef.current = null;
       }
     }
-  }, [limit, messages]);
+  }, [limit, messages, signedIn]);
 
   const reset = useCallback(() => {
     requestIdRef.current += 1;
