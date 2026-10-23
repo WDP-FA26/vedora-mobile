@@ -153,3 +153,10 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn: nếu server hoặc proxy (Cloudflare/Nginx) gom đệm phản hồi thì chữ vẫn có thể ra thành cục lớn, chỉ kiểm chứng được với server thật.
 - Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web đạt. Bước UI: tab Vedora AI → xác minh → hỏi một câu, xem chữ hiện dần; bấm làm mới giữa chừng; tab Lên thực đơn → Trò chuyện → yêu cầu đổi món, xem chữ dần rồi nút “Xem đề xuất”; tắt mạng giữa chừng để kiểm tra khôi phục nội dung. Chưa chạy trên thiết bị/API thật.
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Trợ lý Vedora không đòi xác minh với người đã đăng nhập
+
+- Kết quả: Chat ở tab Vedora AI nhận biết phiên tài khoản. Khi đã đăng nhập, bỏ thẻ “Xác minh để hỏi thử” và thẻ hết lượt khách, mở ô nhập ngay, và gửi câu hỏi qua trợ lý tài khoản `POST /meal-plan/chat` (dùng phiên đăng nhập, tự refresh khi 401) thay vì phiên khách Turnstile. Khách chưa đăng nhập giữ nguyên luồng xác minh và giới hạn lượt. Đăng nhập xong thì trạng thái hết lượt khách cũ không còn hiển thị; phiên hết hạn báo “Vui lòng đăng nhập lại”.
+- Giới hạn: giới hạn lượt của tài khoản do server quyết định (429 báo “gửi hơi nhanh”); app không tự đặt hạn mức.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle web đạt. Bước UI: khách hỏi 3 lần đến khi hết lượt → Đăng nhập → quay lại tab Vedora AI: không còn form xác minh, hỏi được ngay; đăng xuất → form xác minh quay lại; hết hạn phiên giữa chừng. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
