@@ -5,7 +5,7 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 ## YYYY-MM-DD — Tên task/tính năng
 
 - Kết quả: Nêu những gì đã hoàn thành.
-- Kiểm tra: Liệt kê các bước đơn giản và kết quả từng bước.
+- Kiểm tra: Hướng dẫn kiểm tra UI từng bước (step by step) trên màn hình (thao tác, điều hướng, quan sát kết quả; không ghi lệnh kiểm tra code như lint/tsc).
 - Người thực hiện: Tên người hoặc agent thực hiện.
 
 ## 2026-10-14 — Quy tắc cập nhật kế hoạch
