@@ -13,6 +13,7 @@ const recipeConflictSchema = z.object({
 export const recipeSchema = z.object({
   id: z.string(),
   title: z.string(),
+  isFavorite: z.boolean(),
   imageUrl: z.string().nullable(),
   servings: z.number(),
   prepMinutes: z.number().nullable(),
@@ -45,6 +46,8 @@ export const recipeDetailSchema = recipeSchema.extend({
 });
 
 export const MAX_RECIPE_QUERY_LENGTH = 100;
+
+export const recipeFavoriteStateSchema = z.object({ recipeId: z.string().uuid(), isFavorite: z.boolean() });
 
 export type Recipe = z.output<typeof recipeSchema>;
 export type RecipeDetail = z.output<typeof recipeDetailSchema>;

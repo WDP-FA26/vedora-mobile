@@ -6,11 +6,13 @@ import { registerSchema } from '../types/auth.schema';
 import { authErrorMessage } from '../utils/auth-errors';
 import { formErrors } from '../utils/form-errors';
 import { authReturnTo } from '../utils/return-to';
+import { GoogleButton } from './google-button';
 import { AuthButton, AuthField, AuthLink, AuthMessage, AuthScreen } from './auth-ui';
 
 export function RegisterScreen() {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
   const destination = authReturnTo(returnTo);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -20,6 +22,7 @@ export function RegisterScreen() {
   const register = useRegister();
 
   async function submit() {
+    if (googleBusy || register.isPending) return;
     const parsed = registerSchema.safeParse({ fullName, username, email, password, confirmPassword });
     if (!parsed.success) {
       setErrors(formErrors(parsed.error));
@@ -38,13 +41,14 @@ export function RegisterScreen() {
 
   return (
     <AuthScreen title="Tạo tài khoản" subtitle="Đăng ký bằng email để bắt đầu sử dụng Vedora.">
+      <GoogleButton returnTo={destination} disabled={register.isPending} onBusyChange={setGoogleBusy} />
       <AuthField label="Họ và tên" value={fullName} onChangeText={setFullName} autoComplete="name" textContentType="name" error={errors.fullName} placeholder="Nguyễn Văn An" />
       <AuthField label="Tên đăng nhập" value={username} onChangeText={setUsername} autoCapitalize="none" autoCorrect={false} autoComplete="username-new" error={errors.username} placeholder="vedora.user" />
       <AuthField label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" autoCorrect={false} keyboardType="email-address" autoComplete="email" textContentType="emailAddress" error={errors.email} placeholder="ban@example.com" />
       <AuthField label="Mật khẩu" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" textContentType="newPassword" error={errors.password} placeholder="Ít nhất 8 ký tự" />
       <AuthField label="Nhập lại mật khẩu" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoComplete="new-password" error={errors.confirmPassword} placeholder="Nhập lại mật khẩu" />
       {errors.form ? <AuthMessage message={errors.form} error /> : null}
-      <AuthButton label="Tạo tài khoản" onPress={submit} pending={register.isPending} />
+      <AuthButton label="Tạo tài khoản" onPress={submit} pending={register.isPending} disabled={googleBusy} />
       <AuthLink label="Đã có tài khoản? Đăng nhập" onPress={() => router.replace({ pathname: '/login', params: { returnTo: destination } })} />
     </AuthScreen>
   );

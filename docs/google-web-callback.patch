@@ -1,0 +1,27 @@
+--- a/app/auth/google/route.ts
++++ b/app/auth/google/route.ts
+@@ -16,5 +16,24 @@
+ export async function GET(request: NextRequest) {
+   const params = request.nextUrl.searchParams
++  const state = params.get("state")
++  if (state && /^mobile\.[A-Za-z0-9_-]{43}$/.test(state) &&
++      (params.has("code") || params.has("error"))) {
++    const callback = new URL("vedoramobile://google-callback")
++    callback.searchParams.set("state", state)
++    const code = params.get("code")
++    if (params.has("error")) {
++      callback.searchParams.set("error", "access_denied")
++    } else if (params.getAll("code").length === 1 && code && code.length <= 2048 &&
++               params.getAll("state").length === 1) {
++      callback.searchParams.set("code", code)
++    } else {
++      callback.searchParams.set("error", "invalid_callback")
++    }
++    const response = NextResponse.redirect(callback)
++    response.headers.set("Cache-Control", "no-store")
++    response.headers.set("Referrer-Policy", "no-referrer")
++    return response
++  }
+   // Google comes back to this same URL with `code` (or `error`).
+   return params.has("code") || params.has("error") ? finish(request) : start(request)
+ }
