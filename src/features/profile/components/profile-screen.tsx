@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useSignOut } from '@/features/auth/hooks/use-auth-actions';
 import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
 import { PostCard } from '@/features/feed/components/post-card';
@@ -159,6 +159,19 @@ export function ProfileScreen() {
               ) : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa khai báo</Text>}
           </Pressable>
 
+          <Pressable accessibilityRole="button" accessibilityLabel="Gói của bạn. Xem gói dịch vụ và thanh toán" onPress={() => router.push('/billing')} style={({ pressed }) => [styles.card, styles.billing, { backgroundColor: theme.secondary, borderColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>
+            <View style={styles.billingStickerFrame}>
+              <Image source={require('@/assets/branding/carrot-sticker.png')} style={styles.billingSticker} contentFit="contain" accessible={false} />
+            </View>
+            <View style={styles.dietaryHeading}>
+              <Text style={[styles.sectionTitle, { color: theme.secondaryForeground }]}>Gói của bạn</Text>
+              <Text style={[styles.helper, { color: theme.secondaryForeground }]}>Gói dịch vụ & thanh toán</Text>
+            </View>
+            <View style={[styles.billingArrow, { backgroundColor: theme.card }]}>
+              <SymbolView name={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} size={17} tintColor={theme.primary} />
+            </View>
+          </Pressable>
+
           <View style={[styles.segment, { backgroundColor: theme.muted }]}>
             {(['posts', 'blogs'] as const).map((tab) => {
               const selected = contentTab === tab;
@@ -227,6 +240,10 @@ const styles = StyleSheet.create({
   dietaryTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   dietaryIcon: { width: 48, height: 48, borderRadius: Radius['2xl'], alignItems: 'center', justifyContent: 'center' },
   dietarySticker: { width: 34, height: 38 },
+  billing: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.three },
+  billingStickerFrame: { width: 52, height: 56, borderRadius: Radius['2xl'], backgroundColor: BrandColors.cream, alignItems: 'center', justifyContent: 'center' },
+  billingSticker: { width: 44, height: 52 },
+  billingArrow: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   dietaryHeading: { flex: 1, minWidth: 0 },
   dietaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.one },
   dietaryLabel: { fontFamily: Fonts.sansSemibold, fontSize: 13 },

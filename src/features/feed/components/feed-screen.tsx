@@ -127,6 +127,9 @@ export function FeedScreen() {
             </Text>
             {accessToken ? (
               <View>
+              <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/billing'); }} style={[styles.menuAction, { backgroundColor: theme.secondary }]}>
+                <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>Gói của bạn</Text>
+              </Pressable>
               <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/blogs'); }} style={[styles.menuAction, { backgroundColor: theme.secondary }]}>
                 <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>Blog của bạn</Text>
               </Pressable>
