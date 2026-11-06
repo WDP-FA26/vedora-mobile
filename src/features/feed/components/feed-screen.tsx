@@ -155,6 +155,9 @@ export function FeedScreen() {
                 </Pressable>
               </View>
             )}
+            <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/about'); }} style={[styles.menuAction, { backgroundColor: theme.muted }]}>
+              <Text style={[styles.menuActionText, { color: theme.foreground }]}>Thông tin Vedora</Text>
+            </Pressable>
           </View>
         ) : null}
         {signOut.isError ? (

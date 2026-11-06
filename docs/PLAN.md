@@ -378,3 +378,21 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Chuẩn bị nhánh feat/dietary-preferences-and-profile-ui với commit tính năng nguyên liệu yêu thích, mục Thích trên hồ sơ và bố cục chi tiết có sticker; chỉ đưa source, kiểm tra dữ liệu và nhật ký công việc liên quan vào commit.
 - Bước kiểm tra UI: (1) Mở Tôi > Hồ sơ ăn uống, kiểm tra sticker và tóm tắt lựa chọn. (2) Tìm/chọn nguyên liệu yêu thích, thử xung đột với Không ăn. (3) Lưu rồi quay lại Tôi, xác nhận mục Thích hiển thị đúng; mở lại cấu hình để kiểm tra dữ liệu. Chưa thử trực tiếp trên thiết bị trong task commit.
 - Người thực hiện: Codex.
+
+## 2026-11-07 — Trang thông tin Vedora và bốn trang nội dung
+
+- Kết quả: Thêm màn Thông tin Vedora tại /about, bốn trang Điều khoản sử dụng, Quyền riêng tư, Tiêu chuẩn cộng đồng và Trợ năng tại /about/[slug]. Có lối vào trong tab Tôi (cả khách và đã đăng nhập) và menu tài khoản Khám phá; nội dung tĩnh đọc được không cần đăng nhập/API. Thiết kế thẻ xanh nhạt, sticker bơ/cà rốt, biểu tượng riêng cho từng mục, đoạn văn có thể chọn/sao chép, tiêu đề đánh số và các mục liên quan cuối trang; hỗ trợ theme tối, chữ co giãn, vùng chạm và safe area. Web tham chiếu hiện chỉ có href=#; theo lựa chọn của người dùng, nội dung mới là dự thảo để duyệt và được ghi rõ trên màn tổng quan lẫn từng trang, không gắn ngày hiệu lực hay coi là chính sách đã phê duyệt.
+- Bước kiểm tra UI: (1) Khi chưa đăng nhập, mở Tôi > Thông tin Vedora; thử thêm lối vào từ menu avatar ở Khám phá. (2) Kiểm tra thẻ giới thiệu/sticker, nhãn Bản dự thảo để duyệt và bốn mục. (3) Mở lần lượt cả bốn trang, đọc các mục đánh số, nhấn giữ đoạn văn để chọn/sao chép. (4) Cuộn cuối trang, bấm mục liên quan và quay lại; thử mở đường dẫn slug không hợp lệ và dùng thẻ Thông tin Vedora để trở về danh sách. (5) Đăng nhập và mở lại từ Tôi, kiểm tra tính năng không yêu cầu đăng nhập lại. (6) Kiểm tra cỡ chữ lớn, màn hình nhỏ, theme tối và thanh Home; xác nhận chữ, biểu tượng và nút không chồng/cắt. Chưa xác nhận trực tiếp giao diện trên điện thoại trong task này; nội dung cần được chủ dự án duyệt trước khi sử dụng chính thức.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Mở thông tin Vedora từ cài đặt đầu hồ sơ
+
+- Kết quả: Chuyển thẻ Thông tin Vedora trong nội dung hồ sơ thành nút bánh răng Cài đặt ở header. Nút mở trực tiếp màn Thông tin Vedora; có nhãn trợ năng rõ ràng, xuất hiện cho cả khách và tài khoản đã đăng nhập. Bỏ thẻ cũ để hồ sơ gọn hơn.
+- Bước kiểm tra UI: (1) Mở tab Tôi khi chưa đăng nhập, bấm bánh răng góc trên và kiểm tra mở Thông tin Vedora. (2) Quay lại, đăng nhập và xác nhận nút bánh răng nằm trên header cùng nút đã lưu/đăng xuất. (3) Bấm bánh răng, mở từng trang thông tin rồi quay lại hồ sơ. (4) Kiểm tra không còn thẻ Thông tin Vedora trong phần nội dung hồ sơ; kiểm tra theme tối và chữ lớn. Chưa kiểm tra trực tiếp trên điện thoại trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Bỏ nhãn dự thảo và commit trang thông tin
+
+- Kết quả: Theo yêu cầu mới của người dùng, bỏ khung Bản dự thảo để duyệt khỏi màn Thông tin Vedora và bốn trang chi tiết, xóa component/style không còn dùng. Chuẩn bị nhánh feat/information-pages với trang thông tin, nội dung, nút cài đặt đầu hồ sơ và lối vào từ menu Khám phá; rà soát tệp commit để giữ cấu hình môi trường ngoài Git.
+- Bước kiểm tra UI: (1) Mở Tôi > nút bánh răng, kiểm tra màn Thông tin Vedora không còn khung dự thảo. (2) Mở lần lượt Điều khoản, Quyền riêng tư, Tiêu chuẩn cộng đồng và Trợ năng, xác nhận nội dung và liên kết liên quan vẫn hiển thị. (3) Quay lại hồ sơ, mở từ menu tài khoản Khám phá và thử khi chưa đăng nhập. Chưa kiểm tra trực tiếp trên thiết bị trong task commit.
+- Người thực hiện: Codex.
