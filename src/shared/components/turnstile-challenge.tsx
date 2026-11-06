@@ -19,7 +19,7 @@ function post(m){window.ReactNativeWebView.postMessage(JSON.stringify(m))}
 var t=setInterval(function(){if(window.turnstile){clearInterval(t);
 window.turnstile.render('#w',{sitekey:${JSON.stringify(siteKey)},
 callback:function(k){post({type:'token',token:k})},
-'error-callback':function(){post({type:'failure',message:'Xác minh bảo mật gặp lỗi. Vui lòng thử lại.'})},
+'error-callback':function(c){post({type:'failure',message:'Xác minh bảo mật gặp lỗi (mã '+c+'). Vui lòng thử lại.'});return true},
 'expired-callback':function(){post({type:'failure',message:'Xác minh đã hết hạn. Vui lòng xác minh lại.'})},
 'timeout-callback':function(){post({type:'failure',message:'Xác minh quá thời gian. Vui lòng thử lại.'})}})}},100);
 </script></body></html>`;

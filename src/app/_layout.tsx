@@ -3,6 +3,7 @@ import '@/global.css';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 
@@ -65,6 +66,8 @@ export default function RootLayout() {
               border: colors.border,
             },
           }}>
+          {/* Dark clock and icons on light screens, light ones on dark; screens with a photo banner override it. */}
+          <StatusBar style="auto" />
           <NotificationStreamHost />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
