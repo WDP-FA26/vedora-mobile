@@ -32,11 +32,11 @@ export function updateMyProfile(input: ProfileEdit) {
 }
 
 /** The public feed endpoint returns published posts for this author. */
-export function getProfilePosts(authorId: string, signal?: AbortSignal) {
+export function getProfilePosts(authorId: string, signal?: AbortSignal, type?: 'POST') {
   return requestJson(feedPageSchema, {
     method: 'GET',
     url: '/posts',
-    params: { authorId, limit: 20 },
+    params: { authorId, limit: 20, ...(type ? { type } : {}) },
     signal,
   });
 }
