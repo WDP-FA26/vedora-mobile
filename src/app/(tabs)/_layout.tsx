@@ -5,9 +5,11 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { MealPlannerProvider } from '@/features/meal-plan/hooks/meal-planner-provider';
 import { useTabBarVisibilityStore } from '@/features/navigation/stores/tab-bar-visibility-store';
 import { SproutPet } from '@/features/nutrition-chat/components/sprout-pet';
 import { useTheme } from '@/hooks/use-theme';
+import { useSessionStore } from '@/shared/stores/session-store';
 
 type TabIconName = Extract<ComponentProps<typeof SymbolView>['name'], object>;
 
@@ -27,7 +29,11 @@ export default function MainTabsLayout() {
     setVisible(true);
   }, [pathname, setVisible]);
 
+  const token = useSessionStore((state) => state.accessToken);
+
   return (
+    // Keyed by session so a new sign-in never sees the previous user's chat or draft.
+    <MealPlannerProvider key={token ?? 'guest'}>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -70,8 +76,8 @@ export default function MainTabsLayout() {
       <Tabs.Screen
         name="ai"
         options={{
-          title: 'Vedora AI',
-          tabBarAccessibilityLabel: 'Vedora AI',
+          title: 'Trợ lý Vedora',
+          tabBarAccessibilityLabel: 'Trợ lý Vedora',
           tabBarIcon: ({ focused }) => (
             <View style={[styles.aiIcon, focused && { backgroundColor: theme.secondary, borderColor: theme.primary, borderWidth: 1 }]}>
               <SproutPet size={30} accessible={false} />
@@ -82,8 +88,8 @@ export default function MainTabsLayout() {
       <Tabs.Screen
         name="meal-plan"
         options={{
-          title: 'Lên thực đơn',
-          tabBarAccessibilityLabel: 'Lên thực đơn',
+          title: 'Thực đơn',
+          tabBarAccessibilityLabel: 'Thực đơn',
           tabBarIcon: ({ color }) => (
             <TabIcon name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }} color={color} />
           ),
@@ -100,6 +106,7 @@ export default function MainTabsLayout() {
         }}
       />
     </Tabs>
+    </MealPlannerProvider>
   );
 }
 
