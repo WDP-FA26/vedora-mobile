@@ -48,6 +48,7 @@ export const proposalSchema = z.object({
 export const dietaryRestrictionsSchema = z.object({
   ingredients: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
   groups: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
+  liked: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
 });
 
 export const mealDayInputSchema = z.object({

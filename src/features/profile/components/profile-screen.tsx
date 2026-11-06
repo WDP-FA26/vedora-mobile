@@ -57,6 +57,7 @@ export function ProfileScreen() {
   const posts = postsQuery.data?.items ?? [];
   const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
   const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
+  const liked = dietary.data?.liked ?? [];
 
   if (!hydrated) return <SafeAreaView edges={['top']} style={[styles.screen, styles.center, { backgroundColor: theme.background }]}><ActivityIndicator color={theme.primary} /></SafeAreaView>;
   if (!token) return (
@@ -157,6 +158,16 @@ export function ProfileScreen() {
                   {avoided.length > MAX_AVOIDED_CHIPS ? <View style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>+{avoided.length - MAX_AVOIDED_CHIPS}</Text></View> : null}
                 </View>
               ) : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa khai báo</Text>}
+            <View style={styles.dietaryLabelRow}>
+              <SymbolView name={{ ios: 'hand.thumbsup', android: 'thumb_up', web: 'thumb_up' }} size={16} tintColor={theme.primary} />
+              <Text style={[styles.dietaryLabel, { color: theme.foreground }]}>Thích</Text>
+            </View>
+            {dietary.isPending ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải…</Text>
+              : dietary.isError ? <Text style={[styles.helper, { color: theme.destructive }]}>Chưa tải được</Text>
+              : liked.length ? <View style={styles.chips}>
+                {liked.slice(0, MAX_AVOIDED_CHIPS).map(({ id, name }) => <View key={id} style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>{name}</Text></View>)}
+                {liked.length > MAX_AVOIDED_CHIPS ? <View style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>+{liked.length - MAX_AVOIDED_CHIPS}</Text></View> : null}
+              </View> : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa chọn</Text>}
           </Pressable>
 
           <Pressable accessibilityRole="button" accessibilityLabel="Gói của bạn. Xem gói dịch vụ và thanh toán" onPress={() => router.push('/billing')} style={({ pressed }) => [styles.card, styles.billing, { backgroundColor: theme.secondary, borderColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>
