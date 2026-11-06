@@ -4,6 +4,7 @@ import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollVie
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { BlogArticle } from '@/features/blogs/components/blog-article';
 import { PostCard } from '@/features/feed/components/post-card';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
@@ -42,7 +43,12 @@ export function PostDetailScreen() {
         ) : null}
         {post.data ? (
           <>
-            <PostCard post={post.data} visible detail />
+            <PostCard
+              post={post.data}
+              visible
+              detail
+              blogContent={post.data.blog ? <BlogArticle blogId={post.data.id} title={post.data.blog.title} /> : undefined}
+            />
             <CommentList postId={post.data.id} postAuthorId={post.data.author.id} commentCount={post.data.commentCount} draft={draft} />
           </>
         ) : null}
