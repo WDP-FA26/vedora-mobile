@@ -39,8 +39,25 @@ export async function startGuestSession(turnstileToken: string) {
   return session;
 }
 
+/**
+ * Signed-in users skip the guest check: the API sends them to the account assistant at
+ * `/meal-plan/chat`, which uses their session (and refreshes it) instead of a guest token.
+ */
+export function askAccountAssistant(
+  messages: NutritionChatRequest['messages'],
+  signal?: AbortSignal,
+  onText?: (text: string) => void,
+) {
+  const body = nutritionChatRequestSchema.parse({ messages });
+  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: body, timeout: 120_000, signal, onText });
+}
+
 /** The backend owns quota and all policy decisions. No local allowance is inferred. */
-export async function askNutritionChat(messages: NutritionChatRequest['messages'], signal?: AbortSignal) {
+export async function askNutritionChat(
+  messages: NutritionChatRequest['messages'],
+  signal?: AbortSignal,
+  onText?: (text: string) => void,
+) {
   const token = getGuestSessionToken();
   if (!token) throw new Error('Phiên hỏi thử đã hết hạn. Vui lòng xác minh lại.');
   const body = nutritionChatRequestSchema.parse({ messages });
@@ -52,5 +69,6 @@ export async function askNutritionChat(messages: NutritionChatRequest['messages'
     skipAuthRefresh: true,
     timeout: 120_000,
     signal,
+    onText,
   });
 }

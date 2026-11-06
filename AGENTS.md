@@ -5,7 +5,7 @@
 ## Quy tắc dự án
 
 - Đọc [docs/AGENT_RULES.md](docs/AGENT_RULES.md) trước khi thêm hoặc sửa tính năng. Tài liệu này quy định cấu trúc module và cách dùng Axios, TanStack Query, Zustand, Zod.
-- Sau mỗi task/tính năng, cập nhật [docs/PLAN.md](docs/PLAN.md) trước khi báo hoàn tất. Ghi ngắn gọn bằng tiếng Việt: **kết quả đã làm**, **các bước kiểm tra luồng trên UI**, **người thực hiện**.
+- Sau mỗi task/tính năng, cập nhật [docs/PLAN.md](docs/PLAN.md) trước khi báo hoàn tất. Ghi ngắn gọn bằng tiếng Việt: **kết quả đã làm**, **các bước kiểm tra luồng UI từng bước (step by step) trên màn hình** (không ghi lệnh kiểm tra code như lint/tsc), **người thực hiện**.
 
 ## Kiểm tra tài liệu Expo
 
