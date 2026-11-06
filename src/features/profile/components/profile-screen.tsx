@@ -89,7 +89,7 @@ export function ProfileScreen() {
           <Text style={[styles.headerTitle, { color: theme.foreground }]}>Hồ sơ</Text>
           {profile ? <Text numberOfLines={1} style={[styles.handle, { color: theme.mutedForeground }]}>@{profile.username}</Text> : null}
         </View>
-        <HeaderButton label="Bài viết đã lưu" icon={{ ios: 'bookmark', android: 'bookmark', web: 'bookmark' }} color={theme.foreground} onPress={() => router.push('/bookmarks')} />
+        <HeaderButton label="Bài viết và công thức đã lưu" icon={{ ios: 'bookmark', android: 'bookmark', web: 'bookmark' }} color={theme.foreground} onPress={() => router.push('/bookmarks')} />
         <HeaderButton label="Cài đặt và thông tin Vedora" icon={{ ios: 'gearshape', android: 'settings', web: 'settings' }} color={theme.foreground} onPress={() => router.push('/about')} />
         <HeaderButton label="Đăng xuất" icon={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} color={theme.destructive} busy={signOut.isPending} onPress={() => confirmSignOut(() => signOut.mutate(undefined, { onSuccess: () => router.replace('/') }))} />
       </View>
