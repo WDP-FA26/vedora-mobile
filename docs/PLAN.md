@@ -237,3 +237,91 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn: chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời; hai file không còn dùng (`meal-planner-screen.tsx`, `assistant-button.tsx`) chưa xoá được và cần xoá thủ công.
 - Bước kiểm tra UI: (1) Đăng nhập, thanh tab có Trang chủ, Công thức, Trợ lý (hạt đậu mầm), Thực đơn, Tôi. (2) Tab Trợ lý: bấm "Lên thực đơn 7 ngày", điền biểu mẫu rồi tiếp tục, tin nhắn được điền sẵn, bấm gửi. (3) Khi trợ lý đề xuất, bấm "Xem trong Thực đơn": app chuyển sang tab Thực đơn, hiện "Đề xuất chưa được lưu" và các ngày. (4) Bấm "Lưu thực đơn": thực đơn tuần cập nhật; hoặc "Bỏ đề xuất". (5) Ở tab Thực đơn bấm "Đổi món": chuyển về tab Trợ lý với câu yêu cầu điền sẵn. (6) Tab Thực đơn không có khung chat. (7) Đăng xuất: tab Trợ lý là khung hỏi nhanh, tab Thực đơn hiện nút Đăng nhập.
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-11-06 — Đồng bộ mã nguồn từ GitHub
+
+- Kết quả: Đồng bộ main về origin/main tại commit 07af2a3; lưu lịch sử local trước đồng bộ ở nhánh backup/main-before-sync-20261106 do remote đã viết lại lịch sử.
+- Kiểm tra UI: Chưa chạy ứng dụng; bước kiểm tra đề xuất là mở app, đăng nhập, xem bảng tin, hồ sơ và tab Trợ lý/Thực đơn.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Khởi động Expo và cung cấp QR
+
+- Kết quả: Chạy Metro ở chế độ Expo Go/LAN tại địa chỉ LAN do Expo hiển thị; tạo ảnh QR tại .expo/expo-qr.png. Server phản hồi packager-status:running.
+- Kiểm tra UI: Điện thoại và máy tính dùng cùng mạng Wi-Fi; mở Expo Go, quét QR, chờ tải ứng dụng rồi kiểm tra màn hình đầu tiên. Chưa xác nhận trên điện thoại.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Cập nhật QR sau khi IP Wi-Fi thay đổi
+
+- Kết quả: Phát hiện QR cũ trỏ tới IP LAN của máy phát triển trong khi IP Wi-Fi hiện tại là IP LAN của máy phát triển. Khởi động lại Expo Go/LAN tại địa chỉ LAN do Expo hiển thị và tạo QR mới ở .expo/expo-qr-current.png; địa chỉ LAN phản hồi packager-status:running. Người dùng báo Request timeout; cần thử QR mới để xác nhận hết lỗi trên điện thoại.
+- Bước kiểm tra UI: Kết nối điện thoại cùng Wi-Fi với máy tính, đóng lần tải cũ trong Expo Go và quét QR mới; chờ tải màn hình đầu tiên. Chưa xác nhận kết quả trên điện thoại.
+- Người thực hiện: Codex.
+- Chẩn đoán bổ sung: Manifest trả HTTP 500 (UnexpectedServerError) khi CLI chạy online; chạy lại bằng expo start --go --offline --port 8081 thì manifest Android trả HTTP 200 tại IP LAN mới. Chế độ offline chỉ áp dụng cho Expo CLI; chưa xác nhận hết timeout trên điện thoại.
+- Kiểm tra tải ứng dụng: Manifest Android và bundle đều HTTP 200; bundle gồm 2346 modules, tải thành công 12.264.589 byte. Chưa kiểm tra trực tiếp trên điện thoại.
+
+## 2026-11-06 — Nâng Expo SDK 58 để chạy trên Expo Go iPhone
+
+- Kết quả: Nâng Expo và các thư viện tương thích lên SDK 58, React 19.3, React Native 0.88; cập nhật config plugin và lockfile. Chuyển kiểu ref/danh sách theo API mới, xử lý chế độ màu chưa xác định và chờ đọc/ghi xong từng phần video trước khi upload. Khởi động lại Expo; manifest iOS xác nhận exposdk:58.0.0. Chưa xác nhận kết quả trực tiếp trên iPhone.
+- Bước kiểm tra UI: (1) Trên iPhone, chọn Go home để thoát màn lỗi SDK cũ. (2) Kết nối cùng Wi-Fi với máy tính, quét QR mới bằng Camera/Expo Go. (3) Chờ mở màn chào hoặc bảng tin, xác nhận không còn báo lệch SDK. (4) Chuyển qua Công thức, Trợ lý, Thực đơn và Tôi; cuộn danh sách và thử giao diện sáng/tối. (5) Đăng nhập, chọn video lớn và thử đăng để kiểm tra tiến trình tải từng phần.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Sửa lỗi tài khoản Expo Go khi mở trên iPhone
+
+- Kết quả: Log iOS báo Expo Go đã đăng nhập nhưng CLI không gửi tài khoản khi chạy offline. Xác nhận CLI dùng cùng tài khoản với iPhone và khởi động lại Expo online qua mạng LAN. Giữ địa chỉ địa chỉ LAN do Expo hiển thị và QR SDK 58 hiện tại.
+- Bước kiểm tra UI: (1) Giữ đăng nhập tài khoản hiện tại trong Expo Go trên iPhone. (2) Bấm Try Again trên màn lỗi, hoặc Go home rồi quét QR SDK 58. (3) Chờ tải app và xác nhận màn lỗi tài khoản không còn xuất hiện. Chưa xác nhận trực tiếp trên điện thoại.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Chạy lại Expo login theo yêu cầu
+
+- Kết quả: Chạy Expo login; bước tự mở trình duyệt của CLI lỗi trên Windows nên chạy lại với trình duyệt mở thủ công và giữ phiên callback chờ xác thực. Chưa xác nhận hoàn tất đăng nhập.
+- Bước kiểm tra UI: (1) Mở link đăng nhập Expo được cung cấp trong chat trên trình duyệt của máy tính đang chạy dự án. (2) Đăng nhập tài khoản Expo của bạn và xác nhận kết nối CLI. (3) Khi trang báo thành công, quay lại Expo Go trên iPhone và bấm Try Again.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Khởi chạy Expo Vedora
+
+- Kết quả: Khởi chạy Expo Go qua LAN tại địa chỉ LAN do Expo hiển thị với CLI offline vì chế độ online trả UnexpectedServerError; Metro phản hồi packager-status:running, manifest iOS trả HTTP 200. Chưa kiểm tra trực tiếp trên điện thoại.
+- Bước kiểm tra UI: (1) Kết nối điện thoại cùng Wi-Fi với máy tính. (2) Mở Expo Go và mở địa chỉ địa chỉ LAN do Expo hiển thị. (3) Chờ ứng dụng tải và xác nhận màn hình chào hoặc bảng tin hiển thị.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Gửi QR Expo theo IP hiện tại
+
+- Kết quả: Xác nhận Metro đang chạy; tạo QR mới tại .expo/expo-qr-current.png trỏ đến địa chỉ LAN do Expo hiển thị theo IP Wi-Fi hiện tại.
+- Bước kiểm tra UI: (1) Giữ điện thoại và máy tính cùng mạng. (2) Quét QR mới bằng Camera/Expo Go. (3) Chờ ứng dụng mở màn hình đầu tiên; chưa xác nhận trên điện thoại.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Kiểm tra lỗi thiếu cấu hình Turnstile trên đăng nhập
+
+- Kết quả: Xác nhận .env.local chỉ có EXPO_PUBLIC_API_URL trỏ API remote, thiếu EXPO_PUBLIC_TURNSTILE_SITE_KEY. Component không tạo widget khi thiếu key nên nút đăng nhập bị khóa. Bản frontend local cũng chưa có site key thật. Chờ site key công khai và hostname được widget cho phép để cấu hình; chưa thay key thử nghiệm cho API remote.
+- Bước kiểm tra UI: (1) Sau khi bổ sung site key và origin rồi khởi động lại Expo, mở lại màn đăng nhập. (2) Xác nhận thông báo thiếu cấu hình biến mất và widget xác minh xuất hiện. (3) Hoàn tất xác minh, nhập thông tin tài khoản và bấm Đăng nhập. (4) Xác nhận vào bảng tin hoặc nhận thông báo lỗi tài khoản; chưa kiểm tra lại trên điện thoại vì thiếu cấu hình.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Bổ sung cấu hình Turnstile thật cho Expo
+
+- Kết quả: Cập nhật .env.local bằng site key công khai và origin https://vedora-opal.vercel.app do người dùng cung cấp, giữ API remote và web URL. Khởi động lại Expo, xóa cache Metro; chạy CLI offline vì online vẫn trả UnexpectedServerError. Manifest và bundle iOS trả HTTP 200; bundle chứa đúng site key và origin mới. Chưa xác nhận widget và đăng nhập trên iPhone.
+- Bước kiểm tra UI: (1) Thoát phiên ứng dụng cũ trong Expo Go rồi mở lại QR địa chỉ LAN do Expo hiển thị. (2) Vào Đăng nhập, xác nhận không còn thông báo thiếu cấu hình. (3) Chờ widget Turnstile tải và hoàn tất xác minh. (4) Nhập tài khoản, mật khẩu và bấm Đăng nhập; xác nhận vào bảng tin. (5) Nếu Expo Go báo lệch tài khoản CLI, đăng xuất Expo Go khi dùng phiên CLI offline rồi mở lại dự án.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Đối chiếu tính năng app với 8 ảnh web
+
+- Kết quả: Đọc routes, components và services hiện tại, đối chiếu ảnh người dùng gửi. App thiếu Google login; Blog của bạn và trình viết blog; trang gói dịch vụ/mua gói/thanh toán/lịch sử; luồng nộp xác minh chuyên gia; thao tác lưu ngay trên thẻ công thức; lối vào Điều khoản/Quyền riêng tư/Tiêu chuẩn cộng đồng/Trợ năng. Phần tóm tắt hồ sơ ăn uống chưa có mục Thích. App đã có đọc blog, feed, thông báo, lưu bài, theo dõi/gợi ý theo dõi, hồ sơ/video và lên thực đơn. Không coi khác bố cục desktop/mobile là thiếu tính năng; chưa xác nhận các hành vi web ngoài ảnh.
+- Bước kiểm tra UI: (1) Mở Đăng nhập, đối chiếu nút Google trên web. (2) Vào Khám phá > tạo nội dung, kiểm tra Blog còn Sắp có. (3) Vào Tôi, đối chiếu Blog của bạn, Gói của bạn, xác minh chuyên gia và mục Thích trên hồ sơ. (4) Vào Công thức, kiểm tra thiếu nút lưu trên thẻ. (5) Mở Đang theo dõi để xem gợi ý theo dõi; mở tab Trợ lý và Thực đơn để xác nhận các tính năng đã có. Đây là hướng dẫn kiểm tra trên thiết bị, chưa thực hiện trực tiếp trong task đối chiếu.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Thêm Blog của bạn và Viết blog
+
+- Kết quả: Thêm màn Blog của bạn lấy API thật /blogs/mine, phân trang, kéo để tải lại, trạng thái Nháp/Đã đăng và mở chỉnh sửa. Thêm trình viết blog với tiêu đề, nội dung Markdown, ảnh bìa/ảnh trong bài (tối đa 5 MB), xem trước, lưu nháp, đăng bài, sửa bài đã có và chuyển về nháp. Chặn tiêu đề/nội dung không hợp lệ, khóa thao tác khi đang lưu/tải ảnh, cảnh báo khi rời màn hình còn thay đổi chưa lưu. Mở từ Tôi > Blog của bạn, menu tài khoản Khám phá và Tạo nội dung > Blog; đăng nhập xong quay lại mục Blog. Đối chiếu DTO/controller backend và cách web gọi API trước khi triển khai.
+- Giới hạn: Chưa thử lưu/đăng/upload thật bằng tài khoản trên iPhone. Phiên bản này lưu bằng nút Lưu nháp/Lưu thay đổi; chưa có tự động lưu, upload video trong blog hoặc trợ lý viết bài.
+- Bước kiểm tra UI: (1) Mở Tôi > Blog của bạn (hoặc menu avatar ở Khám phá), xác nhận danh sách hoặc trạng thái chưa có bài. (2) Bấm Viết blog, thử lưu tiêu đề rỗng và đăng nội dung rỗng để xem lỗi. (3) Nhập tiêu đề, nội dung có đề mục/danh sách; chọn ảnh bìa và Thêm ảnh, mở Xem trước. (4) Bấm Lưu nháp, quay lại danh sách, mở bài để xác nhận dữ liệu được giữ; lưu tiếp và xác nhận không tạo bản sao. (5) Sửa nội dung rồi quay lại, chọn Tiếp tục viết trong cảnh báo; thử lại với Bỏ thay đổi. (6) Bấm Đăng blog, mở Xem bài đã đăng, kiểm tra bài trong feed Blog và hồ sơ. (7) Mở chỉnh sửa từ Blog của bạn, lưu thay đổi, chuyển về nháp và kiểm tra bài không còn công khai. (8) Quay lại Khám phá > Tạo nội dung > Blog để tạo bài mới; kéo tải lại danh sách, thử mất mạng và tải lại khi có mạng. Đây là các bước kiểm tra đề xuất trên thiết bị, chưa thực hiện trực tiếp trong task.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Đặt Blog của tôi thay tab Video trong hồ sơ
+
+- Kết quả: Hồ sơ cá nhân có hai tab Bài viết và Blog của tôi. Tab Bài viết chỉ hiển thị post có video, gọi API lọc type=POST để blog không chiếm danh sách video. Tab Blog của tôi hiển thị trực tiếp blog nháp/đã đăng, nút Viết blog, chỉnh sửa, tải lại và xem thêm; dùng lại danh sách Blog hiện có và không lồng FlatList trong ScrollView. Bỏ thẻ Blog riêng phía trên hồ sơ. Số tổng được ghi Đã đăng vì API cộng cả blog và post, bỏ số tổng này khỏi nhãn tab Bài viết để tránh hiểu nhầm là số video.
+- Giới hạn: Chưa kiểm tra trực tiếp trên điện thoại; danh sách video vẫn là 20 post gần nhất theo luồng hồ sơ hiện có, chưa thêm phân trang video trong task đổi tab này.
+- Bước kiểm tra UI: (1) Tải lại Expo và mở tab Tôi. (2) Xác nhận hàng tab là Bài viết / Blog của tôi, không còn tab Video hay thẻ Blog phía trên. (3) Mở Bài viết, xác nhận chỉ hiện bài video ăn uống; tài khoản chỉ có blog phải hiện trạng thái chưa có video. (4) Mở Blog của tôi, xác nhận thấy cả Nháp và Đã đăng; thử Tải lại và Xem thêm nếu có. (5) Bấm Viết blog, lưu nháp rồi quay lại, xác nhận bài hiện trong tab Blog của tôi. (6) Mở một blog để sửa/đăng, quay về kiểm tra hai tab không trộn nội dung.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Chuẩn bị commit theo tính năng và bảo vệ cấu hình local
+
+- Kết quả: Phân nhóm thay đổi nâng Expo SDK 58, tạo/quản lý blog và tab blog trong hồ sơ để commit riêng; rà soát thông tin nhạy cảm, ẩn tên tài khoản Expo và IP LAN cá nhân trong nhật ký mới. Giữ cấu hình môi trường local ngoài Git.
+- Bước kiểm tra UI: (1) Mở ứng dụng bằng Expo Go tương thích và kiểm tra bảng tin, Công thức, Trợ lý, Thực đơn. (2) Đăng nhập, mở Khám phá > Tạo nội dung > Blog, nhập tiêu đề/nội dung và xem trước. (3) Lưu nháp, mở lại rồi đăng blog và kiểm tra bài đã đăng. (4) Mở Tôi > Blog của tôi, chỉnh sửa blog và xác nhận tab Bài viết chỉ hiển thị video. Các bước này là hướng dẫn kiểm tra trên thiết bị, chưa thực hiện trực tiếp trong task commit.
+- Người thực hiện: Codex.

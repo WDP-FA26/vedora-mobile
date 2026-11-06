@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   ScrollView,
+  type ScrollViewInstance,
   StyleSheet,
   Text,
   TextInput,
@@ -32,7 +33,7 @@ export function NutritionChatScreen({
   const theme = useTheme();
   const chat = useNutritionChat(getTurnstileToken);
   const [draft, setDraft] = useState("");
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   const submit = async (question: string, fromSuggestion = false) => {
     const sent = await chat.send(question);

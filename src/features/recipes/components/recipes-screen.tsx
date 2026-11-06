@@ -99,7 +99,7 @@ export function RecipesScreen() {
             <Text style={[styles.sub, { color: theme.mutedForeground }]}>{q || suitableForMe ? 'Thử từ khóa khác hoặc bỏ bộ lọc.' : 'Kho công thức hiện chưa có món nào.'}</Text>
           </View>
         )}
-        ListFooterComponent={recipes.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : null}
+        ListFooterComponent={recipes.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : undefined}
         renderItem={({ item }) => <RecipeCard recipe={item} />}
       />
     </SafeAreaView>

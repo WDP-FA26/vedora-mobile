@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useRef } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -17,7 +17,7 @@ export function PlannerChatScreen() {
   const theme = useTheme();
   const planner = useMealPlanner();
   const { turns, composer, busy, chatError, statuses, latestProposalId, formOpen } = planner;
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
 
   return <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
     <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>

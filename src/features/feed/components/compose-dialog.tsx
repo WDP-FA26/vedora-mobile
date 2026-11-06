@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { router } from "expo-router";
 import { Modal, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image, useWindowDimensions, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
@@ -257,11 +258,10 @@ export function ComposeDialog({
                 <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Công thức</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Biên tập công thức đầy đủ.</Text></View>
                 <Text style={[styles.comingSoon, { color: theme.mutedForeground, backgroundColor: theme.muted }]}>Sắp có</Text>
               </View>
-              <View accessibilityState={{ disabled: true }} style={[styles.choice, { borderColor: theme.border, backgroundColor: theme.card }]}>
+              <Pressable accessibilityRole="button" onPress={() => { onClose(); router.push('/blogs/new'); }} style={[styles.choice, { borderColor: theme.border, backgroundColor: theme.card }]}>
                 <View style={[styles.choiceIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: "doc.text", android: "article", web: "article" }} size={25} tintColor={theme.primary} /></View>
-                <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Blog</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Viết bài dài về bếp chay.</Text></View>
-                <Text style={[styles.comingSoon, { color: theme.mutedForeground, backgroundColor: theme.muted }]}>Sắp có</Text>
-              </View>
+                <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Blog</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Viết bài dài, thêm ảnh và lưu nháp.</Text></View>
+              </Pressable>
             </ScrollView>
           ) : mode === "video" ? (
             <ScrollView style={[styles.body, compact && styles.bodyCompact]} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
