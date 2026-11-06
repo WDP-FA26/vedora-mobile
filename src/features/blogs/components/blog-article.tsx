@@ -110,7 +110,6 @@ function BlockView({ block, theme }: { block: Block; theme: Theme }) {
 export function BlogArticle({ blogId, title }: { blogId: string; title: string }) {
   const theme = useTheme();
   const blog = useBlog(blogId);
-  const blocks = useMemo(() => (blog.data ? parseMarkdown(blog.data.content) : []), [blog.data]);
 
   return (
     <View style={styles.article}>
@@ -124,11 +123,15 @@ export function BlogArticle({ blogId, title }: { blogId: string; title: string }
           </Pressable>
         </View>
       ) : null}
-      {blocks.map((block, index) => (
-        <BlockView key={index} block={block} theme={theme} />
-      ))}
+      {blog.data ? <BlogMarkdown content={blog.data.content} /> : null}
     </View>
   );
+}
+
+export function BlogMarkdown({ content }: { content: string }) {
+  const theme = useTheme();
+  const blocks = useMemo(() => parseMarkdown(content), [content]);
+  return <View style={{ gap: Spacing.three }}>{blocks.map((block, index) => <BlockView key={index} block={block} theme={theme} />)}</View>;
 }
 
 const styles = StyleSheet.create({
