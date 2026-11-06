@@ -216,3 +216,24 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn: chưa thử trên thiết bị thật (Android edge-to-edge, iOS có tai thỏ, chế độ tối); các thẻ bên trong màn vẫn dùng màu `card` như cũ.
 - Bước kiểm tra UI: (1) Khám phá, Hồ sơ, Thông báo, Chi tiết bài, Tìm kiếm, Bài đã lưu: dải trên cùng và thanh tiêu đề cùng một màu liền mạch, không có đường lệch màu. (2) Đồng hồ, pin, sóng hiển thị rõ ở chế độ sáng và tối. (3) Mở màn Tạo nội dung: thanh tiêu đề phủ tới mép trên, nút X chạm được. (4) Màn Chào mừng: biểu tượng trạng thái màu sáng trên ảnh banner; vào màn khác thì đổi lại cho đúng.
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-27 — Bấm vào bài viết để mở chi tiết
+
+- Kết quả: Trước đây chỉ nút bình luận mới mở chi tiết bài; bấm vào nội dung bài ngắn hay thẻ Blog thì không có phản hồi. Nay bấm vào nội dung bài hoặc thẻ Blog (ảnh bìa, tiêu đề, tóm tắt) sẽ mở màn Chi tiết bài; "Xem thêm/Thu gọn" vẫn chỉ mở rộng tại chỗ. Ở màn Chi tiết, tóm tắt Blog hiển thị đầy đủ thay vì cắt 2 dòng.
+- Giới hạn: API `GET /posts/:id` chỉ trả tiêu đề và đoạn tóm tắt (đã cắt) cho Blog nên chưa đọc trọn bài Blog; chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời.
+- Bước kiểm tra UI: (1) Vào Khám phá, bấm vào đoạn chữ của một bài ngắn: mở màn "Bài viết" kèm bình luận. (2) Bấm vào thẻ Blog: mở màn chi tiết, tóm tắt hiện đầy đủ. (3) Với bài dài, bấm "Xem thêm": nội dung mở rộng tại chỗ, không chuyển màn. (4) Trong màn chi tiết, bấm vào nội dung không điều hướng lại chính nó; nút quay lại về Khám phá.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-27 — Chi tiết Blog hiển thị toàn bộ bài (theo vedora-frontend)
+
+- Kết quả: Theo `post-detail.tsx` và `blog-markdown.tsx` của vedora-frontend, bài Blog ở màn Chi tiết nay tải nội dung đầy đủ từ `GET /blogs/:id` (feed chỉ có tóm tắt). Thêm module `features/blogs` (schema Zod, service, hook TanStack Query, bộ đọc Markdown và `BlogArticle`) hiển thị tiêu đề, đề mục, đoạn văn, đậm/nghiêng, mã, danh sách, trích dẫn, đường kẻ, liên kết (chỉ http/https/mailto), ảnh và video (video mở bằng liên kết). HTML thô trong bài không được hiển thị. Thẻ tóm tắt Blog được thay bằng bài đầy đủ ở màn Chi tiết.
+- Giới hạn: chưa gộp nhiều ảnh liền nhau thành thư viện ảnh như web; video trong bài mở ngoài ứng dụng; chưa gửi lượt xem; chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời.
+- Bước kiểm tra UI: (1) Vào Khám phá, chọn tab Blog, bấm vào một bài Blog. (2) Màn "Bài viết" hiện vòng tải rồi tiêu đề và toàn bộ nội dung (đề mục, danh sách, ảnh) thay vì chỉ đoạn tóm tắt. (3) Bấm một liên kết trong bài: mở trình duyệt. (4) Tắt mạng rồi mở lại bài: hiện "Chưa tải được nội dung blog" và nút "Thử lại" hoạt động. (5) Kéo xuống: phần thả mầm/lưu và bình luận vẫn dùng được.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-27 — Tab Trợ lý Vedora tạo thực đơn, tab Thực đơn chỉ hiển thị
+
+- Kết quả: Giữ tab Trợ lý Vedora với biểu tượng hạt đậu mầm cũ ở giữa thanh tab. Đã tách màn "Lên thực đơn" cũ làm hai: tab Trợ lý Vedora (đã đăng nhập) chứa khung trò chuyện và biểu mẫu yêu cầu thực đơn; tab Thực đơn chỉ hiển thị thực đơn tuần đã lưu và bản đề xuất của trợ lý (Lưu thực đơn, Bỏ đề xuất, Đổi món). Hai tab dùng chung một phiên (`MealPlannerProvider`) nên đề xuất, bản nháp và nội dung chat được giữ khi đổi tab. Khách chưa đăng nhập vẫn dùng khung hỏi nhanh dinh dưỡng ở tab Trợ lý; tab Thực đơn mời đăng nhập. Đã gỡ nút hạt đậu nổi và nút đóng thêm ở lần sửa trước.
+- Giới hạn: chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời; hai file không còn dùng (`meal-planner-screen.tsx`, `assistant-button.tsx`) chưa xoá được và cần xoá thủ công.
+- Bước kiểm tra UI: (1) Đăng nhập, thanh tab có Trang chủ, Công thức, Trợ lý (hạt đậu mầm), Thực đơn, Tôi. (2) Tab Trợ lý: bấm "Lên thực đơn 7 ngày", điền biểu mẫu rồi tiếp tục, tin nhắn được điền sẵn, bấm gửi. (3) Khi trợ lý đề xuất, bấm "Xem trong Thực đơn": app chuyển sang tab Thực đơn, hiện "Đề xuất chưa được lưu" và các ngày. (4) Bấm "Lưu thực đơn": thực đơn tuần cập nhật; hoặc "Bỏ đề xuất". (5) Ở tab Thực đơn bấm "Đổi món": chuyển về tab Trợ lý với câu yêu cầu điền sẵn. (6) Tab Thực đơn không có khung chat. (7) Đăng xuất: tab Trợ lý là khung hỏi nhanh, tab Thực đơn hiện nút Đăng nhập.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
