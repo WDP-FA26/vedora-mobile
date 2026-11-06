@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
@@ -34,11 +34,14 @@ export function PostCard({
   post,
   visible,
   detail = false,
+  blogContent,
 }: {
   post: FeedPost;
   visible: boolean;
   /** Rendered inside the post detail screen: no navigation to itself. */
   detail?: boolean;
+  /** Detail screen only: the full article shown in place of the blog summary card. */
+  blogContent?: ReactNode;
 }) {
   const theme = useTheme();
   const dark = useColorScheme() === "dark";
@@ -114,36 +117,45 @@ export function PostCard({
       </View>
 
       <View style={styles.postContent}>
-      {body && canExpand ? (
-        <Pressable
-          onPress={() => setExpanded((value) => !value)}
-          accessibilityRole="button"
-          accessibilityLabel={
-            expanded ? "Thu gọn bài viết" : "Xem thêm bài viết"
-          }
-        >
-          <Text
-            numberOfLines={expanded ? undefined : 4}
-            style={[styles.body, { color: theme.foreground }]}
+      {body && canExpand && !detail ? (
+        <View>
+          <Pressable onPress={openDetail} accessibilityRole="link" accessibilityLabel="Xem chi tiết bài viết">
+            <Text
+              numberOfLines={expanded ? undefined : 4}
+              style={[styles.body, { color: theme.foreground }]}
+            >
+              {bodyParts.map((part, index) => (
+                <Text key={index} style={part.startsWith("#") ? { color: theme.primary } : undefined}>{part}</Text>
+              ))}
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setExpanded((value) => !value)}
+            accessibilityRole="button"
+            accessibilityLabel={expanded ? "Thu gọn bài viết" : "Xem thêm bài viết"}
+            hitSlop={8}
           >
+            <Text style={[styles.expand, { color: theme.primary }]}>
+              {expanded ? "Thu gọn" : "Xem thêm"}
+            </Text>
+          </Pressable>
+        </View>
+      ) : body ? (
+        <Pressable onPress={openDetail} disabled={detail} accessibilityRole={detail ? undefined : "link"} accessibilityLabel={detail ? undefined : "Xem chi tiết bài viết"}>
+          <Text style={[styles.body, { color: theme.foreground }]}>
             {bodyParts.map((part, index) => (
               <Text key={index} style={part.startsWith("#") ? { color: theme.primary } : undefined}>{part}</Text>
             ))}
           </Text>
-          <Text style={[styles.expand, { color: theme.primary }]}>
-            {expanded ? "Thu gọn" : "Xem thêm"}
-          </Text>
         </Pressable>
-      ) : body ? (
-        <Text style={[styles.body, { color: theme.foreground }]}>
-          {bodyParts.map((part, index) => (
-            <Text key={index} style={part.startsWith("#") ? { color: theme.primary } : undefined}>{part}</Text>
-          ))}
-        </Text>
       ) : null}
 
-      {post.blog ? (
-        <View
+      {post.blog && detail && blogContent ? blogContent : post.blog ? (
+        <Pressable
+          onPress={openDetail}
+          disabled={detail}
+          accessibilityRole={detail ? undefined : "link"}
+          accessibilityLabel={detail ? undefined : `Xem chi tiết blog ${post.blog.title}`}
           style={[
             styles.blogCard,
             { borderColor: theme.border, backgroundColor: theme.background },
@@ -166,7 +178,7 @@ export function PostCard({
             </Text>
             {post.blog.excerpt ? (
               <Text
-                numberOfLines={2}
+                numberOfLines={detail ? undefined : 2}
                 style={[styles.excerpt, { color: theme.mutedForeground }]}
               >
                 {post.blog.excerpt}
@@ -178,7 +190,7 @@ export function PostCard({
               </Text>
             ) : null}
           </View>
-        </View>
+        </Pressable>
       ) : null}
 
       {videos.length > 0 || imageCount > 0 ? (
