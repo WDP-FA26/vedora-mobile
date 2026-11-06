@@ -5,7 +5,7 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 ## YYYY-MM-DD — Tên task/tính năng
 
 - Kết quả: Nêu những gì đã hoàn thành.
-- Kiểm tra: Liệt kê các bước đơn giản và kết quả từng bước.
+- Kiểm tra: Hướng dẫn kiểm tra UI từng bước (step by step) trên màn hình (thao tác, điều hướng, quan sát kết quả; không ghi lệnh kiểm tra code như lint/tsc).
 - Người thực hiện: Tên người hoặc agent thực hiện.
 
 ## 2026-10-14 — Quy tắc cập nhật kế hoạch
@@ -126,3 +126,114 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn tích hợp: màn hồ sơ người khác viết riêng, chưa tách chung với `profile-screen.tsx` của tôi (chỉ trùng phần header). Tab Công thức bỏ dữ liệu tĩnh cũ (`showcase-posts` vẫn dùng cho feed trống). Ảnh trong bài (IMAGE) vẫn chưa hiển thị như trước. Web hiện không có tab thông báo riêng nên badge ở header Khám phá.
 - Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web đạt. Bước UI: mở bài từ feed → bình luận, sửa, xóa; repost, chia sẻ, báo cáo bài người khác (không thấy với bài của mình); chạm tác giả → theo dõi/bỏ theo dõi, xem followers/following, kiểm tra feed Đang theo dõi; tab Công thức tìm “đậu”, bật lọc hợp với tôi, mở chi tiết; đăng nhập hai tài khoản, tài khoản A like/bình luận/theo dõi tài khoản B và xem badge/toast cập nhật realtime ở B. Chưa chạy trên thiết bị/API thật.
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Đồng bộ tính năng Đợt 3: bài đã lưu, tìm kiếm, ảnh hồ sơ/username, gợi ý theo dõi
+
+- Kết quả: (T6) Màn `/bookmarks` (`GET /posts/bookmarks`), vào từ tab Tôi; bỏ lưu ở thẻ bài cập nhật cả feed lẫn danh sách. (T7) Màn `/search` (`GET /posts/search?q=&cursor=`, debounce 350ms, tối đa 200 ký tự, phân trang), vào từ biểu tượng kính lúp ở header Khám phá. (T9) Trong form Chỉnh sửa hồ sơ: chọn/cắt ảnh bằng `expo-image-picker` (avatar 1:1, bìa 3:1), luồng `POST /profiles/me/images/uploads` → PUT lên storage → `activate` (thử lại khi 409), xóa ảnh `DELETE /profiles/me/images/:kind`, kiểm tra loại/dung lượng (5 MB avatar, 10 MB bìa); đổi tên đăng nhập `PATCH /users/:id`, báo trùng khi 409. (T10) Hàng “Gợi ý theo dõi” cuộn ngang ở đầu tab Đang theo dõi (`GET /profiles/suggestions`), theo dõi hoặc ẩn gợi ý (`DELETE /profiles/suggestions/:id`), cập nhật ngay trên giao diện và hoàn tác khi lỗi.
+- Giới hạn tích hợp: ảnh đã chọn đi qua bộ cắt gốc của hệ điều hành nên có thể được nén lại; dung lượng kiểm tra theo `fileSize` của picker. `userId` cho đổi username lấy từ `profile.id` (cùng id người dùng ở web). Header Khám phá dời chuông sang phải để chứa kính lúp.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web đạt. Bước UI: lưu/bỏ lưu bài ở feed rồi mở Tôi → Bài viết đã lưu; tìm “đậu” và cuộn tải thêm; Tôi → Chỉnh sửa hồ sơ → đổi/xóa avatar và ảnh bìa, đổi username (thử tên đã tồn tại); đăng nhập tài khoản chưa theo dõi ai, mở Đang theo dõi → theo dõi và ẩn một gợi ý. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Chặn người đã đăng nhập vào các trang xác thực
+
+- Kết quả: Thêm `GuestOnly` bọc các route đăng nhập, đăng ký, xác minh email, quên và đặt lại mật khẩu; người đã có phiên được chuyển thẳng về `returnTo` hợp lệ (mặc định Khám phá) thay vì thấy form. Trước đó chỉ trang chào `/` có kiểm tra phiên.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle web đạt. Bước UI: đăng nhập rồi vuốt/nhấn quay lại hoặc mở thẳng `/login`, `/register`, `/forgot-password` → vào Khám phá, không thấy form; đăng xuất → các trang này mở lại bình thường; đăng nhập từ tab Tôi → quay lại đúng tab Tôi. Chưa chạy trên thiết bị.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Thiết kế lại màn Chào mừng
+
+- Kết quả: Thay thẻ xanh phía trên bằng banner ảnh tràn từ mép trên (cả vùng status bar), cao khoảng nửa màn hình, chỉ bo hai góc dưới (36), phủ lớp tối nhẹ để chữ “Ăn sạch, Sống xanh.” dễ đọc. Bỏ hàng sticker và thẻ viền; phần dưới là tiêu đề chào mừng, nút chính “Khám phá bài viết” (kèm mũi tên), dải “hoặc”, rồi hai nút ngang hàng “Đăng nhập” (viền) và “Tạo tài khoản” (nền nhạt).
+- Giới hạn: ảnh banner lấy trực tiếp từ link Pinterest (`i.pinimg.com`), có thể bị chặn hoặc đổi link; nên tải về `assets/branding/` khi chốt ảnh. Khi ảnh chưa tải, nền xanh rừng hiện thay thế.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint` đạt. Bước UI: mở app khi chưa đăng nhập, kiểm tra banner tràn dưới status bar, hai góc dưới bo, chữ đọc rõ trên ảnh; bấm từng nút; thử màn nhỏ/lớn và chế độ tối. Chưa chạy trên thiết bị.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Trợ lý Vedora trả lời dạng stream (gõ dần)
+
+- Kết quả: Viết lại `requestAiStream` dùng `fetch` của `expo/fetch` và đọc `response.body` từng đoạn thay vì chờ Axios trả đủ. Parser SSE chạy tăng dần (`AiStreamParser`), gọi `onText` sau mỗi `text-delta`; vẫn giữ Bearer của khách, refresh một lần khi 401 với phiên tài khoản, mã lỗi quota/`ApiError`, timeout 120s và huỷ bằng `AbortSignal`. Chat khách (tab Vedora AI) và chat Lên thực đơn hiển thị chữ hiện dần kèm con trỏ ▍; chỉ hiện “đang suy nghĩ” cho tới khi có chữ đầu tiên. Lỗi giữa chừng gỡ câu hỏi và phần trả lời dở, trả lại nội dung để gửi lại. Đề xuất thực đơn và cờ `refused` vẫn lấy ở cuối stream.
+- Giới hạn: nếu server hoặc proxy (Cloudflare/Nginx) gom đệm phản hồi thì chữ vẫn có thể ra thành cục lớn, chỉ kiểm chứng được với server thật.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web đạt. Bước UI: tab Vedora AI → xác minh → hỏi một câu, xem chữ hiện dần; bấm làm mới giữa chừng; tab Lên thực đơn → Trò chuyện → yêu cầu đổi món, xem chữ dần rồi nút “Xem đề xuất”; tắt mạng giữa chừng để kiểm tra khôi phục nội dung. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Trợ lý Vedora không đòi xác minh với người đã đăng nhập
+
+- Kết quả: Chat ở tab Vedora AI nhận biết phiên tài khoản. Khi đã đăng nhập, bỏ thẻ “Xác minh để hỏi thử” và thẻ hết lượt khách, mở ô nhập ngay, và gửi câu hỏi qua trợ lý tài khoản `POST /meal-plan/chat` (dùng phiên đăng nhập, tự refresh khi 401) thay vì phiên khách Turnstile. Khách chưa đăng nhập giữ nguyên luồng xác minh và giới hạn lượt. Đăng nhập xong thì trạng thái hết lượt khách cũ không còn hiển thị; phiên hết hạn báo “Vui lòng đăng nhập lại”.
+- Giới hạn: giới hạn lượt của tài khoản do server quyết định (429 báo “gửi hơi nhanh”); app không tự đặt hạn mức.
+- Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle web đạt. Bước UI: khách hỏi 3 lần đến khi hết lượt → Đăng nhập → quay lại tab Vedora AI: không còn form xác minh, hỏi được ngay; đăng xuất → form xác minh quay lại; hết hạn phiên giữa chừng. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của nhóm frontend.
+
+## 2026-10-23 — Thiết kế lại màn Hồ sơ (tab Tôi) và tách màn Chỉnh sửa hồ sơ
+
+- Kết quả: Tab Tôi chuyển sang bố cục thẻ bo góc: header “Hồ sơ” + @username với hai nút tròn bên phải là **Bài viết đã lưu** (biểu tượng bookmark) và **Đăng xuất** (màu đỏ, hỏi xác nhận trước khi thoát; web dùng `window.confirm`). Thẻ chính gồm ảnh bìa, avatar căn giữa, tên + huy hiệu chuyên gia, bio, ngày tham gia, hàng thống kê 3 cột (Bài viết / Người theo dõi / Đang theo dõi — chạm được) và nút “Chỉnh sửa hồ sơ”. Thẻ Hồ sơ ăn uống hiển thị dạng chip (tối đa 6, kèm “+N”), chạm cả thẻ để mở chi tiết. Bài viết/Video đổi thành segmented control. Chỉnh sửa hồ sơ chuyển sang màn con `/edit-profile` với ba nhóm lưu độc lập: Ảnh hồ sơ (xem trước bìa + avatar, đổi/xóa), Thông tin công khai (tên, giới thiệu, nút Lưu chỉ bật khi có thay đổi), Tài khoản (tên đăng nhập có tiền tố @). Tách `ProfileAvatar` dùng chung.
+- Giới hạn: bỏ dòng “Thích: Chưa chọn” (dữ liệu tĩnh) ở thẻ ăn uống. Màn hồ sơ người khác chưa áp dụng giao diện mới.
+- Bước kiểm tra UI: (1) Đăng nhập → tab Tôi: thấy header có nút bookmark và nút đăng xuất, thẻ hồ sơ với avatar giữa và hàng 3 số liệu. (2) Chạm “Người theo dõi”/“Đang theo dõi” → mở đúng danh sách; chạm “Bài viết” → về tab Bài viết. (3) Chạm thẻ Hồ sơ ăn uống → mở `/dietary-profile`; khai báo >6 mục rồi quay lại thấy chip “+N”. (4) Chuyển Bài viết ↔ Video ở segmented control. (5) Chạm bookmark → mở Bài viết đã lưu. (6) Chạm “Chỉnh sửa hồ sơ” → màn con: đổi/xóa avatar, ảnh bìa (thấy xem trước cập nhật); sửa tên/giới thiệu → nút Lưu sáng lên → Lưu → thấy “Đã lưu thông tin hồ sơ.”; đổi username (thử tên trùng). Quay lại → tab Tôi hiển thị dữ liệu mới. (7) Chạm đăng xuất → Hủy thì ở lại; Đăng xuất thì về màn Chào mừng. (8) Kiểm tra chế độ tối. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Opus 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Đối chiếu nhóm API post-interactions
+
+- Kết quả: So 11 endpoint `post-interactions` trên Swagger (`/docs`) với mobile. Like, lưu, repost (PUT/DELETE, response `isLiked/likeCount`, `isBookmarked`, `isReposted/repostCount`), bình luận (GET phân trang cursor, POST, PATCH, DELETE) và báo cáo (6 lý do, `details` ≤ 500, 409 `ALREADY_REPORTED`) đã được tích hợp từ Đợt 2–3 và khớp hợp đồng. Bổ sung phần còn thiếu: API cho **tác giả bài viết** xóa bình luận của người khác, nên màn chi tiết bài giờ hiện nút “Xóa” trên mọi bình luận khi bạn là chủ bài; “Sửa” vẫn chỉ hiện với bình luận của chính mình.
+- Giới hạn: quyền xóa của admin chưa hiển thị vì mobile chưa lưu `role` của người dùng (admin thao tác trên web).
+- Bước kiểm tra UI: (1) Tài khoản A đăng bài, tài khoản B bình luận vào bài đó. (2) Đăng nhập A → mở bài → bình luận của B có nút “Xóa”, không có “Sửa”. (3) Chạm Xóa → xác nhận → bình luận biến mất, số bình luận giảm 1. (4) Đăng nhập B → mở bài của người khác → chỉ thấy Sửa/Xóa trên bình luận của mình. (5) Like, lưu, repost, báo cáo trên thẻ bài vẫn hoạt động như trước. Chưa chạy trên thiết bị/API thật.
+- Người thực hiện: Claude (Opus 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Sửa lỗi đăng video hướng dẫn trên Android/iOS (lỗi Blob, treo 0%)
+
+- Kết quả: (1) Lỗi “Creating blobs from ArrayBuffer and ArrayBufferView are not supported” do `File.slice()` của `expo-file-system` tạo `Blob` từ byte, mà React Native không hỗ trợ. (2) Bản vá đầu tự dựng multipart rồi gửi `Uint8Array` qua XHR thì treo ở 0%, vì RN mã hóa base64 bằng vòng lặp JS và API trả `chunkSize` = 20 MB. Giờ trên native video đi bằng upload task multipart gốc của `expo-file-system` (`createUploadTask`, `UploadType.MULTIPART`, `sessionType: foreground`), không còn byte nào đi qua JS: video ≤ `chunkSize` gửi thẳng file gốc; video lớn hơn được chép từng đoạn ra file tạm trong cache rồi gửi kèm `X-Unique-Upload-Id`/`Content-Range`, xóa file tạm khi xong hoặc lỗi. Tiến độ lấy từ `onProgress` của task, hủy bằng `AbortSignal`. Web giữ nguyên `File.slice` + `FormData` qua XHR.
+- Giới hạn: chưa chạy trên thiết bị thật nên chưa xác nhận Cloudinary nhận multipart native (các trường đã ký được gửi dạng tham số form) và chưa đo tốc độ; tiến độ native có thể gồm cả phần khung multipart nên chỉ xấp xỉ.
+- Bước kiểm tra UI: (1) Đăng nhập trên Android hoặc iOS (Expo Go hoặc development build) → Khám phá → soạn bài → chọn video ≤ 3 phút. (2) Nhập tiêu đề, mô tả → đăng → phần trăm phải nhích lên và đạt 100%, không treo ở 0%, không báo lỗi Blob. (3) Thử video nhỏ hơn 20 MB (một lần gửi) và lớn hơn 20 MB (nhiều đoạn). (4) Bài chuyển sang trạng thái đang xử lý rồi phát được video. (5) Tắt mạng giữa chừng → báo lỗi, đăng lại được. (6) Trên web đăng video vẫn bình thường.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Đăng video chạy nền, thoát form vẫn xem được tiến độ
+
+- Kết quả: Bấm “Đăng video” giờ kiểm tra nội dung rồi đóng form ngay, việc tải video và tạo bài chạy nền trong store \`video-publish-store\` (không phụ thuộc form). Trang chính hiện thẻ trạng thái dưới thanh lọc: đang tải (thanh tiến độ + %), đang đăng bài, thành công (tự ẩn sau 8 giây), đang xử lý, hoặc lỗi kèm nút “Thử lại” và dấu ✕ để bỏ. Thử lại sau lỗi bỏ qua bước tải nếu video đã lên Cloudinary; bỏ một job lỗi thì xóa media đã tải. Chỉ cho một video đăng cùng lúc (đăng tiếp sẽ báo “đang được đăng”). Form không còn màn “Đã gửi nội dung” và trạng thái đang gửi.
+- Giới hạn: thẻ trạng thái chỉ hiện ở tab Khám phá (kể cả khi đang ở “Đang theo dõi”); job mất nếu thoát hẳn app, và việc tải có thể dừng khi app xuống nền. Bài ở trạng thái “đang xử lý” không tự làm mới feed.
+- Bước kiểm tra UI: (1) Đăng nhập → Khám phá → soạn → Video hướng dẫn → chọn video, nhập tiêu đề, mô tả → “Đăng video”. (2) Form đóng ngay, thẻ trạng thái hiện ở trang chính với % tăng dần. (3) Trong lúc tải, chuyển tab khác rồi quay lại Khám phá → thẻ vẫn còn và tiếp tục tăng. (4) Mở form soạn khi video đang tải, đăng tiếp → báo đang có video khác. (5) Xong → “Đã đăng video thành công”, tự ẩn; kéo làm mới thấy bài. (6) Tắt mạng giữa chừng → thẻ đỏ, bấm Thử lại → tiếp tục; bấm ✕ → thẻ biến mất. (7) Chọn video quá 3 phút vẫn báo lỗi ngay trong form.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Sửa schema bản tin sau khi API chuyển video sang Cloudinary
+
+- Kết quả: API đã bỏ `playbackId` (Mux) ở `media`, thay bằng `publicId`, `playbackUrl` (HLS), `posterUrl` và `captions`. Schema cũ đòi `playbackId` nên cả trang bản tin bị Zod từ chối, không tải được. Cập nhật `feed.schema.ts` theo `MediaResponseDto` (thêm `playbackUrl`, `posterUrl`, `publicId`, `captions` mặc định rỗng). `feed-video.tsx` phát thẳng `playbackUrl`, dùng `posterUrl` làm ảnh bìa (bỏ link Mux) và lấy khung hình theo `aspectRatio` (giới hạn 9:16 – 16:9), nên video dọc không còn bị thu nhỏ trong khung 16:9. Đã kiểm tra bằng đúng JSON mẫu: schema cũ lỗi ở `media.0.playbackId`, schema mới hợp lệ.
+- Giới hạn: phụ đề (`captions`) mới được nhận vào dữ liệu, chưa hiển thị trong trình phát; chưa phát thử HLS Cloudinary trên thiết bị.
+- Bước kiểm tra UI: (1) Mở tab Khám phá → bản tin tải được, bài có video hiện ảnh bìa và nút phát. (2) Chạm phát → video chạy; video dọc có khung cao hơn video ngang. (3) Bài có video đang xử lý hiện “Video đang được xử lý”. (4) Mở chi tiết bài, hồ sơ, bài đã lưu, tìm kiếm → vẫn hiển thị bài có video.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Thu nhỏ video trong bài và sửa ô bình luận bị bàn phím che
+
+- Kết quả: (1) Video trong bài không còn chiếm hết chiều ngang: khung vừa với tỉ lệ thật (`aspectRatio`), cao tối đa 240 và rộng tối đa 85% bề ngang bài, canh trái; nút phát, huy hiệu và thời lượng thu nhỏ theo, ô “đang xử lý” cũng gọn hơn. (2) Màn chi tiết bài: tách bình luận thành danh sách cuộn được (`CommentList`) và ô nhập ghim cố định ở đáy (`CommentComposer`), đặt trong `KeyboardAvoidingView` nên bàn phím đẩy ô nhập lên, không che; ô nhập tự giãn tới 120 chữ cao, nút Gửi bên cạnh, bỏ khoảng đệm an toàn đáy khi bàn phím mở. Trạng thái nháp dùng chung qua hook `useCommentDraft` (sửa bình luận từ danh sách vẫn nạp vào ô nhập).
+- Giới hạn: không đặt keyboardVerticalOffset vì view cha nằm ở đỉnh màn hình (đặt offset sẽ làm ô nhập cách bàn phím một khoảng); chưa thử trên thiết bị thật (đặc biệt Android edge-to-edge).
+- Bước kiểm tra UI: (1) Khám phá → bài có video: video nhỏ hơn, video dọc cao tối đa 240; chạm phát vẫn chạy trong cùng khung. (2) Chạm biểu tượng bình luận để mở chi tiết bài → ô “Viết bình luận…” nằm cố định ở đáy. (3) Chạm vào ô nhập → bàn phím mở, ô nhập nằm ngay trên bàn phím, không bị che; gõ nhiều dòng thấy ô giãn. (4) Gửi bình luận → xuất hiện trong danh sách. (5) Chạm “Sửa” ở bình luận của mình → nội dung nạp vào ô nhập, hiện “Đang sửa bình luận / Hủy sửa”. (6) Khách chưa đăng nhập: đáy hiện “Đăng nhập để bình luận”.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Gọn thẻ tạo nội dung và sửa nút đóng bị đẩy ra ngoài vùng an toàn
+
+- Kết quả: Thẻ tạo nội dung ở trang Khám phá chỉ còn avatar và thanh “Chia sẻ cách nấu món chay của bạn” (chạm để mở màn chọn loại bài); bỏ hàng hai nút “Thêm video” và “Tạo nội dung” cùng mã/kiểu liên quan. Màn chọn loại bài đăng: `SafeAreaView` đặt bên trong `Modal` trả về inset bằng 0 nên thanh tiêu đề và nút đóng (X) chui dưới thanh trạng thái. Nay đọc inset bằng `useSafeAreaInsets` ở ngoài Modal rồi đệm trên/dưới cho tờ đăng bài toàn màn hình (màn rộng không đệm).
+- Giới hạn: chưa thử trên thiết bị có tai thỏ/đảo động và điều hướng 3 nút.
+- Bước kiểm tra UI: (1) Đăng nhập → Khám phá: thẻ trên cùng chỉ có avatar và thanh “Chia sẻ cách nấu món chay của bạn”. (2) Chạm thanh đó → màn Tạo nội dung mở; tiêu đề và nút X nằm dưới thanh trạng thái, chạm được. (3) Chọn “Tạo video hướng dẫn” → nút quay lại và X vẫn trong vùng an toàn; nút “Đăng video” ở đáy không bị thanh điều hướng che. (4) Xoay ngang/màn rộng: tờ đăng bài dạng hộp giữa vẫn bình thường. (5) Khách chưa đăng nhập chạm thanh → chuyển sang đăng nhập.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-23 — Đồng bộ màu vùng an toàn với thanh tiêu đề và hiện lại đồng hồ/biểu tượng trạng thái
+
+- Kết quả: (1) Vùng an toàn phía trên (nền `background`) khác màu thanh tiêu đề (nền `card`) ở nhiều màn nên thấy hai dải màu lệch nhau; nay thanh tiêu đề của Khám phá, Hồ sơ ăn uống, Trợ lý/Lên thực đơn, Thông báo, Bài đã lưu, Chi tiết bài, Tìm kiếm, danh sách theo dõi, Hồ sơ người khác, Chi tiết công thức và Trợ lý Vedora dùng cùng màu `background` với vùng an toàn. (2) Tờ đăng bài toàn màn hình: đệm trên chuyển vào chính thanh tiêu đề nên màu thanh tiêu đề chạy lên tận mép trên. (3) Thêm `StatusBar style="auto"` ở layout gốc để đồng hồ, pin, sóng luôn tương phản với nền (chữ đậm trên nền sáng, chữ sáng trên nền tối); màn Chào mừng vẫn tự đặt chữ sáng trên banner ảnh.
+- Giới hạn: chưa thử trên thiết bị thật (Android edge-to-edge, iOS có tai thỏ, chế độ tối); các thẻ bên trong màn vẫn dùng màu `card` như cũ.
+- Bước kiểm tra UI: (1) Khám phá, Hồ sơ, Thông báo, Chi tiết bài, Tìm kiếm, Bài đã lưu: dải trên cùng và thanh tiêu đề cùng một màu liền mạch, không có đường lệch màu. (2) Đồng hồ, pin, sóng hiển thị rõ ở chế độ sáng và tối. (3) Mở màn Tạo nội dung: thanh tiêu đề phủ tới mép trên, nút X chạm được. (4) Màn Chào mừng: biểu tượng trạng thái màu sáng trên ảnh banner; vào màn khác thì đổi lại cho đúng.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-27 — Bấm vào bài viết để mở chi tiết
+
+- Kết quả: Trước đây chỉ nút bình luận mới mở chi tiết bài; bấm vào nội dung bài ngắn hay thẻ Blog thì không có phản hồi. Nay bấm vào nội dung bài hoặc thẻ Blog (ảnh bìa, tiêu đề, tóm tắt) sẽ mở màn Chi tiết bài; "Xem thêm/Thu gọn" vẫn chỉ mở rộng tại chỗ. Ở màn Chi tiết, tóm tắt Blog hiển thị đầy đủ thay vì cắt 2 dòng.
+- Giới hạn: API `GET /posts/:id` chỉ trả tiêu đề và đoạn tóm tắt (đã cắt) cho Blog nên chưa đọc trọn bài Blog; chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời.
+- Bước kiểm tra UI: (1) Vào Khám phá, bấm vào đoạn chữ của một bài ngắn: mở màn "Bài viết" kèm bình luận. (2) Bấm vào thẻ Blog: mở màn chi tiết, tóm tắt hiện đầy đủ. (3) Với bài dài, bấm "Xem thêm": nội dung mở rộng tại chỗ, không chuyển màn. (4) Trong màn chi tiết, bấm vào nội dung không điều hướng lại chính nó; nút quay lại về Khám phá.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-27 — Chi tiết Blog hiển thị toàn bộ bài (theo vedora-frontend)
+
+- Kết quả: Theo `post-detail.tsx` và `blog-markdown.tsx` của vedora-frontend, bài Blog ở màn Chi tiết nay tải nội dung đầy đủ từ `GET /blogs/:id` (feed chỉ có tóm tắt). Thêm module `features/blogs` (schema Zod, service, hook TanStack Query, bộ đọc Markdown và `BlogArticle`) hiển thị tiêu đề, đề mục, đoạn văn, đậm/nghiêng, mã, danh sách, trích dẫn, đường kẻ, liên kết (chỉ http/https/mailto), ảnh và video (video mở bằng liên kết). HTML thô trong bài không được hiển thị. Thẻ tóm tắt Blog được thay bằng bài đầy đủ ở màn Chi tiết.
+- Giới hạn: chưa gộp nhiều ảnh liền nhau thành thư viện ảnh như web; video trong bài mở ngoài ứng dụng; chưa gửi lượt xem; chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời.
+- Bước kiểm tra UI: (1) Vào Khám phá, chọn tab Blog, bấm vào một bài Blog. (2) Màn "Bài viết" hiện vòng tải rồi tiêu đề và toàn bộ nội dung (đề mục, danh sách, ảnh) thay vì chỉ đoạn tóm tắt. (3) Bấm một liên kết trong bài: mở trình duyệt. (4) Tắt mạng rồi mở lại bài: hiện "Chưa tải được nội dung blog" và nút "Thử lại" hoạt động. (5) Kéo xuống: phần thả mầm/lưu và bình luận vẫn dùng được.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-10-27 — Tab Trợ lý Vedora tạo thực đơn, tab Thực đơn chỉ hiển thị
+
+- Kết quả: Giữ tab Trợ lý Vedora với biểu tượng hạt đậu mầm cũ ở giữa thanh tab. Đã tách màn "Lên thực đơn" cũ làm hai: tab Trợ lý Vedora (đã đăng nhập) chứa khung trò chuyện và biểu mẫu yêu cầu thực đơn; tab Thực đơn chỉ hiển thị thực đơn tuần đã lưu và bản đề xuất của trợ lý (Lưu thực đơn, Bỏ đề xuất, Đổi món). Hai tab dùng chung một phiên (`MealPlannerProvider`) nên đề xuất, bản nháp và nội dung chat được giữ khi đổi tab. Khách chưa đăng nhập vẫn dùng khung hỏi nhanh dinh dưỡng ở tab Trợ lý; tab Thực đơn mời đăng nhập. Đã gỡ nút hạt đậu nổi và nút đóng thêm ở lần sửa trước.
+- Giới hạn: chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời; hai file không còn dùng (`meal-planner-screen.tsx`, `assistant-button.tsx`) chưa xoá được và cần xoá thủ công.
+- Bước kiểm tra UI: (1) Đăng nhập, thanh tab có Trang chủ, Công thức, Trợ lý (hạt đậu mầm), Thực đơn, Tôi. (2) Tab Trợ lý: bấm "Lên thực đơn 7 ngày", điền biểu mẫu rồi tiếp tục, tin nhắn được điền sẵn, bấm gửi. (3) Khi trợ lý đề xuất, bấm "Xem trong Thực đơn": app chuyển sang tab Thực đơn, hiện "Đề xuất chưa được lưu" và các ngày. (4) Bấm "Lưu thực đơn": thực đơn tuần cập nhật; hoặc "Bỏ đề xuất". (5) Ở tab Thực đơn bấm "Đổi món": chuyển về tab Trợ lý với câu yêu cầu điền sẵn. (6) Tab Thực đơn không có khung chat. (7) Đăng xuất: tab Trợ lý là khung hỏi nhanh, tab Thực đơn hiện nút Đăng nhập.
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.

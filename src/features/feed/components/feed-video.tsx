@@ -11,6 +11,26 @@ import { useTheme } from '@/hooks/use-theme';
 import type { FeedPost } from '../types/feed.schema';
 
 type VideoMedia = FeedPost['media'][number];
+type Frame = { width: number; height: number };
+
+const DEFAULT_RATIO = 16 / 9;
+const MIN_RATIO = 9 / 16;
+const MAX_RATIO = 16 / 9;
+/** Videos stay small inside a post: at most this tall and this share of the post's width. */
+const MAX_HEIGHT = 240;
+const MAX_WIDTH_SHARE = 0.85;
+
+/** Width / height from the API's "w:h" string, clamped so a tall video cannot fill the whole screen. */
+function videoRatio(aspectRatio: string | null) {
+  const [width, height] = (aspectRatio ?? '').split(':').map(Number);
+  if (!width || !height) return DEFAULT_RATIO;
+  return Math.min(MAX_RATIO, Math.max(MIN_RATIO, width / height));
+}
+
+function fitFrame(available: number, ratio: number): Frame {
+  const height = Math.min(MAX_HEIGHT, (available * MAX_WIDTH_SHARE) / ratio);
+  return { width: height * ratio, height };
+}
 
 function formatDuration(seconds: number | null) {
   if (seconds === null) return null;
@@ -21,13 +41,15 @@ function formatDuration(seconds: number | null) {
 export function FeedVideo({ media, visible }: { media: VideoMedia; visible: boolean }) {
   const theme = useTheme();
   const [opened, setOpened] = useState(false);
-  const playbackId = media.status === 'READY' ? media.playbackId : null;
+  const [available, setAvailable] = useState(0);
+  const playbackUrl = media.status === 'READY' ? media.playbackUrl : null;
   const duration = formatDuration(media.durationSec);
+  const frame = fitFrame(available, videoRatio(media.aspectRatio));
 
-  if (!playbackId) {
+  if (!playbackUrl) {
     return (
       <View style={[styles.placeholder, { backgroundColor: theme.muted }]}>
-        <SymbolView name={{ ios: 'video', android: 'videocam', web: 'videocam' }} size={28} tintColor={theme.mutedForeground} />
+        <SymbolView name={{ ios: 'video', android: 'videocam', web: 'videocam' }} size={22} tintColor={theme.mutedForeground} />
         <Text style={[styles.placeholderText, { color: theme.mutedForeground }]}>
           {media.status === 'FAILED' ? 'Video không khả dụng' : 'Video đang được xử lý'}
         </Text>
@@ -35,34 +57,33 @@ export function FeedVideo({ media, visible }: { media: VideoMedia; visible: bool
     );
   }
 
-  if (opened) {
-    return <PlayingVideo playbackId={playbackId} visible={visible} onClose={() => setOpened(false)} />;
-  }
-
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Phát video"
-      onPress={() => setOpened(true)}
-      style={styles.poster}>
-      <Image source={{ uri: `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=800` }} style={styles.media} contentFit="cover" />
-      <View style={styles.kindBadge}>
-        <SymbolView name={{ ios: 'video', android: 'videocam', web: 'videocam' }} size={13} tintColor={theme.primary} />
-        <Text style={styles.kindText}>Video</Text>
-      </View>
-      <View style={styles.playBadge}><Text style={styles.playGlyph}>▶</Text></View>
-      {duration ? (
-        <View style={styles.durationBadge}>
-          <Text style={styles.durationText}>{duration}</Text>
-        </View>
+    <View onLayout={(event) => setAvailable(event.nativeEvent.layout.width)}>
+      {available > 0 && opened ? (
+        <PlayingVideo playbackUrl={playbackUrl} frame={frame} visible={visible} onClose={() => setOpened(false)} />
       ) : null}
-    </Pressable>
+      {available > 0 && !opened ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="Phát video" onPress={() => setOpened(true)} style={[styles.media, frame]}>
+          <Image source={media.posterUrl ? { uri: media.posterUrl } : undefined} style={frame} contentFit="cover" />
+          <View style={styles.kindBadge}>
+            <SymbolView name={{ ios: 'video', android: 'videocam', web: 'videocam' }} size={12} tintColor={theme.primary} />
+            <Text style={styles.kindText}>Video</Text>
+          </View>
+          <View style={styles.playBadge}><Text style={styles.playGlyph}>▶</Text></View>
+          {duration ? (
+            <View style={styles.durationBadge}>
+              <Text style={styles.durationText}>{duration}</Text>
+            </View>
+          ) : null}
+        </Pressable>
+      ) : null}
+    </View>
   );
 }
 
-function PlayingVideo({ playbackId, visible, onClose }: { playbackId: string; visible: boolean; onClose: () => void }) {
+function PlayingVideo({ playbackUrl, frame, visible, onClose }: { playbackUrl: string; frame: Frame; visible: boolean; onClose: () => void }) {
   const theme = useTheme();
-  const player = useVideoPlayer({ uri: `https://stream.mux.com/${encodeURIComponent(playbackId)}.m3u8`, contentType: 'hls' }, (instance) => {
+  const player = useVideoPlayer({ uri: playbackUrl, contentType: 'hls' }, (instance) => {
     instance.play();
   });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
@@ -79,16 +100,15 @@ function PlayingVideo({ playbackId, visible, onClose }: { playbackId: string; vi
     );
   }
 
-  return <VideoView player={player} nativeControls contentFit="contain" style={styles.media} />;
+  return <VideoView player={player} nativeControls contentFit="contain" style={[styles.media, frame]} />;
 }
 
 const styles = StyleSheet.create({
-  poster: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#17251a' },
-  media: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.xl, backgroundColor: '#17251a' },
-  playBadge: { position: 'absolute', alignSelf: 'center', top: '40%', width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(20,38,26,0.82)', alignItems: 'center', justifyContent: 'center' },
-  playGlyph: { fontSize: 21, color: '#fffefa', marginLeft: 3 },
-  placeholder: { width: '100%', aspectRatio: 16 / 9, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center', gap: Spacing.two, padding: Spacing.three },
-  placeholderText: { fontFamily: Fonts.sansSemibold, textAlign: 'center' },
+  media: { borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#17251a' },
+  playBadge: { position: 'absolute', alignSelf: 'center', top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,38,26,0.82)', alignItems: 'center', justifyContent: 'center' },
+  playGlyph: { fontSize: 18, color: '#fffefa', marginLeft: 3 },
+  placeholder: { width: '85%', height: 96, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center', gap: Spacing.one, padding: Spacing.three },
+  placeholderText: { fontFamily: Fonts.sansSemibold, fontSize: 13, textAlign: 'center' },
   kindBadge: { position: 'absolute', top: Spacing.two, left: Spacing.two, paddingHorizontal: Spacing.two, paddingVertical: Spacing.one, borderRadius: Radius.lg, backgroundColor: 'rgba(255,254,250,0.94)', flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   kindText: { fontFamily: Fonts.sansSemibold, fontSize: 11, color: '#14261a' },
   durationBadge: { position: 'absolute', right: Spacing.two, bottom: Spacing.two, paddingHorizontal: Spacing.two, paddingVertical: Spacing.one, borderRadius: Radius.md, backgroundColor: 'rgba(20,38,26,0.82)' },
