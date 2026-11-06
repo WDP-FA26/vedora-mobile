@@ -163,7 +163,7 @@ async function uploadFromDevice(
       const end = Math.min(start + chunkSize, total);
       handle.offset = start;
       part.create({ overwrite: true });
-      part.write(handle.readBytes(end - start));
+      await part.write(await handle.readBytes(end - start));
       await sendPart(part, start, end);
     }
   } finally {

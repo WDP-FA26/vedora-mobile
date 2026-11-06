@@ -9,7 +9,7 @@ import {
   Text,
   View,
   useColorScheme,
-  type ViewToken,
+  type FlatListProps,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
@@ -55,8 +55,8 @@ export function FeedScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const { onScroll: onHomeScroll, reset: resetHomeScroll } = useExploreTabBarScroll();
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken<FeedItem>[] }) => {
+  const onViewableItemsChanged = useCallback<NonNullable<FlatListProps<FeedItem>['onViewableItemsChanged']>>(
+    ({ viewableItems }) => {
       setVisibleIds(new Set(viewableItems.map((item) => item.item.key)));
     },
     [],
@@ -320,7 +320,7 @@ export function FeedScreen() {
                     : "Tải thêm bài viết"}
               </Text>
             </Pressable>
-          ) : null
+          ) : undefined
         }
       />}
       <ComposeDialog

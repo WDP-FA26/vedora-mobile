@@ -65,7 +65,7 @@ export function SearchScreen() {
             <Text style={[styles.sub, { color: theme.destructive }]}>Không tìm được lúc này. Chạm để thử lại.</Text>
           </Pressable>
         ) : <Text style={[styles.sub, styles.state, { color: theme.mutedForeground }]}>Không có bài viết nào khớp “{q}”.</Text>}
-        ListFooterComponent={search.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : null}
+        ListFooterComponent={search.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : undefined}
       />
     </SafeAreaView>
   );

@@ -45,7 +45,7 @@ export function BookmarksScreen() {
               <Text style={[styles.sub, { color: theme.destructive }]}>Không tải được bài đã lưu. Chạm để thử lại.</Text>
             </Pressable>
           ) : <Text style={[styles.sub, styles.state, { color: theme.mutedForeground }]}>Bạn chưa lưu bài viết nào.</Text>}
-          ListFooterComponent={bookmarks.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : null}
+          ListFooterComponent={bookmarks.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : undefined}
         />
       )}
     </SafeAreaView>

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
@@ -69,7 +69,7 @@ export function MealPlannerScreen() {
   const [draft, setDraft] = useState<Proposal | null>(null);
   const [statuses, setStatuses] = useState<Record<string, ProposalStatus>>({});
   const [selectedDay, setSelectedDay] = useState<Weekday>('MON');
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const sending = useRef(false);
   const nextId = useRef(1);
   const streamIds = useRef<number[]>([]);

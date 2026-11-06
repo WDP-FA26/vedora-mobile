@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, type ViewInstance } from 'react-native';
 
 import { TURNSTILE_SITE_KEY } from '@/shared/config/env';
 
@@ -32,7 +32,7 @@ function loadTurnstile() {
 
 /** Cloudflare Turnstile widget for the web platform. Remount (change `key`) to reset. */
 export function TurnstileChallenge({ onToken, onFailure }: TurnstileChallengeProps) {
-  const host = useRef<View>(null);
+  const host = useRef<ViewInstance>(null);
   const callbacks = useRef({ onToken, onFailure });
   useEffect(() => {
     callbacks.current = { onToken, onFailure };

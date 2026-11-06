@@ -42,7 +42,7 @@ export function ProfileListScreen({ kind }: { kind: ProfileListKind }) {
             <Text style={[styles.sub, { color: theme.destructive }]}>Không tải được danh sách. Chạm để thử lại.</Text>
           </Pressable>
         ) : <Text style={[styles.sub, styles.state, { color: theme.mutedForeground }]}>Chưa có ai trong danh sách này.</Text>}
-        ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : null}
+        ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : undefined}
         renderItem={({ item }) => (
           <View style={[styles.row, { borderBottomColor: theme.border }]}>
             <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/profile/[id]', params: { id: item.id } })} style={styles.person}>
