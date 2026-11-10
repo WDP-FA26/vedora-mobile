@@ -8,6 +8,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useMyBlogs } from '../hooks/use-my-blogs';
+import { plainText } from '../utils/markdown';
 
 export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
   const theme = useTheme();
@@ -21,7 +22,7 @@ export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
       <View style={styles.cardCopy}>
         <Text style={[styles.badge, { color: theme.primary }]}>{item.status === 'PUBLISHED' ? 'Đã đăng' : 'Bản nháp'}</Text>
         <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{item.blog.title}</Text>
-        {item.blog.excerpt ? <Text numberOfLines={2} style={[styles.copy, { color: theme.mutedForeground }]}>{item.blog.excerpt}</Text> : null}
+        {item.blog.excerpt ? <Text numberOfLines={2} style={[styles.copy, { color: theme.mutedForeground }]}>{plainText(item.blog.excerpt)}</Text> : null}
         <Text style={[styles.date, { color: theme.mutedForeground }]}>{new Date(item.createdAt).toLocaleDateString('vi-VN')} · Chạm để chỉnh sửa</Text>
       </View>
     </Pressable>

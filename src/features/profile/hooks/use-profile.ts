@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { feedKeys } from '@/features/feed/data/feed.keys';
+import { messagingKeys } from '@/features/messaging/data/messaging.keys';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { profileKeys } from '../data/profile.keys';
@@ -90,6 +91,8 @@ export function useFollow(id: string) {
       void queryClient.invalidateQueries({ queryKey: profileKeys.me });
       void queryClient.invalidateQueries({ queryKey: ['following'] });
       void queryClient.invalidateQueries({ queryKey: profileKeys.all, predicate: (query) => query.queryKey[1] === 'followers' || query.queryKey[1] === 'following' });
+      // Following decides who may message whom, so refresh chat permissions and the inboxes.
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.all });
     },
   });
 }
