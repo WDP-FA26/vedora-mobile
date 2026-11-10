@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { ZoomImage } from '@/shared/components/image-viewer';
 import { ApiError } from '@/shared/api/api-error';
 
 import { useRecipe } from '../hooks/use-recipes';
@@ -42,7 +43,7 @@ export function RecipeDetailScreen() {
         ) : null}
         {data ? (
           <>
-            {data.imageUrl ? <Image source={{ uri: data.imageUrl }} style={styles.image} contentFit="cover" /> : null}
+            {data.imageUrl ? <ZoomImage source={{ uri: data.imageUrl }} style={styles.image} contentFit="cover" accessibilityLabel={data.title} /> : null}
             <View style={styles.body}>
               <View style={[styles.intro, { backgroundColor: theme.secondary }]}>
                 <View style={styles.introCopy}>

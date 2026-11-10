@@ -3,17 +3,20 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-na
 
 import { Fonts } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { ZoomImage } from '@/shared/components/image-viewer';
 
 import type { Profile } from '../types/profile.schema';
 
 /** Round avatar with a card-coloured ring; falls back to the first letter of the name. */
-export function ProfileAvatar({ profile, size, style }: { profile: Pick<Profile, 'fullName' | 'avatarUrl'>; size: number; style?: StyleProp<ViewStyle> }) {
+export function ProfileAvatar({ profile, size, style, zoomable }: { profile: Pick<Profile, 'fullName' | 'avatarUrl'>; size: number; style?: StyleProp<ViewStyle>; zoomable?: boolean }) {
   const theme = useTheme();
   const frame = { width: size, height: size, borderRadius: size / 2, backgroundColor: theme.secondary, borderColor: theme.card };
   if (profile.avatarUrl) {
     return (
       <View style={[styles.ring, frame, style]}>
-        <Image source={{ uri: profile.avatarUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Ảnh đại diện của ${profile.fullName}`} />
+        {zoomable
+          ? <ZoomImage source={{ uri: profile.avatarUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Ảnh đại diện của ${profile.fullName}`} />
+          : <Image source={{ uri: profile.avatarUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel={`Ảnh đại diện của ${profile.fullName}`} />}
       </View>
     );
   }
