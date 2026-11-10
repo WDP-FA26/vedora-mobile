@@ -32,7 +32,7 @@ export function BillingLayout({ title, children, footer, onRefresh, refreshing =
 
 export function BillingCard({ children, accent, style }: PropsWithChildren<{ accent?: boolean; style?: StyleProp<ViewStyle> }>) {
   const theme = useTheme();
-  return <View style={[styles.card, { backgroundColor: accent ? theme.secondary : theme.card, borderColor: accent ? theme.secondary : theme.border }, style]}>{children}</View>;
+  return <View style={[styles.card, { backgroundColor: accent ? theme.secondary : theme.card }, !accent && styles.raised, style]}>{children}</View>;
 }
 
 export function BillingText({ children, heading, error, variant = 'body', style }: PropsWithChildren<{
@@ -74,17 +74,34 @@ export function BillingIcon({ name, large, neutral }: { name: IconName; large?: 
 
 export function BillingNotice({ title, children, error }: PropsWithChildren<{ title?: string; error?: boolean }>) {
   const theme = useTheme();
-  return <View style={[styles.notice, { backgroundColor: theme.muted, borderLeftColor: error ? theme.destructive : theme.primary }]}>
+  return <View style={[styles.notice, { backgroundColor: theme.muted }]}>
     {title ? <Text accessibilityRole={error ? 'alert' : undefined} style={[styles.noticeTitle, { color: error ? theme.destructive : theme.foreground }]}>{title}</Text> : null}
     <BillingText error={error} variant="caption">{children}</BillingText>
   </View>;
 }
 
-export function BillingDetail({ label, value, emphasize }: { label: string; value: string; emphasize?: boolean }) {
+export function BillingDetail({ label, value, emphasize, last }: { label: string; value: string; emphasize?: boolean; last?: boolean }) {
   const theme = useTheme();
-  return <View style={[styles.detail, { borderColor: theme.border }]}>
-    <BillingText variant="caption">{label}</BillingText>
-    <Text selectable style={[styles.detailValue, { color: emphasize ? theme.primary : theme.foreground }, emphasize && { fontFamily: Fonts.sansBold, fontSize: 18 }]}>{value}</Text>
+  return <View style={[styles.detail, { borderColor: theme.border }, last && styles.detailLast]}>
+    <Text style={[styles.detailLabel, { color: theme.mutedForeground }]}>{label}</Text>
+    <Text selectable style={[styles.detailValue, { color: emphasize ? theme.primary : theme.foreground }, emphasize && styles.detailEmphasis]}>{value}</Text>
+  </View>;
+}
+
+/** Numbered heading of a step card: the number badge and title share one centred row. */
+export function BillingStep({ number, title }: { number: number; title: string }) {
+  const theme = useTheme();
+  return <View style={styles.step}>
+    <View style={[styles.stepNumber, { backgroundColor: theme.primary }]}><Text style={[styles.stepNumberText, { color: theme.primaryForeground }]}>{number}</Text></View>
+    <BillingText heading style={styles.stepTitle}>{title}</BillingText>
+  </View>;
+}
+
+/** Section title with an optional caption underneath. */
+export function BillingSectionTitle({ title, caption }: { title: string; caption?: string }) {
+  return <View style={styles.sectionTitle}>
+    <BillingText heading style={styles.sectionHeading}>{title}</BillingText>
+    {caption ? <BillingText variant="caption">{caption}</BillingText> : null}
   </View>;
 }
 
@@ -108,10 +125,11 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', minHeight: 68, paddingHorizontal: Spacing.three, borderBottomWidth: StyleSheet.hairlineWidth, gap: Spacing.two },
   headerButton: { width: 44, height: 44, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontFamily: Fonts.headingBold, fontSize: 19, textAlign: 'center' },
-  content: { width: '100%', maxWidth: 680, alignSelf: 'center', padding: Spacing.three, gap: Spacing.four, paddingBottom: Spacing.five },
+  content: { width: '100%', maxWidth: 680, alignSelf: 'center', padding: Spacing.three, gap: Spacing.three + Spacing.one, paddingBottom: Spacing.five },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.three, paddingVertical: 12 },
   footerContent: { width: '100%', maxWidth: 648, alignSelf: 'center', gap: Spacing.two },
-  card: { borderWidth: 1, borderRadius: Radius['3xl'], padding: Spacing.four, gap: Spacing.three },
+  raised: { shadowColor: '#14261a', shadowOpacity: 0.07, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  card: { borderRadius: Radius['3xl'], padding: Spacing.three + Spacing.one, gap: Spacing.three },
   heading: { fontFamily: Fonts.headingBold, fontSize: 20, lineHeight: 28 },
   copy: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 23 },
   caption: { fontSize: 13, lineHeight: 20 },
@@ -124,10 +142,19 @@ const styles = StyleSheet.create({
   badgeText: { flexShrink: 1, fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 18 },
   icon: { width: 44, height: 44, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center' },
   largeIcon: { width: 64, height: 64, borderRadius: 24 },
-  notice: { padding: Spacing.three, gap: Spacing.one, borderRadius: Radius.xl, borderLeftWidth: 3 },
+  notice: { padding: Spacing.three, gap: Spacing.one, borderRadius: Radius.xl },
   noticeTitle: { fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 21 },
-  detail: { paddingVertical: 12, gap: Spacing.one, borderBottomWidth: StyleSheet.hairlineWidth },
-  detailValue: { fontFamily: Fonts.sansSemibold, fontSize: 16, lineHeight: 24 },
+  detail: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three, paddingVertical: Spacing.two + Spacing.one, borderBottomWidth: StyleSheet.hairlineWidth },
+  detailLast: { borderBottomWidth: 0 },
+  detailLabel: { flexShrink: 0, maxWidth: '40%', fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
+  detailValue: { flex: 1, minWidth: 0, textAlign: 'right', fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 22 },
+  detailEmphasis: { fontFamily: Fonts.sansBold, fontSize: 16 },
+  step: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + Spacing.one },
+  stepNumber: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  stepNumberText: { fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 18 },
+  stepTitle: { flex: 1, fontSize: 17, lineHeight: 24 },
+  sectionTitle: { gap: 2 },
+  sectionHeading: { fontSize: 18, lineHeight: 26 },
   loading: { padding: Spacing.four, alignItems: 'center', gap: 12 },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   dialog: { width: '100%', maxWidth: 680, maxHeight: '90%', alignSelf: 'center', borderTopLeftRadius: Radius['4xl'], borderTopRightRadius: Radius['4xl'], overflow: 'hidden' },

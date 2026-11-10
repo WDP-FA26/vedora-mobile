@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useIsFocused } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -8,6 +8,7 @@ import { billingKeys } from '../data/billing.keys';
 import { cancelPayment, createPayment, getBilling, getCatalog, getPayment } from '../services/billing.service';
 import { paymentIdSchema, type PlanCode } from '../types/billing.schema';
 import { createPaymentAttempts } from '../utils/payment-attempts';
+import { usePaymentStream } from './use-payment-stream';
 
 // shortcut: retry keys live until app restart; the server also reuses the account's pending intent.
 const attempts = createPaymentAttempts();
@@ -25,18 +26,22 @@ export function usePayment(id: string) {
   const token = useSessionStore((state) => state.accessToken);
   const focused = useIsFocused();
   const client = useQueryClient();
+  // While the SSE stream is healthy it pushes changes, so GET only polls slowly to catch a lost event.
+  const [live, setLive] = useState(false);
+  const valid = paymentIdSchema.safeParse(id).success;
   const payment = useQuery({
     queryKey: billingKeys.payment(id),
     queryFn: ({ signal }) => getPayment(id, signal),
-    enabled: !!token && focused && paymentIdSchema.safeParse(id).success,
+    enabled: !!token && focused && valid,
     retry: false,
     refetchInterval: (query) => {
       const status = query.state.error;
       if (status && 'status' in status && [401, 403, 404].includes(Number(status.status))) return false;
-      return query.state.data?.status === 'PENDING' ? 4_000 : false;
+      return query.state.data?.status === 'PENDING' ? (live ? 30_000 : 4_000) : false;
     },
   });
   const status = payment.data?.status;
+  usePaymentStream(id, !!token && focused && valid && status === 'PENDING', setLive);
   useEffect(() => {
     if (status === 'SUCCEEDED' || status === 'CANCELLED') void client.invalidateQueries({ queryKey: billingKeys.overview });
   }, [client, status]);
