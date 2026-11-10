@@ -82,8 +82,9 @@ function useMealPlannerState() {
     router.navigate('/ai');
   }
 
-  async function sendMessage() {
-    const text = composer.trim();
+  /** Sends the chat box, or `override` (e.g. the request built by the form) when given. */
+  async function sendMessage(override?: string) {
+    const text = (override ?? composer).trim();
     if (sending.current) return;
     if (!text) { setChatError('Nhập câu hỏi hoặc yêu cầu trước khi gửi.'); return; }
     if (text.length > 4000) { setChatError('Tin nhắn tối đa 4.000 ký tự.'); return; }
