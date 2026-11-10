@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -6,7 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { PostCard } from '@/features/feed/components/post-card';
+import { MessageButton } from '@/features/messaging/components/message-button';
 import { useTheme } from '@/hooks/use-theme';
+import { ZoomImage } from '@/shared/components/image-viewer';
 import { ApiError } from '@/shared/api/api-error';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -53,18 +54,21 @@ export function PublicProfileScreen() {
         {data ? (
           <>
             <View style={[styles.cover, { backgroundColor: theme.secondary }]}>
-              {data.coverUrl ? <Image source={{ uri: data.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Ảnh bìa hồ sơ" /> : null}
+              {data.coverUrl ? <ZoomImage source={{ uri: data.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Ảnh bìa hồ sơ" /> : null}
             </View>
             <View style={[styles.identity, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
               <View style={styles.avatarRow}>
                 {data.avatarUrl ? (
-                  <Image source={{ uri: data.avatarUrl }} style={[styles.avatar, { backgroundColor: theme.secondary, borderColor: theme.card }]} contentFit="cover" accessibilityLabel={`Ảnh đại diện của ${data.fullName}`} />
+                  <ZoomImage source={{ uri: data.avatarUrl }} style={[styles.avatar, { backgroundColor: theme.secondary, borderColor: theme.card }]} contentFit="cover" accessibilityLabel={`Ảnh đại diện của ${data.fullName}`} />
                 ) : (
                   <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: theme.secondary, borderColor: theme.card }]}>
                     <Text style={[styles.avatarLetter, { color: theme.primary }]}>{data.fullName.trim().charAt(0).toLocaleUpperCase('vi') || 'V'}</Text>
                   </View>
                 )}
-                <FollowButton profileId={data.id} />
+                <View style={styles.profileActions}>
+                  <MessageButton userId={data.id} />
+                  <FollowButton profileId={data.id} />
+                </View>
               </View>
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.foreground }]}>{data.fullName}</Text>
@@ -115,6 +119,7 @@ const styles = StyleSheet.create({
   outlineText: { fontFamily: Fonts.sansSemibold, fontSize: 14 },
   cover: { height: 138, overflow: 'hidden' },
   identity: { borderBottomWidth: 1, paddingHorizontal: Spacing.three, paddingBottom: Spacing.four },
+  profileActions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   avatarRow: { marginTop: -38, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
   avatar: { width: 86, height: 86, borderRadius: 43, borderWidth: 4 },
   avatarEmpty: { alignItems: 'center', justifyContent: 'center' },

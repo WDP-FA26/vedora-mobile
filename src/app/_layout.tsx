@@ -9,6 +9,7 @@ import { useColorScheme } from 'react-native';
 
 import { VedoraThemeProvider } from '@/components/vedora-theme-provider';
 import { Colors } from '@/constants/theme';
+import { useMessagingStream } from '@/features/messaging/hooks/use-messaging-stream';
 import { useNotificationStream } from '@/features/notifications/hooks/use-notification-stream';
 import { AppQueryProvider } from '@/shared/query/app-query-provider';
 import { hydrateSession } from '@/shared/api/api-client';
@@ -18,6 +19,7 @@ SplashScreen.preventAutoHideAsync();
 
 function NotificationStreamHost() {
   useNotificationStream();
+  useMessagingStream();
   return null;
 }
 
