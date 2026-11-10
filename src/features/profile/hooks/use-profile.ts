@@ -19,8 +19,8 @@ export function useMyProfile(session: string | null) {
 
 export function useProfilePosts(authorId: string | undefined, session: string | null) {
   return useQuery({
-    queryKey: profileKeys.posts(authorId ?? ''),
-    queryFn: ({ signal }) => getProfilePosts(authorId!, signal),
+    queryKey: [...profileKeys.posts(authorId ?? ''), 'videos'],
+    queryFn: ({ signal }) => getProfilePosts(authorId!, signal, 'POST'),
     enabled: !!session && !!authorId,
   });
 }

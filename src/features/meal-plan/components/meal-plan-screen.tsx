@@ -1,13 +1,51 @@
 import { router } from 'expo-router';
+import { SymbolView } from 'expo-symbols';
+import type { ReactNode } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { AssistantHeader } from '@/shared/components/chat/assistant-header';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useMealPlanner } from '../hooks/meal-planner-provider';
+import type { Weekday } from '../types/meal-plan.schema';
 import { dayLabels, sectionLabels } from '../utils/meal-plan';
+
+const SHORT_DAY: Record<Weekday, string> = { MON: 'T2', TUE: 'T3', WED: 'T4', THU: 'T5', FRI: 'T6', SAT: 'T7', SUN: 'CN' };
+const STICKER = require('@/assets/branding/tomato-sticker.png');
+
+type ButtonProps = { label: string; onPress: () => void; disabled?: boolean; icon?: ReactNode };
+
+function PrimaryButton({ label, onPress, disabled, icon }: ButtonProps) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.button, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: disabled ? 0.55 : pressed ? 0.8 : 1 }]}>
+      {icon}
+      <Text style={[styles.buttonText, { color: theme.primaryForeground }]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+function OutlineButton({ label, onPress, disabled, tone = 'primary' }: ButtonProps & { tone?: 'primary' | 'neutral' }) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [styles.button, { backgroundColor: theme.card, borderColor: theme.border, opacity: disabled ? 0.55 : pressed ? 0.8 : 1 }]}>
+      <Text style={[styles.buttonText, { color: tone === 'primary' ? theme.primary : theme.foreground }]}>{label}</Text>
+    </Pressable>
+  );
+}
 
 /** The Thực đơn tab: shows the saved week or the draft the assistant proposed; plans are made in the Trợ lý Vedora tab. */
 export function MealPlanScreen() {
@@ -16,54 +54,243 @@ export function MealPlanScreen() {
   const planner = useMealPlanner();
   const { plan, draft, suggestion, days, activeDay, save } = planner;
 
-  if (!token) return <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}><View style={styles.guest}>
-    <Image source={require('@/assets/branding/tomato-sticker.png')} style={styles.guestSticker} resizeMode="contain" accessibilityLabel="Hình cà chua Vedora" />
-    <Text style={[styles.title, { color: theme.foreground }]}>Thực đơn của bạn</Text>
-    <Text style={[styles.guestText, { color: theme.mutedForeground }]}>Đăng nhập để nhờ Trợ lý Vedora lên thực đơn 7 ngày và lưu lại tại đây.</Text>
-    <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/login', params: { returnTo: '/meal-plan' } })} style={[styles.primaryButton, { backgroundColor: theme.primary }]}><Text style={[styles.primaryText, { color: theme.primaryForeground }]}>Đăng nhập</Text></Pressable>
-    <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/register', params: { returnTo: '/meal-plan' } })} style={[styles.outlineButton, { borderColor: theme.border }]}><Text style={[styles.outlineText, { color: theme.primary }]}>Tạo tài khoản</Text></Pressable>
-  </View></SafeAreaView>;
-
-  return <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
-    <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-      <View style={styles.headerText}><Text style={[styles.title, { color: theme.foreground }]}>Lên thực đơn</Text><Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Thực đơn tuần lặp lại theo thứ trong tuần</Text></View>
-      <Image source={require('@/assets/branding/tomato-sticker.png')} style={styles.sticker} resizeMode="contain" accessibilityLabel="Hình cà chua Vedora" />
-    </View>
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      {plan.isPending && !plan.data ? <View style={styles.loadingRow}><ActivityIndicator color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải thực đơn…</Text></View> : null}
-      {plan.isError ? <Pressable accessibilityRole="button" onPress={() => void plan.refetch()} style={[styles.notice, { borderColor: theme.destructive }]}><Text style={[styles.error, { color: theme.destructive }]}>Không tải được thực đơn đã lưu. Chạm để thử lại.</Text></Pressable> : null}
-      {suggestion && !draft ? <View style={[styles.suggestion, { borderColor: theme.border, backgroundColor: theme.secondary }]}><Text style={[styles.sectionTitle, { color: theme.foreground }]}>Đề xuất mới từ trợ lý</Text><Text style={[styles.helper, { color: theme.mutedForeground }]}>Thực đơn đã lưu chưa thay đổi. Xem trước khi quyết định.</Text><Pressable accessibilityRole="button" onPress={() => planner.previewProposal(suggestion)} style={[styles.smallPrimary, { backgroundColor: theme.primary }]}><Text style={[styles.smallPrimaryText, { color: theme.primaryForeground }]}>Xem đề xuất</Text></Pressable></View> : null}
-      {draft ? <View style={[styles.suggestion, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
-        <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Đề xuất chưa được lưu</Text>
-        <Text style={[styles.helper, { color: theme.mutedForeground }]}>Kiểm tra từng ngày rồi xác nhận cập nhật thực đơn.</Text>
-        {planner.saveError ? <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>{planner.saveError}</Text> : null}
-        <View style={styles.actions}>
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: save.isPending }} disabled={save.isPending} onPress={() => void planner.saveDraft()} style={[styles.smallPrimary, { backgroundColor: theme.primary }]}><Text style={[styles.smallPrimaryText, { color: theme.primaryForeground }]}>{save.isPending ? 'Đang lưu…' : 'Lưu thực đơn'}</Text></Pressable>
-          <Pressable accessibilityRole="button" accessibilityState={{ disabled: save.isPending }} disabled={save.isPending} onPress={planner.discardDraft} style={[styles.outlineButton, { borderColor: theme.border }]}><Text style={[styles.outlineText, { color: theme.foreground }]}>Bỏ đề xuất</Text></Pressable>
+  if (!token) {
+    return (
+      <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
+        <View style={styles.guest}>
+          <Image source={STICKER} style={styles.guestSticker} resizeMode="contain" accessibilityLabel="Hình cà chua Vedora" />
+          <View style={styles.guestCopy}>
+            <Text style={[styles.guestTitle, { color: theme.foreground }]}>Thực đơn của tôi</Text>
+            <Text style={[styles.guestText, { color: theme.mutedForeground }]}>Đăng nhập để nhờ trợ lý lên thực đơn 7 ngày và lưu tại đây.</Text>
+          </View>
+          <View style={styles.guestActions}>
+            <PrimaryButton label="Đăng nhập" onPress={() => router.push({ pathname: '/login', params: { returnTo: '/meal-plan' } })} />
+            <OutlineButton label="Tạo tài khoản" onPress={() => router.push({ pathname: '/register', params: { returnTo: '/meal-plan' } })} />
+          </View>
         </View>
-      </View> : null}
-      {Boolean(plan.data?.problems.length) && !draft ? <View style={[styles.notice, { borderColor: theme.destructive }]}><Text style={[styles.error, { color: theme.destructive }]}>Một số bữa cần xem lại: {plan.data?.problems.map((problem) => `${dayLabels[problem.day]}: ${problem.reason || problem.ingredients.join(', ') || problem.code}`).join('; ')}</Text></View> : null}
-      {plan.isPending && !plan.data ? null : days.length ? <>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayList}>{days.map(({ day }) => <Pressable key={day} accessibilityRole="button" accessibilityState={{ selected: activeDay?.day === day }} onPress={() => planner.setSelectedDay(day)} style={[styles.dayChip, { borderColor: activeDay?.day === day ? theme.primary : theme.border, backgroundColor: activeDay?.day === day ? theme.primary : theme.card }]}><Text style={[styles.dayText, { color: activeDay?.day === day ? theme.primaryForeground : theme.foreground }]}>{dayLabels[day]}</Text></Pressable>)}</ScrollView>
-        {activeDay ? <View style={styles.dayBody}><Text style={[styles.dayTitle, { color: theme.foreground }]}>{dayLabels[activeDay.day]}{draft ? ' · bản xem trước' : ''}</Text>{activeDay.sections.map(({ section, recipes }) => <View key={section} style={styles.mealBlock}><Text style={[styles.mealLabel, { color: theme.mutedForeground }]}>BỮA {sectionLabels[section].toUpperCase()}</Text>{recipes.length ? recipes.map((recipe) => <View key={recipe.id} style={[styles.recipeCard, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.recipeTitle, { color: theme.foreground }]}>{recipe.title}</Text>{!draft ? <Pressable accessibilityRole="button" accessibilityLabel={`Đổi món ${recipe.title}`} onPress={() => planner.requestReplacement(activeDay.day, section, recipe.title)}><Text style={[styles.link, { color: theme.primary }]}>Đổi món</Text></Pressable> : null}</View>) : <Text style={[styles.emptyMeal, { color: theme.mutedForeground, borderColor: theme.border }]}>Chưa có món cho bữa này</Text>}</View>)}</View> : null}
-        {!draft ? <Pressable accessibilityRole="button" onPress={() => planner.startForm()} style={[styles.outlineButton, styles.askMore, { borderColor: theme.border }]}><Text style={[styles.outlineText, { color: theme.primary }]}>Nhờ trợ lý lên thực đơn mới</Text></Pressable> : null}
-      </> : <View style={[styles.emptyPlan, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.sectionTitle, { color: theme.foreground }]}>Chưa có thực đơn</Text><Text style={[styles.helper, styles.center, { color: theme.mutedForeground }]}>Hãy nhờ Trợ lý Vedora lên thực đơn, bản đề xuất sẽ hiện ở đây để bạn xem và lưu.</Text><Pressable accessibilityRole="button" onPress={() => planner.startForm()} style={[styles.smallPrimary, { backgroundColor: theme.primary }]}><Text style={[styles.smallPrimaryText, { color: theme.primaryForeground }]}>Nhờ trợ lý lên thực đơn</Text></Pressable></View>}
-    </ScrollView>
-  </SafeAreaView>;
+      </SafeAreaView>
+    );
+  }
+
+  const mealCount = activeDay?.sections.reduce((total, { recipes }) => total + recipes.length, 0) ?? 0;
+
+  return (
+    <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
+      <AssistantHeader
+        avatar={<Image source={STICKER} style={styles.headerSticker} resizeMode="contain" accessibilityLabel="Hình cà chua Vedora" />}
+        title="Thực đơn của tôi"
+        subtitle="Lặp lại theo từng thứ trong tuần"
+      />
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {plan.isPending && !plan.data ? (
+          <View style={styles.loadingRow}>
+            <ActivityIndicator color={theme.primary} />
+            <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải thực đơn…</Text>
+          </View>
+        ) : null}
+
+        {plan.isError ? (
+          <Pressable accessibilityRole="button" onPress={() => void plan.refetch()} style={[styles.notice, { borderColor: theme.destructive, backgroundColor: theme.card }]}>
+            <Text style={[styles.noticeText, { color: theme.destructive }]}>Không tải được thực đơn đã lưu.</Text>
+            <Text style={[styles.noticeAction, { color: theme.destructive }]}>Thử lại</Text>
+          </Pressable>
+        ) : null}
+
+        {suggestion && !draft ? (
+          <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
+            <View style={styles.cardCopy}>
+              <Text style={[styles.cardTitle, { color: theme.foreground }]}>Trợ lý vừa đề xuất một thực đơn</Text>
+              <Text style={[styles.helper, { color: theme.mutedForeground }]}>Thực đơn đã lưu vẫn giữ nguyên cho đến khi bạn lưu bản mới.</Text>
+            </View>
+            <PrimaryButton label="Xem đề xuất" onPress={() => planner.previewProposal(suggestion)} />
+          </View>
+        ) : null}
+
+        {draft ? (
+          <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
+            <View style={styles.cardCopy}>
+              <Text style={[styles.cardTitle, { color: theme.foreground }]}>Bản xem trước chưa lưu</Text>
+              <Text style={[styles.helper, { color: theme.mutedForeground }]}>Xem qua từng ngày, đồng ý thì bấm Lưu để thay thực đơn hiện tại.</Text>
+              {planner.saveError ? (
+                <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>
+                  {planner.saveError}
+                </Text>
+              ) : null}
+            </View>
+            <View style={styles.buttonRow}>
+              <View style={styles.flex}>
+                <PrimaryButton label={save.isPending ? 'Đang lưu…' : 'Lưu thực đơn'} disabled={save.isPending} onPress={() => void planner.saveDraft()} />
+              </View>
+              <View style={styles.flex}>
+                <OutlineButton label="Bỏ đề xuất" tone="neutral" disabled={save.isPending} onPress={planner.discardDraft} />
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        {Boolean(plan.data?.problems.length) && !draft ? (
+          <View style={[styles.notice, { borderColor: theme.destructive, backgroundColor: theme.card }]}>
+            <Text style={[styles.noticeText, { color: theme.destructive }]}>
+              Một số bữa cần xem lại: {plan.data?.problems.map((problem) => `${dayLabels[problem.day]}: ${problem.reason || problem.ingredients.join(', ') || problem.code}`).join('; ')}
+            </Text>
+          </View>
+        ) : null}
+
+        {plan.isPending && !plan.data ? null : days.length ? (
+          <>
+            <View accessibilityRole="tablist" style={styles.dayRow}>
+              {days.map(({ day, sections }) => {
+                const selected = activeDay?.day === day;
+                const hasMeals = sections.some(({ recipes }) => recipes.length > 0);
+                return (
+                  <Pressable
+                    key={day}
+                    accessibilityRole="tab"
+                    accessibilityLabel={dayLabels[day]}
+                    accessibilityState={{ selected }}
+                    onPress={() => planner.setSelectedDay(day)}
+                    style={[styles.dayChip, { borderColor: selected ? theme.primary : theme.border, backgroundColor: selected ? theme.primary : theme.card }]}>
+                    <Text style={[styles.dayText, { color: selected ? theme.primaryForeground : theme.foreground }]}>{SHORT_DAY[day]}</Text>
+                    <View style={[styles.dayDot, { backgroundColor: hasMeals ? (selected ? theme.primaryForeground : theme.primary) : 'transparent' }]} />
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {activeDay ? (
+              <View style={styles.dayBody}>
+                <View style={styles.dayHeading}>
+                  <Text style={[styles.dayTitle, { color: theme.foreground }]}>{dayLabels[activeDay.day]}</Text>
+                  <View style={[styles.badge, { backgroundColor: draft ? theme.secondary : theme.muted }]}>
+                    <Text style={[styles.badgeText, { color: draft ? theme.secondaryForeground : theme.mutedForeground }]}>
+                      {draft ? 'Bản xem trước' : `${mealCount} món`}
+                    </Text>
+                  </View>
+                </View>
+                {activeDay.sections.map(({ section, recipes }) => (
+                  <View key={section} style={styles.mealBlock}>
+                    <Text style={[styles.mealLabel, { color: theme.mutedForeground }]}>BỮA {sectionLabels[section].toUpperCase()}</Text>
+                    {recipes.length ? (
+                      recipes.map((recipe) => (
+                        <View key={recipe.id} style={[styles.recipeCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
+                          <Text style={[styles.recipeTitle, { color: theme.foreground }]}>{recipe.title}</Text>
+                          {!draft ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Đổi món ${recipe.title}`}
+                              hitSlop={6}
+                              onPress={() => planner.requestReplacement(activeDay.day, section, recipe.title)}
+                              style={({ pressed }) => [styles.swap, { backgroundColor: theme.secondary, opacity: pressed ? 0.7 : 1 }]}>
+                              <SymbolView name={{ ios: 'arrow.triangle.2.circlepath', android: 'sync', web: 'sync' }} size={13} tintColor={theme.primary} />
+                              <Text style={[styles.swapText, { color: theme.primary }]}>Đổi món</Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      ))
+                    ) : (
+                      <Text style={[styles.emptyMeal, { color: theme.mutedForeground, borderColor: theme.border }]}>Chưa có món cho bữa này</Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : null}
+
+          </>
+        ) : (
+          <View style={[styles.emptyPlan, { borderColor: theme.border, backgroundColor: theme.card }]}>
+            <Image source={STICKER} style={styles.emptySticker} resizeMode="contain" accessibilityElementsHidden importantForAccessibility="no" />
+            <View style={styles.emptyCopy}>
+              <Text style={[styles.cardTitle, styles.center, { color: theme.foreground }]}>Chưa có thực đơn</Text>
+              <Text style={[styles.helper, styles.center, { color: theme.mutedForeground }]}>Nhờ trợ lý lên thực đơn, bản đề xuất sẽ hiện ở đây để bạn xem và lưu.</Text>
+            </View>
+            <View style={styles.emptyAction}>
+              <PrimaryButton label="Nhờ trợ lý lên thực đơn" onPress={() => planner.startForm()} />
+            </View>
+          </View>
+        )}
+      </ScrollView>
+      {!draft && days.length ? (
+        <View style={[styles.cta, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+          <View style={styles.ctaInner}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => planner.startForm()}
+              style={({ pressed }) => [styles.ctaButton, { backgroundColor: theme.primary, opacity: pressed ? 0.85 : 1 }]}>
+              <SymbolView name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={18} tintColor={theme.primaryForeground} />
+              <Text style={[styles.ctaText, { color: theme.primaryForeground }]}>Nhờ trợ lý lên thực đơn mới</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, center: { textAlign: 'center' },
-  header: { minHeight: 84, borderBottomWidth: 1, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center' }, headerText: { flex: 1 },
-  title: { fontFamily: Fonts.headingBold, fontSize: 22, lineHeight: 31 }, subtitle: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 18 }, sticker: { width: 68, height: 68 },
-  content: { width: '100%', maxWidth: 620, alignSelf: 'center', paddingHorizontal: Spacing.three, paddingTop: Spacing.three, paddingBottom: Spacing.four, gap: Spacing.three },
-  loadingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingVertical: Spacing.two }, helper: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 }, error: { fontFamily: Fonts.sansMedium, fontSize: 13, lineHeight: 19 }, link: { fontFamily: Fonts.sansBold, fontSize: 12 },
-  notice: { borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.three }, suggestion: { borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.three, gap: Spacing.two }, sectionTitle: { fontFamily: Fonts.headingBold, fontSize: 16 },
-  smallPrimary: { alignSelf: 'flex-start', minHeight: 38, borderRadius: 19, justifyContent: 'center', paddingHorizontal: Spacing.three }, smallPrimaryText: { fontFamily: Fonts.sansBold, fontSize: 13 },
-  outlineButton: { minHeight: 38, borderRadius: 19, borderWidth: 1, justifyContent: 'center', paddingHorizontal: Spacing.three }, outlineText: { fontFamily: Fonts.sansSemibold, fontSize: 13 }, askMore: { alignSelf: 'flex-start' }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
-  dayList: { gap: Spacing.two, paddingBottom: Spacing.one }, dayChip: { minHeight: 41, paddingHorizontal: Spacing.three, borderWidth: 1, borderRadius: 21, justifyContent: 'center' }, dayText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
-  dayBody: { gap: Spacing.three }, dayTitle: { fontFamily: Fonts.headingBold, fontSize: 18 }, mealBlock: { gap: Spacing.two }, mealLabel: { fontFamily: Fonts.sansBold, fontSize: 11, letterSpacing: 1 },
-  recipeCard: { borderWidth: 1, borderRadius: Radius.xl, minHeight: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three, gap: Spacing.two }, recipeTitle: { flex: 1, fontFamily: Fonts.sansSemibold, fontSize: 14 },
-  emptyMeal: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, padding: Spacing.three, fontFamily: Fonts.sans, fontSize: 13 }, emptyPlan: { borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.four, alignItems: 'center', gap: Spacing.two },
-  guest: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.three }, guestSticker: { width: 120, height: 120 }, guestText: { textAlign: 'center', fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 }, primaryButton: { alignSelf: 'stretch', minHeight: 48, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center' }, primaryText: { fontFamily: Fonts.sansBold, fontSize: 15 },
+  screen: { flex: 1 },
+  flex: { flex: 1 },
+  center: { textAlign: 'center' },
+  headerSticker: { width: 38, height: 38 },
+  content: { width: '100%', maxWidth: 680, alignSelf: 'center', padding: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three },
+  cta: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + Spacing.one },
+  ctaInner: { width: '100%', maxWidth: 680, alignSelf: 'center' },
+  ctaButton: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    borderRadius: Radius['2xl'],
+    paddingHorizontal: Spacing.three,
+    shadowColor: '#14261a',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+  },
+  ctaText: { fontFamily: Fonts.sansBold, fontSize: 15, lineHeight: 21 },
+  loadingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two, paddingVertical: Spacing.three },
+  helper: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
+  error: { fontFamily: Fonts.sansMedium, fontSize: 13, lineHeight: 19 },
+
+  button: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing.two, borderWidth: 1, borderRadius: Radius.xl, paddingHorizontal: Spacing.three },
+  buttonText: { fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  buttonRow: { flexDirection: 'row', gap: Spacing.two },
+
+  notice: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three, borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.three },
+  noticeText: { flex: 1, fontFamily: Fonts.sansMedium, fontSize: 13, lineHeight: 19 },
+  noticeAction: { fontFamily: Fonts.sansBold, fontSize: 13, lineHeight: 19 },
+  card: { borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.three, gap: Spacing.three },
+  cardCopy: { gap: Spacing.one },
+  cardTitle: { fontFamily: Fonts.headingBold, fontSize: 16, lineHeight: 23 },
+
+  dayRow: { flexDirection: 'row', gap: Spacing.one + Spacing.half },
+  dayChip: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: Spacing.one, borderWidth: 1, borderRadius: Radius.xl },
+  dayText: { fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 18 },
+  dayDot: { width: 5, height: 5, borderRadius: 3 },
+
+  dayBody: { gap: Spacing.three },
+  dayHeading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  dayTitle: { flex: 1, fontFamily: Fonts.headingBold, fontSize: 20, lineHeight: 28 },
+  badge: { borderRadius: Radius['4xl'], paddingHorizontal: Spacing.two + Spacing.one, paddingVertical: Spacing.one },
+  badgeText: { fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 16 },
+  mealBlock: { gap: Spacing.two },
+  mealLabel: { fontFamily: Fonts.sansBold, fontSize: 11, lineHeight: 16, letterSpacing: 1.1 },
+  recipeCard: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two + Spacing.one, borderWidth: 1, borderRadius: Radius.xl, paddingVertical: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two },
+  recipeTitle: { flex: 1, minWidth: 0, fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
+  swap: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half, borderRadius: Radius['4xl'], paddingHorizontal: Spacing.two + Spacing.one },
+  swapText: { fontFamily: Fonts.sansBold, fontSize: 12, lineHeight: 16 },
+  emptyMeal: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, textAlign: 'center', fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
+
+  emptyPlan: { alignItems: 'center', gap: Spacing.three, borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.four },
+  emptySticker: { width: 88, height: 88 },
+  emptyCopy: { gap: Spacing.one, alignSelf: 'stretch' },
+  emptyAction: { alignSelf: 'stretch' },
+
+  guest: { flex: 1, width: '100%', maxWidth: 420, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.four },
+  guestSticker: { width: 120, height: 120 },
+  guestCopy: { alignSelf: 'stretch', alignItems: 'center', gap: Spacing.two },
+  guestTitle: { fontFamily: Fonts.headingBold, fontSize: 22, lineHeight: 30, textAlign: 'center' },
+  guestText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  guestActions: { alignSelf: 'stretch', gap: Spacing.two },
 });

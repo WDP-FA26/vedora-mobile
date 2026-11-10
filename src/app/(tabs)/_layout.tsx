@@ -88,8 +88,8 @@ export default function MainTabsLayout() {
       <Tabs.Screen
         name="meal-plan"
         options={{
-          title: 'Thực đơn',
-          tabBarAccessibilityLabel: 'Thực đơn',
+          title: 'Thực đơn của tôi',
+          tabBarAccessibilityLabel: 'Thực đơn của tôi',
           tabBarIcon: ({ color }) => (
             <TabIcon name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }} color={color} />
           ),

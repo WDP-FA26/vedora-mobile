@@ -9,7 +9,7 @@ import {
   Text,
   View,
   useColorScheme,
-  type ViewToken,
+  type FlatListProps,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
@@ -55,8 +55,8 @@ export function FeedScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const { onScroll: onHomeScroll, reset: resetHomeScroll } = useExploreTabBarScroll();
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken<FeedItem>[] }) => {
+  const onViewableItemsChanged = useCallback<NonNullable<FlatListProps<FeedItem>['onViewableItemsChanged']>>(
+    ({ viewableItems }) => {
       setVisibleIds(new Set(viewableItems.map((item) => item.item.key)));
     },
     [],
@@ -126,6 +126,13 @@ export function FeedScreen() {
               {accessToken ? "Đang xem trang Khám phá" : "Đăng nhập để thả mầm và lưu bài viết"}
             </Text>
             {accessToken ? (
+              <View>
+              <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/billing'); }} style={[styles.menuAction, { backgroundColor: theme.secondary }]}>
+                <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>Gói của bạn</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/blogs'); }} style={[styles.menuAction, { backgroundColor: theme.secondary }]}>
+                <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>Blog của bạn</Text>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ disabled: signOut.isPending }}
@@ -137,6 +144,7 @@ export function FeedScreen() {
                   {signOut.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
                 </Text>
               </Pressable>
+              </View>
             ) : (
               <View style={styles.guestActions}>
                 <Pressable accessibilityRole="button" onPress={() => router.push("/login")} style={[styles.menuAction, { backgroundColor: theme.primary }]}>
@@ -147,6 +155,9 @@ export function FeedScreen() {
                 </Pressable>
               </View>
             )}
+            <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/about'); }} style={[styles.menuAction, { backgroundColor: theme.muted }]}>
+              <Text style={[styles.menuActionText, { color: theme.foreground }]}>Thông tin Vedora</Text>
+            </Pressable>
           </View>
         ) : null}
         {signOut.isError ? (
@@ -320,7 +331,7 @@ export function FeedScreen() {
                     : "Tải thêm bài viết"}
               </Text>
             </Pressable>
-          ) : null
+          ) : undefined
         }
       />}
       <ComposeDialog

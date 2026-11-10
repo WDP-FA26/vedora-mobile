@@ -10,6 +10,7 @@ import { ApiError } from '@/shared/api/api-error';
 
 import { useRecipe } from '../hooks/use-recipes';
 import { formatIngredient, recipeMinutes } from '../utils/recipe-format';
+import { RecipeSaveButton } from './recipe-save-button';
 
 export function RecipeDetailScreen() {
   const theme = useTheme();
@@ -43,10 +44,17 @@ export function RecipeDetailScreen() {
           <>
             {data.imageUrl ? <Image source={{ uri: data.imageUrl }} style={styles.image} contentFit="cover" /> : null}
             <View style={styles.body}>
-              <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>{data.title}</Text>
+              <View style={[styles.intro, { backgroundColor: theme.secondary }]}>
+                <View style={styles.introCopy}>
+                  <Text style={[styles.kicker, { color: theme.secondaryForeground }]}>CÙNG VÀO BẾP</Text>
+                  <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>{data.title}</Text>
+                </View>
+                <Image source={require('@/assets/branding/tomato-sticker.png')} style={styles.sticker} contentFit="contain" accessible={false} />
+              </View>
               <Text style={[styles.meta, { color: theme.mutedForeground }]}>
                 {[minutes !== null ? `${minutes} phút` : null, `${data.servings} khẩu phần`].filter(Boolean).join(' · ')}
               </Text>
+              <RecipeSaveButton recipe={data} />
               {data.post ? (
                 <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/posts/[id]', params: { id: data.post!.id } })}>
                   <Text style={[styles.link, { color: theme.primary }]}>Xem bài viết của {data.post.author.fullName}</Text>
@@ -65,15 +73,20 @@ export function RecipeDetailScreen() {
                 </View>
               ) : null}
 
-              <Text style={[styles.section, { color: theme.foreground }]}>Nguyên liệu</Text>
-              {data.ingredients.map((item) => (
-                <Text key={`${item.ingredientId}-${item.name}`} style={[styles.text, { color: theme.foreground }]}>• {formatIngredient(item)}</Text>
-              ))}
+              <View style={[styles.ingredients, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.sectionRow}>
+                  <Image source={require('@/assets/branding/avocado-sticker.png')} style={styles.smallSticker} contentFit="contain" accessible={false} />
+                  <Text accessibilityRole="header" style={[styles.section, styles.ingredientTitle, { color: theme.foreground }]}>Nguyên liệu</Text>
+                </View>
+                {data.ingredients.map((item) => (
+                  <Text key={`${item.ingredientId}-${item.name}`} style={[styles.text, { color: theme.foreground }]}>• {formatIngredient(item)}</Text>
+                ))}
 
-              <Text style={[styles.section, { color: theme.foreground }]}>Cách làm</Text>
+              </View>
+              <Text accessibilityRole="header" style={[styles.section, { color: theme.foreground }]}>Từng bước vào bếp</Text>
               {data.steps.map((step, index) => (
-                <View key={index} style={styles.step}>
-                  <Text style={[styles.stepNumber, { color: theme.primary }]}>{index + 1}.</Text>
+                <View key={index} style={[styles.step, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={[styles.stepBadge, { backgroundColor: theme.secondary }]}><Text style={[styles.stepNumber, { color: theme.secondaryForeground }]}>{index + 1}</Text></View>
                   <Text style={[styles.text, styles.stepText, { color: theme.foreground }]}>{step}</Text>
                 </View>
               ))}
@@ -92,15 +105,24 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: Fonts.headingBold, fontSize: 18 },
   content: { width: '100%', maxWidth: 680, alignSelf: 'center', paddingBottom: Spacing.five },
   state: { padding: Spacing.five, alignItems: 'center', gap: Spacing.three },
-  image: { width: '100%', height: 220 },
-  body: { padding: Spacing.three, gap: Spacing.two },
+  image: { width: '100%', aspectRatio: 16 / 10 },
+  body: { padding: Spacing.three, gap: Spacing.three },
+  intro: { padding: Spacing.three, borderRadius: Radius['2xl'], flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: Spacing.two },
+  introCopy: { flexBasis: 180, flexGrow: 1, flexShrink: 1, gap: Spacing.two },
+  kicker: { fontFamily: Fonts.sansBold, fontSize: 11, letterSpacing: 1.2 },
+  sticker: { width: 64, height: 72 },
+  smallSticker: { width: 40, height: 44 },
+  ingredients: { padding: Spacing.three, gap: Spacing.two, borderWidth: 1, borderRadius: Radius['2xl'] },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  ingredientTitle: { marginTop: 0, flex: 1 },
   title: { fontFamily: Fonts.headingBold, fontSize: 22, lineHeight: 30 },
   meta: { fontFamily: Fonts.sans, fontSize: 13 },
   link: { fontFamily: Fonts.sansSemibold, fontSize: 14 },
   section: { fontFamily: Fonts.headingBold, fontSize: 17, marginTop: Spacing.three },
   text: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 22 },
   warning: { borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.three, gap: Spacing.one, marginTop: Spacing.two },
-  step: { flexDirection: 'row', gap: Spacing.two },
+  step: { flexDirection: 'row', gap: Spacing.three, borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.three },
+  stepBadge: { minWidth: 30, minHeight: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start', padding: Spacing.one },
   stepNumber: { fontFamily: Fonts.sansBold, fontSize: 15, lineHeight: 22 },
   stepText: { flex: 1 },
   retry: { minHeight: 42, borderWidth: 1, borderRadius: Radius.xl, paddingHorizontal: Spacing.four, alignItems: 'center', justifyContent: 'center' },
