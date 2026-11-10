@@ -237,3 +237,10 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn: chưa chạy lint/tsc và chưa thử trên thiết bị vì công cụ shell lỗi tạm thời; hai file không còn dùng (`meal-planner-screen.tsx`, `assistant-button.tsx`) chưa xoá được và cần xoá thủ công.
 - Bước kiểm tra UI: (1) Đăng nhập, thanh tab có Trang chủ, Công thức, Trợ lý (hạt đậu mầm), Thực đơn, Tôi. (2) Tab Trợ lý: bấm "Lên thực đơn 7 ngày", điền biểu mẫu rồi tiếp tục, tin nhắn được điền sẵn, bấm gửi. (3) Khi trợ lý đề xuất, bấm "Xem trong Thực đơn": app chuyển sang tab Thực đơn, hiện "Đề xuất chưa được lưu" và các ngày. (4) Bấm "Lưu thực đơn": thực đơn tuần cập nhật; hoặc "Bỏ đề xuất". (5) Ở tab Thực đơn bấm "Đổi món": chuyển về tab Trợ lý với câu yêu cầu điền sẵn. (6) Tab Thực đơn không có khung chat. (7) Đăng xuất: tab Trợ lý là khung hỏi nhanh, tab Thực đơn hiện nút Đăng nhập.
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-11-06 — Lộ trình đồng bộ tính năng web → mobile (ROADMAP)
+
+- Kết quả: Đối chiếu lại vedora-frontend (main, tới `9b1d532`) với mobile và viết `docs/ROADMAP.md` liệt kê tính năng web còn thiếu trên mobile: xóa bài của mình, lưu/đánh giá công thức, danh sách đi chợ, đếm lượt xem, viết/sửa Blog, sở thích nguyên liệu, xác minh chuyên gia, gói Pro/Premium, đăng nhập Google, chọn thú cưng; kèm thứ tự đợt làm, việc dọn dẹp và gợi ý riêng cho mobile (push, deep link, ngoại tuyến). Chỉ là tài liệu, chưa đổi code.
+- Giới hạn: đối chiếu theo code hai repo, chưa chạy thử web; đường dẫn API từng mục cần đọc lại ở code web khi bắt tay làm. Gói Pro/Premium cần chốt chính sách thanh toán trong app trước.
+- Bước kiểm tra UI: không có (chỉ thêm tài liệu).
+- Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
