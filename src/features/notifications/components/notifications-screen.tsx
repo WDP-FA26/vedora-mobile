@@ -65,7 +65,7 @@ export function NotificationsScreen() {
               <Text style={[styles.sub, { color: theme.destructive }]}>Không tải được thông báo. Chạm để thử lại.</Text>
             </Pressable>
           ) : <Text style={[styles.sub, styles.state, { color: theme.mutedForeground }]}>Chưa có thông báo nào.</Text>}
-          ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : null}
+          ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : undefined}
           renderItem={({ item }) => (
             <Pressable
               accessibilityRole="button"

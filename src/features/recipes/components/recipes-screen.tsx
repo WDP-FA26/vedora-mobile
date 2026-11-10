@@ -10,8 +10,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useRecipes } from '../hooks/use-recipes';
-import { MAX_RECIPE_QUERY_LENGTH, type Recipe } from '../types/recipe.schema';
-import { recipeMinutes } from '../utils/recipe-format';
+import { MAX_RECIPE_QUERY_LENGTH } from '../types/recipe.schema';
+import { RecipeCard } from './recipe-card';
 
 function useDebounced<T>(value: T, delayMs: number) {
   const [debounced, setDebounced] = useState(value);
@@ -33,7 +33,7 @@ export function RecipesScreen() {
 
   function toggleSuitable() {
     if (!token) {
-      router.push({ pathname: '/login', params: { returnTo: '/ai' } });
+      router.push({ pathname: '/login', params: { returnTo: '/recipes' } });
       return;
     }
     setSuitableForMe((value) => !value);
@@ -46,17 +46,30 @@ export function RecipesScreen() {
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
-        onEndReached={() => { if (recipes.hasNextPage && !recipes.isFetchingNextPage) void recipes.fetchNextPage(); }}
+        onEndReached={() => { if (recipes.hasNextPage && !recipes.isFetching && !recipes.isFetchNextPageError) void recipes.fetchNextPage(); }}
         onEndReachedThreshold={0.5}
+        refreshing={recipes.isRefetching}
+        onRefresh={() => void recipes.refetch()}
         ListHeaderComponent={(
           <View style={styles.header}>
             <View style={styles.headingRow}>
-              <View style={[styles.headingIcon, { backgroundColor: theme.secondary }]}>
-                <SymbolView name={{ ios: 'book.closed', android: 'menu_book', web: 'menu_book' }} size={23} tintColor={theme.primary} />
-              </View>
               <View style={styles.headingCopy}>
                 <Text accessibilityRole="header" style={[styles.heading, { color: theme.foreground }]}>Công thức</Text>
-                <Text style={[styles.headingSub, { color: theme.mutedForeground }]}>Khám phá món chay trong kho công thức Vedora</Text>
+                <Text style={[styles.headingSub, { color: theme.mutedForeground }]}>Một chút xanh cho bữa ăn mỗi ngày</Text>
+              </View>
+              <Pressable accessibilityRole="button" accessibilityLabel="Xem công thức đã lưu" onPress={() => router.push({ pathname: '/bookmarks', params: { tab: 'recipes' } })} style={[styles.savedLink, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <SymbolView name={{ ios: 'bookmark', android: 'bookmark', web: 'bookmark' }} size={20} tintColor={theme.primary} />
+                <Text style={[styles.chipText, { color: theme.foreground }]}>Đã lưu</Text>
+              </Pressable>
+            </View>
+            <View style={[styles.hero, { backgroundColor: theme.secondary }]}>
+              <View style={styles.heroCopy}>
+                <Text style={[styles.eyebrow, { color: theme.secondaryForeground }]}>BẾP NHỎ VEDORA</Text>
+                <Text style={[styles.heroTitle, { color: theme.foreground }]}>Hôm nay, mình{'\n'}nấu gì nhỉ?</Text>
+                <Text style={[styles.heroSub, { color: theme.mutedForeground }]}>Tìm món ngon từ những nguyên liệu quen thuộc.</Text>
+              </View>
+              <View style={styles.stickerFrame}>
+                <Image source={require('@/assets/branding/carrot-sticker.png')} style={styles.heroSticker} contentFit="contain" accessible={false} />
               </View>
             </View>
             <View style={[styles.search, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -78,14 +91,32 @@ export function RecipesScreen() {
                 </Pressable>
               ) : null}
             </View>
+            <View style={styles.suggestions}>
+              {['Nấm', 'Đậu hũ', 'Canh'].map((keyword) => (
+                <Pressable key={keyword} accessibilityRole="button" accessibilityLabel={`Tìm công thức ${keyword}`} accessibilityState={{ selected: text === keyword }} onPress={() => setText(text === keyword ? '' : keyword)} style={[styles.suggestion, { backgroundColor: text === keyword ? theme.secondary : theme.card, borderColor: text === keyword ? theme.primary : theme.border }]}>
+                  <Text style={[styles.chipText, { color: theme.foreground }]}>{keyword}</Text>
+                </Pressable>
+              ))}
+            </View>
             <Pressable
               accessibilityRole="switch"
               accessibilityState={{ checked: !!token && suitableForMe }}
               onPress={toggleSuitable}
-              style={[styles.chip, { backgroundColor: token && suitableForMe ? theme.primary : theme.card, borderColor: token && suitableForMe ? theme.primary : theme.border }]}
+              style={[styles.filter, { backgroundColor: token && suitableForMe ? theme.secondary : theme.card, borderColor: token && suitableForMe ? theme.primary : theme.border }]}
             >
-              <Text style={[styles.chipText, { color: token && suitableForMe ? theme.primaryForeground : theme.foreground }]}>Hợp với hồ sơ ăn uống của tôi</Text>
+              <SymbolView name={{ ios: 'leaf', android: 'eco', web: 'eco' }} size={24} tintColor={theme.primary} />
+              <View style={styles.headingCopy}>
+                <Text style={[styles.filterTitle, { color: theme.foreground }]}>Hợp với mình</Text>
+                <Text style={[styles.headingSub, { color: theme.mutedForeground }]}>Lọc theo hồ sơ ăn uống của bạn</Text>
+              </View>
+              <View style={[styles.filterCheck, { backgroundColor: token && suitableForMe ? theme.primary : theme.muted }]}>
+                <SymbolView name={{ ios: token && suitableForMe ? 'checkmark' : 'plus', android: token && suitableForMe ? 'check' : 'add', web: token && suitableForMe ? 'check' : 'add' }} size={18} tintColor={token && suitableForMe ? theme.primaryForeground : theme.mutedForeground} />
+              </View>
             </Pressable>
+            <View style={styles.sectionRow}>
+              <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.foreground }]}>{q ? 'Kết quả tìm kiếm' : token && suitableForMe ? 'Món hợp với bạn' : 'Khám phá món ngon'}</Text>
+              {recipes.isFetching && !recipes.isPending ? <ActivityIndicator size="small" color={theme.primary} /> : null}
+            </View>
           </View>
         )}
         ListEmptyComponent={recipes.isPending ? <ActivityIndicator color={theme.primary} style={styles.state} /> : recipes.isError ? (
@@ -94,71 +125,53 @@ export function RecipesScreen() {
           </Pressable>
         ) : (
           <View style={[styles.empty, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <SymbolView name={{ ios: 'fork.knife', android: 'restaurant', web: 'restaurant' }} size={28} tintColor={theme.primary} />
-            <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{q || suitableForMe ? 'Chưa tìm thấy món phù hợp' : 'Chưa có công thức'}</Text>
-            <Text style={[styles.sub, { color: theme.mutedForeground }]}>{q || suitableForMe ? 'Thử từ khóa khác hoặc bỏ bộ lọc.' : 'Kho công thức hiện chưa có món nào.'}</Text>
+            <Image source={require('@/assets/branding/avocado-sticker.png')} style={styles.emptySticker} contentFit="contain" accessible={false} />
+            <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{q || (token && suitableForMe) ? 'Chưa tìm thấy món phù hợp' : 'Chưa có công thức'}</Text>
+            <Text style={[styles.sub, { color: theme.mutedForeground }]}>{q || (token && suitableForMe) ? 'Thử từ khóa khác hoặc bỏ bộ lọc.' : 'Kho công thức hiện chưa có món nào.'}</Text>
           </View>
         )}
-        ListFooterComponent={recipes.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : null}
+        ListFooterComponent={recipes.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : recipes.isError && items.length ? (
+          <Pressable accessibilityRole="button" onPress={() => void (recipes.isFetchNextPageError ? recipes.fetchNextPage() : recipes.refetch())} style={styles.state}>
+            <Text style={[styles.sub, { color: theme.destructive }]}>Chưa tải được thêm món. Chạm để thử lại.</Text>
+          </Pressable>
+        ) : undefined}
         renderItem={({ item }) => <RecipeCard recipe={item} />}
       />
     </SafeAreaView>
   );
 }
 
-function RecipeCard({ recipe }: { recipe: Recipe }) {
-  const theme = useTheme();
-  const minutes = recipeMinutes(recipe);
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Xem công thức ${recipe.title}`}
-      onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: recipe.id } })}
-      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
-    >
-      {recipe.imageUrl ? (
-        <Image source={{ uri: recipe.imageUrl }} style={styles.image} contentFit="cover" />
-      ) : (
-        <View style={[styles.image, styles.imageEmpty, { backgroundColor: theme.secondary }]}>
-          <SymbolView name={{ ios: 'fork.knife', android: 'restaurant', web: 'restaurant' }} size={30} tintColor={theme.primary} />
-        </View>
-      )}
-      <View style={styles.cardCopy}>
-        <Text style={[styles.cardTitle, { color: theme.foreground }]}>{recipe.title}</Text>
-        <Text style={[styles.sub, { color: theme.mutedForeground }]}>
-          {[minutes !== null ? `${minutes} phút` : null, `${recipe.servings} khẩu phần`, `${recipe.ingredientCount} nguyên liệu`].filter(Boolean).join(' · ')}
-        </Text>
-        {recipe.conflicts.length > 0 ? (
-          <Text style={[styles.warning, { color: theme.destructive }]}>{recipe.conflicts.length} cảnh báo kết hợp nguyên liệu</Text>
-        ) : null}
-        {recipe.post ? <Text style={[styles.sub, { color: theme.mutedForeground }]}>Bởi {recipe.post.author.fullName}</Text> : null}
-      </View>
-    </Pressable>
-  );
-}
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   list: { width: '100%', maxWidth: 620, alignSelf: 'center', paddingHorizontal: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three },
   header: { gap: Spacing.three },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingTop: Spacing.three },
-  headingIcon: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  savedLink: { minHeight: 44, borderWidth: 1, borderRadius: Radius.xl, paddingHorizontal: Spacing.two, flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  hero: { borderRadius: Radius['3xl'], padding: Spacing.three, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two },
+  heroCopy: { flexGrow: 1, flexShrink: 1, flexBasis: 165, gap: Spacing.two },
+  eyebrow: { fontFamily: Fonts.sansBold, fontSize: 11, letterSpacing: 1.3 },
+  heroTitle: { fontFamily: Fonts.headingBold, fontSize: 25, lineHeight: 35 },
+  heroSub: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
+  stickerFrame: { width: 92, height: 116, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff2d8', borderRadius: 46, transform: [{ rotate: '7deg' }] },
+  heroSticker: { width: 80, height: 104 },
+  suggestions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two },
+  suggestion: { minHeight: 40, borderWidth: 1, borderRadius: 22, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, justifyContent: 'center' },
+  filter: { minHeight: 72, borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  filterTitle: { fontFamily: Fonts.sansBold, fontSize: 15 },
+  filterCheck: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
+  sectionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.one },
+  sectionTitle: { flex: 1, fontFamily: Fonts.headingBold, fontSize: 18, lineHeight: 27 },
+  emptySticker: { width: 80, height: 80 },
   headingCopy: { flex: 1, minWidth: 0 },
   heading: { fontFamily: Fonts.headingBold, fontSize: 23, lineHeight: 31 },
   headingSub: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 18 },
-  search: { minHeight: 48, borderWidth: 1, borderRadius: Radius.xl, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two },
-  searchInput: { flex: 1, minWidth: 0, minHeight: 46, fontFamily: Fonts.sans, fontSize: 14, paddingVertical: 0 },
+  search: { minHeight: 52, borderWidth: 1, borderRadius: Radius.xl, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two },
+  searchInput: { flex: 1, minWidth: 0, minHeight: 50, fontFamily: Fonts.sans, fontSize: 14, paddingVertical: 0 },
   clear: { minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
-  chip: { alignSelf: 'flex-start', minHeight: 37, borderRadius: 20, borderWidth: 1, paddingHorizontal: Spacing.three, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   state: { padding: Spacing.five, textAlign: 'center' },
   sub: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
   empty: { borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.four, alignItems: 'center', gap: Spacing.two },
   emptyTitle: { fontFamily: Fonts.headingBold, fontSize: 16, textAlign: 'center' },
-  card: { borderWidth: 1, borderRadius: Radius['2xl'], overflow: 'hidden' },
-  image: { width: '100%', height: 160 },
-  imageEmpty: { alignItems: 'center', justifyContent: 'center' },
-  cardCopy: { padding: Spacing.three, gap: Spacing.one },
-  cardTitle: { fontFamily: Fonts.headingBold, fontSize: 17, lineHeight: 24 },
-  warning: { fontFamily: Fonts.sansSemibold, fontSize: 12 },
 });

@@ -12,7 +12,7 @@ import {
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
-  type ViewToken,
+  type FlatListProps,
 } from "react-native";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
@@ -30,8 +30,8 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
   const theme = useTheme();
   const feed = useFollowingFeed();
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken<FeedPost>[] }) => {
+  const onViewableItemsChanged = useCallback<NonNullable<FlatListProps<FeedPost>['onViewableItemsChanged']>>(
+    ({ viewableItems }) => {
       setVisibleIds(new Set(viewableItems.map((item) => item.item.id)));
     },
     [],
@@ -187,7 +187,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
             {feed.loadingMoreAuthors ? "Đang tải thêm" : "Tải thêm người theo dõi"}
           </Text>
         </Pressable>
-      ) : null}
+      ) : undefined}
     />
   );
 }

@@ -26,6 +26,12 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kiểm tra: `npx tsc --noEmit`, `npx expo lint`, bundle Android/web và `git diff --check` đều đạt. Bước UI cần chạy trên thiết bị với API thật: đăng nhập, mở lại app để kiểm tra khôi phục phiên, để access token hết hạn rồi thao tác tiếp, cuối cùng đăng xuất và mở lại app; chưa có thiết bị/API để thực hiện.
 - Người thực hiện: Codex.
 
+## 2026-11-07 — Đối chiếu lại mobile với 8 ảnh web sau khi bổ sung blog
+
+- Kết quả: Đối chiếu ảnh web với code mobile hiện tại. Còn thiếu đăng nhập Google; trang gói hiện tại, mua Pro/Premium, thanh toán SePay và lịch sử giao dịch; lối vào/luồng xin xác minh chuyên gia; mục Thích và cấu hình sở thích nguyên liệu; lưu công thức ngay trên thẻ; lối vào Điều khoản, Quyền riêng tư, Tiêu chuẩn cộng đồng và Trợ năng. Blog của bạn/viết blog đã có trong nhánh tính năng. Chia sẻ bài đã có trong menu ba chấm. Ảnh billing ghi Pro/Premium chưa có đặc quyền bổ sung, nên chưa kết luận các quyền lợi quảng bá Vedora Plus là tính năng web đã hoạt động. Không suy ra luồng nằm sau nút bấm chỉ từ ảnh.
+- Bước kiểm tra UI: (1) Mở Đăng nhập, đối chiếu nút Google trên ảnh web. (2) Mở Tôi, kiểm tra lối vào Gói của bạn và Xác minh tài khoản chuyên gia. (3) Mở Hồ sơ ăn uống, kiểm tra mục sở thích nguyên liệu còn Sắp có và thẻ tóm tắt chỉ có Không ăn. (4) Mở Công thức, kiểm tra thiếu nút lưu trên thẻ. (5) Mở Tôi > Blog của tôi, tạo/lưu nháp một blog để xác nhận phần đã bổ sung. (6) Mở menu ba chấm của bài viết để kiểm tra Chia sẻ. Đây là hướng dẫn kiểm tra trên thiết bị, chưa thao tác trực tiếp trong task đối chiếu.
+- Người thực hiện: Codex.
+
 ## 2026-10-14 — Đồng bộ nhận diện Vedora và dọn màn mẫu
 
 - Kết quả: Chuyển logo, biểu tượng và bốn hình minh họa từ `vedora-frontend/public` sang `assets/branding`; tạo icon ứng dụng từ logo gốc; dùng logo và sticker trên màn xác thực/màn chủ; thay icon, splash, favicon; bỏ tab Khám phá, màn và thành phần Expo mẫu, đưa màn chủ về route `/`.
@@ -244,3 +250,188 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Giới hạn: đối chiếu theo code hai repo, chưa chạy thử web; đường dẫn API từng mục cần đọc lại ở code web khi bắt tay làm. Gói Pro/Premium cần chốt chính sách thanh toán trong app trước.
 - Bước kiểm tra UI: không có (chỉ thêm tài liệu).
 - Người thực hiện: Claude (Sonnet 5.5), theo yêu cầu của Vy Ngo Chi.
+
+## 2026-11-06 — Đồng bộ mã nguồn từ GitHub
+
+- Kết quả: Đồng bộ main về origin/main tại commit 07af2a3; lưu lịch sử local trước đồng bộ ở nhánh backup/main-before-sync-20261106 do remote đã viết lại lịch sử.
+- Kiểm tra UI: Chưa chạy ứng dụng; bước kiểm tra đề xuất là mở app, đăng nhập, xem bảng tin, hồ sơ và tab Trợ lý/Thực đơn.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Khởi động Expo và cung cấp QR
+
+- Kết quả: Chạy Metro ở chế độ Expo Go/LAN tại địa chỉ LAN do Expo hiển thị; tạo ảnh QR tại .expo/expo-qr.png. Server phản hồi packager-status:running.
+- Kiểm tra UI: Điện thoại và máy tính dùng cùng mạng Wi-Fi; mở Expo Go, quét QR, chờ tải ứng dụng rồi kiểm tra màn hình đầu tiên. Chưa xác nhận trên điện thoại.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Cập nhật QR sau khi IP Wi-Fi thay đổi
+
+- Kết quả: Phát hiện QR cũ trỏ tới IP LAN của máy phát triển trong khi IP Wi-Fi hiện tại là IP LAN của máy phát triển. Khởi động lại Expo Go/LAN tại địa chỉ LAN do Expo hiển thị và tạo QR mới ở .expo/expo-qr-current.png; địa chỉ LAN phản hồi packager-status:running. Người dùng báo Request timeout; cần thử QR mới để xác nhận hết lỗi trên điện thoại.
+- Bước kiểm tra UI: Kết nối điện thoại cùng Wi-Fi với máy tính, đóng lần tải cũ trong Expo Go và quét QR mới; chờ tải màn hình đầu tiên. Chưa xác nhận kết quả trên điện thoại.
+- Người thực hiện: Codex.
+- Chẩn đoán bổ sung: Manifest trả HTTP 500 (UnexpectedServerError) khi CLI chạy online; chạy lại bằng expo start --go --offline --port 8081 thì manifest Android trả HTTP 200 tại IP LAN mới. Chế độ offline chỉ áp dụng cho Expo CLI; chưa xác nhận hết timeout trên điện thoại.
+- Kiểm tra tải ứng dụng: Manifest Android và bundle đều HTTP 200; bundle gồm 2346 modules, tải thành công 12.264.589 byte. Chưa kiểm tra trực tiếp trên điện thoại.
+
+## 2026-11-06 — Nâng Expo SDK 58 để chạy trên Expo Go iPhone
+
+- Kết quả: Nâng Expo và các thư viện tương thích lên SDK 58, React 19.3, React Native 0.88; cập nhật config plugin và lockfile. Chuyển kiểu ref/danh sách theo API mới, xử lý chế độ màu chưa xác định và chờ đọc/ghi xong từng phần video trước khi upload. Khởi động lại Expo; manifest iOS xác nhận exposdk:58.0.0. Chưa xác nhận kết quả trực tiếp trên iPhone.
+- Bước kiểm tra UI: (1) Trên iPhone, chọn Go home để thoát màn lỗi SDK cũ. (2) Kết nối cùng Wi-Fi với máy tính, quét QR mới bằng Camera/Expo Go. (3) Chờ mở màn chào hoặc bảng tin, xác nhận không còn báo lệch SDK. (4) Chuyển qua Công thức, Trợ lý, Thực đơn và Tôi; cuộn danh sách và thử giao diện sáng/tối. (5) Đăng nhập, chọn video lớn và thử đăng để kiểm tra tiến trình tải từng phần.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Sửa lỗi tài khoản Expo Go khi mở trên iPhone
+
+- Kết quả: Log iOS báo Expo Go đã đăng nhập nhưng CLI không gửi tài khoản khi chạy offline. Xác nhận CLI dùng cùng tài khoản với iPhone và khởi động lại Expo online qua mạng LAN. Giữ địa chỉ địa chỉ LAN do Expo hiển thị và QR SDK 58 hiện tại.
+- Bước kiểm tra UI: (1) Giữ đăng nhập tài khoản hiện tại trong Expo Go trên iPhone. (2) Bấm Try Again trên màn lỗi, hoặc Go home rồi quét QR SDK 58. (3) Chờ tải app và xác nhận màn lỗi tài khoản không còn xuất hiện. Chưa xác nhận trực tiếp trên điện thoại.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Chạy lại Expo login theo yêu cầu
+
+- Kết quả: Chạy Expo login; bước tự mở trình duyệt của CLI lỗi trên Windows nên chạy lại với trình duyệt mở thủ công và giữ phiên callback chờ xác thực. Chưa xác nhận hoàn tất đăng nhập.
+- Bước kiểm tra UI: (1) Mở link đăng nhập Expo được cung cấp trong chat trên trình duyệt của máy tính đang chạy dự án. (2) Đăng nhập tài khoản Expo của bạn và xác nhận kết nối CLI. (3) Khi trang báo thành công, quay lại Expo Go trên iPhone và bấm Try Again.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Khởi chạy Expo Vedora
+
+- Kết quả: Khởi chạy Expo Go qua LAN tại địa chỉ LAN do Expo hiển thị với CLI offline vì chế độ online trả UnexpectedServerError; Metro phản hồi packager-status:running, manifest iOS trả HTTP 200. Chưa kiểm tra trực tiếp trên điện thoại.
+- Bước kiểm tra UI: (1) Kết nối điện thoại cùng Wi-Fi với máy tính. (2) Mở Expo Go và mở địa chỉ địa chỉ LAN do Expo hiển thị. (3) Chờ ứng dụng tải và xác nhận màn hình chào hoặc bảng tin hiển thị.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Gửi QR Expo theo IP hiện tại
+
+- Kết quả: Xác nhận Metro đang chạy; tạo QR mới tại .expo/expo-qr-current.png trỏ đến địa chỉ LAN do Expo hiển thị theo IP Wi-Fi hiện tại.
+- Bước kiểm tra UI: (1) Giữ điện thoại và máy tính cùng mạng. (2) Quét QR mới bằng Camera/Expo Go. (3) Chờ ứng dụng mở màn hình đầu tiên; chưa xác nhận trên điện thoại.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Kiểm tra lỗi thiếu cấu hình Turnstile trên đăng nhập
+
+- Kết quả: Xác nhận .env.local chỉ có EXPO_PUBLIC_API_URL trỏ API remote, thiếu EXPO_PUBLIC_TURNSTILE_SITE_KEY. Component không tạo widget khi thiếu key nên nút đăng nhập bị khóa. Bản frontend local cũng chưa có site key thật. Chờ site key công khai và hostname được widget cho phép để cấu hình; chưa thay key thử nghiệm cho API remote.
+- Bước kiểm tra UI: (1) Sau khi bổ sung site key và origin rồi khởi động lại Expo, mở lại màn đăng nhập. (2) Xác nhận thông báo thiếu cấu hình biến mất và widget xác minh xuất hiện. (3) Hoàn tất xác minh, nhập thông tin tài khoản và bấm Đăng nhập. (4) Xác nhận vào bảng tin hoặc nhận thông báo lỗi tài khoản; chưa kiểm tra lại trên điện thoại vì thiếu cấu hình.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Bổ sung cấu hình Turnstile thật cho Expo
+
+- Kết quả: Cập nhật .env.local bằng site key công khai và origin https://vedora-opal.vercel.app do người dùng cung cấp, giữ API remote và web URL. Khởi động lại Expo, xóa cache Metro; chạy CLI offline vì online vẫn trả UnexpectedServerError. Manifest và bundle iOS trả HTTP 200; bundle chứa đúng site key và origin mới. Chưa xác nhận widget và đăng nhập trên iPhone.
+- Bước kiểm tra UI: (1) Thoát phiên ứng dụng cũ trong Expo Go rồi mở lại QR địa chỉ LAN do Expo hiển thị. (2) Vào Đăng nhập, xác nhận không còn thông báo thiếu cấu hình. (3) Chờ widget Turnstile tải và hoàn tất xác minh. (4) Nhập tài khoản, mật khẩu và bấm Đăng nhập; xác nhận vào bảng tin. (5) Nếu Expo Go báo lệch tài khoản CLI, đăng xuất Expo Go khi dùng phiên CLI offline rồi mở lại dự án.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Đối chiếu tính năng app với 8 ảnh web
+
+- Kết quả: Đọc routes, components và services hiện tại, đối chiếu ảnh người dùng gửi. App thiếu Google login; Blog của bạn và trình viết blog; trang gói dịch vụ/mua gói/thanh toán/lịch sử; luồng nộp xác minh chuyên gia; thao tác lưu ngay trên thẻ công thức; lối vào Điều khoản/Quyền riêng tư/Tiêu chuẩn cộng đồng/Trợ năng. Phần tóm tắt hồ sơ ăn uống chưa có mục Thích. App đã có đọc blog, feed, thông báo, lưu bài, theo dõi/gợi ý theo dõi, hồ sơ/video và lên thực đơn. Không coi khác bố cục desktop/mobile là thiếu tính năng; chưa xác nhận các hành vi web ngoài ảnh.
+- Bước kiểm tra UI: (1) Mở Đăng nhập, đối chiếu nút Google trên web. (2) Vào Khám phá > tạo nội dung, kiểm tra Blog còn Sắp có. (3) Vào Tôi, đối chiếu Blog của bạn, Gói của bạn, xác minh chuyên gia và mục Thích trên hồ sơ. (4) Vào Công thức, kiểm tra thiếu nút lưu trên thẻ. (5) Mở Đang theo dõi để xem gợi ý theo dõi; mở tab Trợ lý và Thực đơn để xác nhận các tính năng đã có. Đây là hướng dẫn kiểm tra trên thiết bị, chưa thực hiện trực tiếp trong task đối chiếu.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Thêm Blog của bạn và Viết blog
+
+- Kết quả: Thêm màn Blog của bạn lấy API thật /blogs/mine, phân trang, kéo để tải lại, trạng thái Nháp/Đã đăng và mở chỉnh sửa. Thêm trình viết blog với tiêu đề, nội dung Markdown, ảnh bìa/ảnh trong bài (tối đa 5 MB), xem trước, lưu nháp, đăng bài, sửa bài đã có và chuyển về nháp. Chặn tiêu đề/nội dung không hợp lệ, khóa thao tác khi đang lưu/tải ảnh, cảnh báo khi rời màn hình còn thay đổi chưa lưu. Mở từ Tôi > Blog của bạn, menu tài khoản Khám phá và Tạo nội dung > Blog; đăng nhập xong quay lại mục Blog. Đối chiếu DTO/controller backend và cách web gọi API trước khi triển khai.
+- Giới hạn: Chưa thử lưu/đăng/upload thật bằng tài khoản trên iPhone. Phiên bản này lưu bằng nút Lưu nháp/Lưu thay đổi; chưa có tự động lưu, upload video trong blog hoặc trợ lý viết bài.
+- Bước kiểm tra UI: (1) Mở Tôi > Blog của bạn (hoặc menu avatar ở Khám phá), xác nhận danh sách hoặc trạng thái chưa có bài. (2) Bấm Viết blog, thử lưu tiêu đề rỗng và đăng nội dung rỗng để xem lỗi. (3) Nhập tiêu đề, nội dung có đề mục/danh sách; chọn ảnh bìa và Thêm ảnh, mở Xem trước. (4) Bấm Lưu nháp, quay lại danh sách, mở bài để xác nhận dữ liệu được giữ; lưu tiếp và xác nhận không tạo bản sao. (5) Sửa nội dung rồi quay lại, chọn Tiếp tục viết trong cảnh báo; thử lại với Bỏ thay đổi. (6) Bấm Đăng blog, mở Xem bài đã đăng, kiểm tra bài trong feed Blog và hồ sơ. (7) Mở chỉnh sửa từ Blog của bạn, lưu thay đổi, chuyển về nháp và kiểm tra bài không còn công khai. (8) Quay lại Khám phá > Tạo nội dung > Blog để tạo bài mới; kéo tải lại danh sách, thử mất mạng và tải lại khi có mạng. Đây là các bước kiểm tra đề xuất trên thiết bị, chưa thực hiện trực tiếp trong task.
+- Người thực hiện: Codex.
+
+## 2026-11-06 — Đặt Blog của tôi thay tab Video trong hồ sơ
+
+- Kết quả: Hồ sơ cá nhân có hai tab Bài viết và Blog của tôi. Tab Bài viết chỉ hiển thị post có video, gọi API lọc type=POST để blog không chiếm danh sách video. Tab Blog của tôi hiển thị trực tiếp blog nháp/đã đăng, nút Viết blog, chỉnh sửa, tải lại và xem thêm; dùng lại danh sách Blog hiện có và không lồng FlatList trong ScrollView. Bỏ thẻ Blog riêng phía trên hồ sơ. Số tổng được ghi Đã đăng vì API cộng cả blog và post, bỏ số tổng này khỏi nhãn tab Bài viết để tránh hiểu nhầm là số video.
+- Giới hạn: Chưa kiểm tra trực tiếp trên điện thoại; danh sách video vẫn là 20 post gần nhất theo luồng hồ sơ hiện có, chưa thêm phân trang video trong task đổi tab này.
+- Bước kiểm tra UI: (1) Tải lại Expo và mở tab Tôi. (2) Xác nhận hàng tab là Bài viết / Blog của tôi, không còn tab Video hay thẻ Blog phía trên. (3) Mở Bài viết, xác nhận chỉ hiện bài video ăn uống; tài khoản chỉ có blog phải hiện trạng thái chưa có video. (4) Mở Blog của tôi, xác nhận thấy cả Nháp và Đã đăng; thử Tải lại và Xem thêm nếu có. (5) Bấm Viết blog, lưu nháp rồi quay lại, xác nhận bài hiện trong tab Blog của tôi. (6) Mở một blog để sửa/đăng, quay về kiểm tra hai tab không trộn nội dung.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Chuẩn bị commit theo tính năng và bảo vệ cấu hình local
+
+- Kết quả: Phân nhóm thay đổi nâng Expo SDK 58, tạo/quản lý blog và tab blog trong hồ sơ để commit riêng; rà soát thông tin nhạy cảm, ẩn tên tài khoản Expo và IP LAN cá nhân trong nhật ký mới. Giữ cấu hình môi trường local ngoài Git.
+- Bước kiểm tra UI: (1) Mở ứng dụng bằng Expo Go tương thích và kiểm tra bảng tin, Công thức, Trợ lý, Thực đơn. (2) Đăng nhập, mở Khám phá > Tạo nội dung > Blog, nhập tiêu đề/nội dung và xem trước. (3) Lưu nháp, mở lại rồi đăng blog và kiểm tra bài đã đăng. (4) Mở Tôi > Blog của tôi, chỉnh sửa blog và xác nhận tab Bài viết chỉ hiển thị video. Các bước này là hướng dẫn kiểm tra trên thiết bị, chưa thực hiện trực tiếp trong task commit.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Thêm gói dịch vụ và thanh toán SePay trên mobile
+
+- Kết quả: Thêm màn Gói của bạn tại /billing và chi tiết thanh toán tại /payment/[id], mở từ tab Tôi hoặc menu tài khoản Khám phá. Đọc gói hiện tại, thời hạn UTC+7, giá/thời lượng do server trả, đơn đang chờ và 20 giao dịch gần nhất. Thêm xác nhận mua Pro/Premium, QR và thông tin chuyển khoản có thể chọn để sao chép, kiểm tra trạng thái tự động mỗi 4 giây khi màn thanh toán đang được xem, nút Tôi đã thanh toán chỉ kiểm tra server, tiếp tục/hủy đơn chờ với cảnh báo không hoàn tiền. Chỉ hiển thị thành công khi API trả SUCCEEDED, làm mới gói sau thanh toán/hủy; giữ idempotency key khi thử lại lỗi mạng trong phiên ứng dụng, chặn thao tác trùng và hủy request ghi khi rời màn/đổi phiên. Đối chiếu DTO/controller/docs API và implementation web; kiểm tra dữ liệu Zod gồm tiền VND, QR đúng origin và đúng số tiền. Không thêm dependency, không đưa secret SePay vào mobile.
+- Giới hạn: Dùng polling thay cho SSE; chưa chuyển tiền thật hoặc thử trực tiếp trên iPhone/Android. Retry key chỉ giữ trong bộ nhớ đến khi khởi động lại app; server vẫn tái sử dụng đơn đang chờ của tài khoản. Pro/Premium chỉ ghi nhận gói, chưa có đặc quyền; mua mới thay thế thời hạn cũ và không tự gia hạn.
+- Bước kiểm tra UI: (1) Khi chưa đăng nhập, mở /billing, bấm Đăng nhập rồi xác nhận quay lại Gói của bạn. (2) Sau đăng nhập, mở Tôi > Gói của bạn hoặc menu avatar ở Khám phá; kiểm tra gói hiện tại, thời hạn, giá và lịch sử. (3) Bấm Mua Pro/Premium, đọc điều kiện thay thế gói, chọn Để sau rồi mở lại và Xác nhận tạo thanh toán. (4) Kiểm tra QR, ngân hàng, số tài khoản, số tiền và nội dung; quay về và bấm Tiếp tục thanh toán, xác nhận vẫn cùng đơn. (5) Bấm Tôi đã thanh toán khi chưa chuyển tiền, xác nhận vẫn chờ và không tự báo thành công. (6) Với giao dịch thử được backend xác nhận, đợi tự cập nhật hoặc bấm kiểm tra; mở lại Gói của bạn để kiểm tra gói, thời hạn và lịch sử mới. (7) Với đơn chưa chuyển tiền, bấm Hủy, thử Giữ giao dịch rồi xác nhận hủy; kiểm tra QR biến mất và có thể mua mới. (8) Thử mất mạng/tải lại, thanh toán tạm đóng, truy cập đơn không thuộc tài khoản và đăng xuất/đăng nhập tài khoản khác; xác nhận không hiển thị QR cũ khi lỗi hoặc dữ liệu phiên trước. Đây là các bước kiểm tra đề xuất, chưa chạy trên thiết bị hay thực hiện chuyển khoản thật trong task.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Cải thiện bố cục gói dịch vụ và thanh toán
+
+- Kết quả: Thiết kế lại màn Gói của bạn với thẻ gói hiện tại nổi bật, đơn chờ có nút tiếp tục rõ ràng, thẻ chọn Pro/Premium co giãn theo màn hình, lịch sử dạng danh sách thay thẻ lồng nhau; mặc định hiện 5 giao dịch và có Xem tất cả/Thu gọn. Chuyển làm mới sang nút ở header và kéo xuống. Màn thanh toán ưu tiên trạng thái/số tiền, QR co giãn, từng dòng thông tin ngân hàng có thể chọn để sao chép, hướng dẫn hai bước và nút kiểm tra cố định cuối màn hình. Tách màu trạng thái chờ/thành công/đã hủy, bổ sung trạng thái trống/lỗi, đổi xác nhận mua/hủy thành bảng trượt từ dưới lên, tăng vùng bấm và hỗ trợ theme sáng/tối. Giữ thông báo gói chưa có đặc quyền, điều kiện thay thế thời hạn và cảnh báo hủy không hoàn tiền.
+- Bước kiểm tra UI: (1) Vào Tôi > Gói của bạn trên màn hình nhỏ, kiểm tra thẻ gói, giá và nút chọn không bị cắt; kéo xuống hoặc bấm làm mới. (2) Với tài khoản chưa có giao dịch, kiểm tra thông báo trống; với hơn 5 giao dịch, thử Xem tất cả và Thu gọn, chạm một dòng để xem chi tiết. (3) Bấm Chọn Pro/Premium, đọc bảng xác nhận, thử Chọn lại gói rồi mở lại và tiếp tục. (4) Ở màn thanh toán, kiểm tra QR vừa chiều rộng, mở ảnh QR, nhấn giữ số tài khoản/nội dung để chọn sao chép; cuộn xuống và xác nhận nút kiểm tra vẫn ở cuối màn hình. (5) Thử kiểm tra khi chưa chuyển tiền, lỗi mạng và thanh toán tạm đóng; xác nhận không hiển thị thành công hoặc QR cũ khi lỗi. (6) Thử bảng hủy với Giữ giao dịch và xác nhận hủy cho đơn chưa chuyển tiền; kiểm tra trạng thái đã hủy khác trạng thái thành công. (7) Kiểm tra theme tối, cỡ chữ lớn và xoay ngang, rồi dùng giao dịch thử đã được server xác nhận để xem trạng thái thành công. Đây là hướng dẫn kiểm tra; chưa xác nhận trực tiếp trên thiết bị hoặc trình duyệt vì browser access host không khả dụng, chưa thực hiện chuyển tiền thật.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Đặt gói dịch vụ dưới hồ sơ ăn uống và dùng sticker Vedora
+
+- Kết quả: Chuyển thẻ Gói của bạn từ đầu màn hồ sơ xuống ngay dưới Hồ sơ ăn uống, trước tab Bài viết/Blog của tôi. Thiết kế thẻ ngang gọn với nền xanh nhạt theo theme, sticker cà rốt trên nền kem, mô tả ngắn và mũi tên mở thanh toán. Dùng lại sticker cà rốt cho thẻ gói hiện tại/màn chưa đăng nhập, bơ cho Pro và cà chua cho Premium trong màn chọn gói và bảng xác nhận; thu gọn padding/khoảng cách thẻ gói. Sticker mang tính trang trí, không làm lặp nội dung khi đọc bằng trình đọc màn hình; giữ màu chữ theo theme sáng/tối.
+- Bước kiểm tra UI: (1) Tải lại app, đăng nhập và mở tab Tôi; kiểm tra thứ tự thông tin cá nhân > Hồ sơ ăn uống > Gói của bạn > Bài viết/Blog của tôi. (2) Kiểm tra sticker cà rốt, thẻ xanh nhạt và mô tả không bị cắt trên màn hình nhỏ; bấm thẻ để mở Gói của bạn. (3) Kiểm tra sticker cà rốt ở gói hiện tại, bơ ở Pro và cà chua ở Premium; bấm chọn từng gói, xem sticker trong bảng xác nhận rồi chọn lại mà không tạo thanh toán. (4) Bật theme tối, tăng cỡ chữ và kiểm tra các nhãn, giá, sticker, mũi tên vẫn rõ; kiểm tra tab hồ sơ và nút quay lại. Chưa xác nhận trực tiếp trên điện thoại trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Kiểm tra nút tiếp tục giao dịch đang chờ
+
+- Kết quả: Ảnh lỗi iPhone xác định màn thanh toán bị lỗi render do Pressable bên trong Link asChild nhận mảng style. Dùng StyleSheet.flatten cho nút mở ảnh QR để tương thích Slot của Expo Router. Đồng thời bỏ khóa nút Tiếp tục thanh toán theo trạng thái tạo giao dịch mới; nút mở chi tiết bằng ID hiện có, không tạo đơn mới.
+- Bước kiểm tra UI: (1) Tải lại ứng dụng trên iPhone, đăng nhập và mở Tôi > Gói của bạn. (2) Với tài khoản có giao dịch đang chờ, bấm Tiếp tục thanh toán; xác nhận màn Thanh toán hiển thị QR, không có Render Error về Slot/style. (3) Bấm Mở ảnh QR để lưu, kiểm tra mở ảnh rồi quay về ứng dụng. (4) Kiểm tra mã giao dịch và số tiền vẫn thuộc đơn cũ; quay lại rồi mở từ lịch sử. (5) Nếu tải lỗi mạng, bấm Thử tải lại giao dịch. Chưa xác nhận lại trực tiếp trên điện thoại sau sửa, không chuyển khoản thật trong task.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Commit tính năng gói dịch vụ và thanh toán
+
+- Kết quả: Gom module billing, lối vào từ hồ sơ/menu tài khoản, giao diện sticker và bản sửa lỗi render QR vào commit tính năng. Rà soát tệp đưa vào Git; giữ cấu hình môi trường, dữ liệu tham chiếu và sản phẩm build ngoài commit.
+- Bước kiểm tra UI: (1) Mở Tôi, kiểm tra Gói của bạn nằm dưới Hồ sơ ăn uống. (2) Mở gói, xem giá và bảng xác nhận Pro/Premium. (3) Với đơn đang chờ, bấm Tiếp tục thanh toán, kiểm tra QR và mở ảnh để lưu. (4) Quay về kiểm tra lịch sử và trạng thái giao dịch. Chưa kiểm tra trực tiếp trên điện thoại hoặc chuyển tiền thật trong task commit.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Sở thích nguyên liệu và mục Thích trên hồ sơ
+
+- Kết quả: Thay Sắp có bằng phần chọn nguyên liệu yêu thích trong Hồ sơ ăn uống: tìm theo tên/tên gọi khác, chọn/bỏ qua checkbox hoặc chip, đếm tối đa 100 nguyên liệu, thông báo khi cần tìm cụ thể hơn trong danh sách dài. Gửi likedIngredientIds cùng nhóm/nguyên liệu cần tránh qua PUT /dietary/me; đọc liked ở cả hồ sơ ăn uống và cache thực đơn để thẻ hồ sơ không mất dữ liệu khi tải lại. Thêm mục Thích trên thẻ hồ sơ, hiển thị tối đa 6 chip và số còn lại. Chặn lựa chọn vừa thích vừa không ăn, trùng ID và vượt giới hạn backend; giữ lựa chọn khi lưu lỗi, hỗ trợ hủy thay đổi và ngăn chỉnh lựa chọn khi đang lưu. Đối chiếu DTO/service backend và web, dùng API sẵn có, không thêm thư viện.
+- Bước kiểm tra UI: (1) Đăng nhập, mở Tôi; kiểm tra thẻ Hồ sơ ăn uống có Không ăn và Thích, tài khoản chưa chọn hiển thị Chưa chọn. (2) Mở thẻ, kéo tới Sở thích nguyên liệu, bấm Chọn nguyên liệu yêu thích, tìm tên hoặc tên gọi khác rồi chọn vài nguyên liệu; xác nhận chip và bộ đếm cập nhật. (3) Bấm chip hoặc checkbox để bỏ chọn; thử chọn nguyên liệu đã nằm trong Không ăn và xác nhận có thông báo, không bị lưu trùng. (4) Bấm Lưu hồ sơ, quay về Tôi, xác nhận mục Thích cập nhật; mở lại cấu hình và xác nhận vẫn giữ cả sở thích lẫn danh sách cần tránh. (5) Thay đổi lựa chọn rồi bấm Hủy thay đổi; thử quay lại và chọn Tiếp tục chỉnh sửa/Bỏ thay đổi trong cảnh báo. (6) Thử lưu khi mất mạng, xác nhận lựa chọn còn nguyên và lưu lại được khi có mạng; thử bỏ hết sở thích rồi lưu, kiểm tra Chưa chọn. (7) Với hơn 6 nguyên liệu, kiểm tra chip +số còn lại; kiểm tra chữ lớn và theme tối. Đây là các bước đề xuất, chưa kiểm tra trực tiếp trên thiết bị trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Làm đẹp màn chi tiết hồ sơ ăn uống
+
+- Kết quả: Thiết kế lại phần mở đầu bằng nền xanh nhạt, sticker cà rốt trên nền kem và ba ô tóm tắt số nhóm/nguyên liệu tránh/nguyên liệu thích. Dùng sticker bơ cho phần không ăn và cà chua cho sở thích, tiêu đề thân thiện, thẻ bo góc với bộ đếm riêng, checkbox dấu tích đồng nhất thay ký tự ô chọn. Tăng vùng chạm chip/ô tìm kiếm/nút chọn, cho nhãn và hàng nút co giãn; thanh lưu có trạng thái chưa lưu và khoảng an toàn phía dưới iPhone. Màu theo theme sáng/tối, sticker trang trí không lặp nội dung cho trình đọc màn hình; dùng tài nguyên hiện có, không thêm thư viện.
+- Bước kiểm tra UI: (1) Mở Tôi > Hồ sơ ăn uống, kiểm tra header, sticker cà rốt và số lượng tóm tắt. (2) Cuộn xem hai phần Những món mình tránh/Thêm một chút yêu thích, kiểm tra sticker bơ/cà chua, bộ đếm và khoảng cách các thẻ. (3) Mở từng danh sách, tìm kiếm, chọn/bỏ checkbox và chip; xác nhận số tóm tắt và bộ đếm cập nhật. (4) Kiểm tra dòng Bạn có thay đổi chưa lưu, bấm Lưu hồ sơ rồi quay lại hồ sơ để xem dữ liệu. (5) Thử Hủy thay đổi, lỗi mạng và cảnh báo rời màn khi chưa lưu. (6) Kiểm tra trên màn hình nhỏ, cỡ chữ lớn, theme tối và iPhone có thanh Home; xác nhận nút lưu không sát thanh Home và các nhãn không chồng nhau. Chưa xác nhận trực tiếp giao diện trên thiết bị trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Commit sở thích và giao diện hồ sơ ăn uống
+
+- Kết quả: Chuẩn bị nhánh feat/dietary-preferences-and-profile-ui với commit tính năng nguyên liệu yêu thích, mục Thích trên hồ sơ và bố cục chi tiết có sticker; chỉ đưa source, kiểm tra dữ liệu và nhật ký công việc liên quan vào commit.
+- Bước kiểm tra UI: (1) Mở Tôi > Hồ sơ ăn uống, kiểm tra sticker và tóm tắt lựa chọn. (2) Tìm/chọn nguyên liệu yêu thích, thử xung đột với Không ăn. (3) Lưu rồi quay lại Tôi, xác nhận mục Thích hiển thị đúng; mở lại cấu hình để kiểm tra dữ liệu. Chưa thử trực tiếp trên thiết bị trong task commit.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Trang thông tin Vedora và bốn trang nội dung
+
+- Kết quả: Thêm màn Thông tin Vedora tại /about, bốn trang Điều khoản sử dụng, Quyền riêng tư, Tiêu chuẩn cộng đồng và Trợ năng tại /about/[slug]. Có lối vào trong tab Tôi (cả khách và đã đăng nhập) và menu tài khoản Khám phá; nội dung tĩnh đọc được không cần đăng nhập/API. Thiết kế thẻ xanh nhạt, sticker bơ/cà rốt, biểu tượng riêng cho từng mục, đoạn văn có thể chọn/sao chép, tiêu đề đánh số và các mục liên quan cuối trang; hỗ trợ theme tối, chữ co giãn, vùng chạm và safe area. Web tham chiếu hiện chỉ có href=#; theo lựa chọn của người dùng, nội dung mới là dự thảo để duyệt và được ghi rõ trên màn tổng quan lẫn từng trang, không gắn ngày hiệu lực hay coi là chính sách đã phê duyệt.
+- Bước kiểm tra UI: (1) Khi chưa đăng nhập, mở Tôi > Thông tin Vedora; thử thêm lối vào từ menu avatar ở Khám phá. (2) Kiểm tra thẻ giới thiệu/sticker, nhãn Bản dự thảo để duyệt và bốn mục. (3) Mở lần lượt cả bốn trang, đọc các mục đánh số, nhấn giữ đoạn văn để chọn/sao chép. (4) Cuộn cuối trang, bấm mục liên quan và quay lại; thử mở đường dẫn slug không hợp lệ và dùng thẻ Thông tin Vedora để trở về danh sách. (5) Đăng nhập và mở lại từ Tôi, kiểm tra tính năng không yêu cầu đăng nhập lại. (6) Kiểm tra cỡ chữ lớn, màn hình nhỏ, theme tối và thanh Home; xác nhận chữ, biểu tượng và nút không chồng/cắt. Chưa xác nhận trực tiếp giao diện trên điện thoại trong task này; nội dung cần được chủ dự án duyệt trước khi sử dụng chính thức.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Mở thông tin Vedora từ cài đặt đầu hồ sơ
+
+- Kết quả: Chuyển thẻ Thông tin Vedora trong nội dung hồ sơ thành nút bánh răng Cài đặt ở header. Nút mở trực tiếp màn Thông tin Vedora; có nhãn trợ năng rõ ràng, xuất hiện cho cả khách và tài khoản đã đăng nhập. Bỏ thẻ cũ để hồ sơ gọn hơn.
+- Bước kiểm tra UI: (1) Mở tab Tôi khi chưa đăng nhập, bấm bánh răng góc trên và kiểm tra mở Thông tin Vedora. (2) Quay lại, đăng nhập và xác nhận nút bánh răng nằm trên header cùng nút đã lưu/đăng xuất. (3) Bấm bánh răng, mở từng trang thông tin rồi quay lại hồ sơ. (4) Kiểm tra không còn thẻ Thông tin Vedora trong phần nội dung hồ sơ; kiểm tra theme tối và chữ lớn. Chưa kiểm tra trực tiếp trên điện thoại trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Bỏ nhãn dự thảo và commit trang thông tin
+
+- Kết quả: Theo yêu cầu mới của người dùng, bỏ khung Bản dự thảo để duyệt khỏi màn Thông tin Vedora và bốn trang chi tiết, xóa component/style không còn dùng. Chuẩn bị nhánh feat/information-pages với trang thông tin, nội dung, nút cài đặt đầu hồ sơ và lối vào từ menu Khám phá; rà soát tệp commit để giữ cấu hình môi trường ngoài Git.
+- Bước kiểm tra UI: (1) Mở Tôi > nút bánh răng, kiểm tra màn Thông tin Vedora không còn khung dự thảo. (2) Mở lần lượt Điều khoản, Quyền riêng tư, Tiêu chuẩn cộng đồng và Trợ năng, xác nhận nội dung và liên kết liên quan vẫn hiển thị. (3) Quay lại hồ sơ, mở từ menu tài khoản Khám phá và thử khi chưa đăng nhập. Chưa kiểm tra trực tiếp trên thiết bị trong task commit.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Rà soát phần mobile còn thiếu so với web
+
+- Kết quả: Đối chiếu source mobile hiện tại với bản web tham chiếu local và các ảnh đã nhận. Còn thiếu Google login, gửi/theo dõi yêu cầu xác minh chuyên gia, lưu/bỏ lưu công thức và đánh giá sao, bài ngắn dạng chữ/ảnh như composer web; blog mobile chưa có trình soạn thảo trực quan, tự lưu và trợ lý viết của web. Mobile vẫn ghi Sắp có ở tạo công thức, nhưng chưa coi đó là chênh lệch tính năng người dùng web vì bản tham chiếu web không có luồng tạo công thức công khai tương ứng. Các phần billing, sở thích ăn uống và trang thông tin đã có code, còn cần kiểm thử thực tế trên thiết bị.
+- Bước kiểm tra UI: (1) Mở đăng nhập để đối chiếu nút Google. (2) Mở hồ sơ để kiểm tra thiếu gửi xác minh chuyên gia. (3) Mở danh sách/chi tiết công thức, đối chiếu nút lưu và đánh giá sao trên web. (4) Mở tạo nội dung, đối chiếu bài ngắn chữ/ảnh và video. (5) Mở viết blog để đối chiếu tự lưu, định dạng trực quan và trợ lý viết. Đây là kết quả rà source, chưa kiểm thử trực tiếp UI web/mobile trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Tích hợp giao diện và luồng Google trên mobile
+
+- Kết quả: Thêm nút Tiếp tục với Google cùng logo tại Đăng nhập/Đăng ký, trạng thái chờ, thông báo lỗi mạng/cấu hình và hướng dẫn development build khi dùng Expo Go/web. Dùng hai endpoint Google OAuth/PKCE hiện có, mở trình duyệt hệ thống, kiểm tra state/callback/thời hạn, lưu phiên bằng session manager và trở về màn đích đã cho phép. Chặn gửi đồng thời form email với Google; native intent không đưa code vào route params. Không thêm dependency hay secret. Chưa hoàn tất tích hợp đầu cuối: web hiện cố định callback HTTPS và cần triển khai nhánh chuyển code về app. Đã chuẩn bị docs/GOOGLE_LOGIN.md và patch callback web kiểm tra áp dụng được; chưa sửa/triển khai repo web trong khi chờ lựa chọn phạm vi từ người dùng.
+- Bước kiểm tra UI: (1) Cài development build, mở Đăng nhập và Đăng ký, kiểm tra logo/nút Google và đường phân cách. (2) Sau khi web triển khai callback, bấm Google, chọn tài khoản, kiểm tra trở về màn đích và hồ sơ đúng người; đăng xuất rồi thử tài khoản mới. (3) Đóng trình duyệt hoặc từ chối cấp quyền, xác nhận không tạo phiên và bấm lại được. (4) Thử mất mạng, máy chủ chưa bật Google, callback sai/hết hạn, đóng app giữa luồng rồi mở callback cũ; kiểm tra không đăng nhập nhầm và bắt đầu lại được. (5) Mở từ Billing/Blog yêu cầu đăng nhập, xác nhận trở lại đúng màn; kiểm tra Android/iOS, theme tối, chữ lớn và trình đọc màn hình. (6) Thử Expo Go, xác nhận thông báo cần bản cài và form email vẫn dùng được. Chưa kiểm thử Google thật hoặc giao diện trực tiếp trên thiết bị; luồng thành công cần callback web được triển khai trước.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Lưu và bỏ lưu công thức
+
+- Kết quả: Thêm nút Lưu/Đã lưu trên thẻ công thức và màn chi tiết, bấm Đã lưu để bỏ lưu; phân biệt màu/icon, nhãn trợ năng, trạng thái đang cập nhật và lỗi mạng/phiên hết hạn/công thức đã xóa. Nút lưu tách khỏi vùng bấm mở thẻ, chặn gửi lặp cho cùng công thức. Đọc isFavorite từ API, gọi PUT/DELETE /recipes/:id/favorite, chỉ đổi trạng thái khi máy chủ xác nhận; đồng bộ các trang danh sách, chi tiết và danh sách đã lưu, làm mới sau cả lỗi để đối chiếu lại máy chủ. Chặn ghi kết quả vào cache khi phiên đăng nhập đã đổi. Thêm tab Công thức trong Đã lưu, dùng GET /recipes/favorites với phân trang, kéo làm mới, trạng thái rỗng và thử lại. Khách được dẫn tới đăng nhập khi bấm lưu; bổ sung màn Công thức/Đã lưu vào danh sách đích trở về an toàn. Dùng API và thư viện sẵn có, không thêm secret hay thay đổi backend.
+- Bước kiểm tra UI: (1) Đăng nhập, mở Công thức, bấm Lưu trên một thẻ; xác nhận đổi sang Đã lưu và không mở chi tiết ngoài ý muốn. (2) Mở thẻ vừa lưu, kiểm tra nút Đã lưu ở chi tiết; bấm bỏ lưu, quay lại danh sách và xác nhận trở về Lưu. (3) Lưu vài món, mở Tôi > biểu tượng đánh dấu > Công thức; xác nhận danh sách lưu mới nhất trước, mở chi tiết từ đây và bỏ lưu; món biến mất khỏi danh sách. (4) Chuyển qua lại Bài viết/Công thức, kéo làm mới, cuộn tải thêm; thử danh sách rỗng và lỗi tải trang tiếp theo rồi bấm thử lại. (5) Tắt mạng khi bấm lưu/bỏ lưu, kiểm tra thông báo lỗi và không hiển thị thành công giả; bật mạng rồi thử lại. (6) Đăng xuất rồi bấm lưu, kiểm tra tới Đăng nhập và quay về Công thức sau đăng nhập; mở Đã lưu khi là khách, kiểm tra chỉ dẫn đăng nhập. (7) Thử bấm nhanh, đổi tài khoản, chữ lớn, theme tối và VoiceOver/TalkBack; xác nhận các trạng thái không lẫn giữa tài khoản. Chưa kiểm thử UI/API có đăng nhập trên điện thoại thật trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Làm mới giao diện trang công thức
+
+- Kết quả: Thiết kế phần chào Bếp nhỏ Vedora nền xanh nhạt với sticker cà rốt trên nền kem, đường vào Đã lưu mở thẳng tab Công thức. Nâng ô tìm kiếm, thêm gợi ý từ khóa Nấm/Đậu hũ/Canh hoạt động thật, đổi bộ lọc thành thẻ Hợp với mình có dấu bật/tắt và mô tả rõ. Thẻ món có ảnh theo tỷ lệ, nhãn thời gian, biểu tượng khẩu phần/nguyên liệu, tiêu đề thoáng và nút Lưu công thức riêng; món chưa có ảnh dùng sticker cà chua. Màn chi tiết có khối tiêu đề/sticker, thẻ nguyên liệu với sticker bơ, từng bước nấu trong khung riêng đánh số. Thêm sticker cho danh sách rỗng, kéo làm mới và nút thử lại khi tải thêm lỗi; giữ màu theo theme, vùng chạm và nội dung co giãn. Tận dụng sticker sẵn có, không thêm thư viện hoặc API.
+- Bước kiểm tra UI: (1) Mở Công thức, xem phần chào/sticker cà rốt, ô tìm và ba gợi ý; bấm Nấm rồi bấm lại để bỏ từ khóa, thử nhập/xóa tìm kiếm. (2) Bật/tắt Hợp với mình khi đăng nhập; thử khi là khách, xác nhận được dẫn tới Đăng nhập và trở về Công thức. (3) Cuộn danh sách, kiểm tra ảnh, nhãn thời gian, khẩu phần/nguyên liệu, món thiếu ảnh và nút Lưu/Đã lưu; xác nhận bấm lưu không mở nhầm chi tiết. (4) Bấm Đã lưu trên header, xác nhận vào đúng tab Công thức; mở chi tiết, xem thẻ tiêu đề, nguyên liệu và các bước nấu. (5) Thử kết quả rỗng, mất mạng, kéo làm mới, cuộn tải thêm rồi thử lại sau lỗi. (6) Kiểm tra màn hình nhỏ, cỡ chữ lớn, theme tối và trình đọc màn hình; sticker trang trí không lặp nhãn. Đã kiểm tra source/bundle; công cụ trình duyệt không kết nối được nên chưa xác nhận giao diện trực tiếp trên trình duyệt hoặc điện thoại thật.
+- Người thực hiện: Codex.
+
+## 2026-11-07 — Commit Google và trải nghiệm công thức
+
+- Kết quả: Chuẩn bị nhánh feat/google-auth-and-recipe-experience, chia hai commit cho Google sign-in trên mobile và lưu công thức/giao diện mới. Rà tệp thay đổi để loại cấu hình môi trường và bản build; không phát hiện mẫu secret trong phần chuẩn bị commit. Google vẫn cần triển khai callback web theo tài liệu đã kèm, chưa xác nhận đăng nhập Google đầu cuối.
+- Bước kiểm tra UI: (1) Mở Đăng nhập/Đăng ký, kiểm tra nút Google; chỉ thử luồng thành công sau khi triển khai callback web và cài development build. (2) Mở Công thức, kiểm tra sticker, tìm nhanh, bộ lọc và chi tiết món. (3) Lưu/bỏ lưu từ thẻ và chi tiết, mở Đã lưu > Công thức để đối chiếu trạng thái. (4) Thử lỗi mạng, tài khoản khách, chữ lớn và theme tối. Đây là các bước bàn giao, chưa kiểm thử trực tiếp trên thiết bị trong task commit.
+- Người thực hiện: Codex.

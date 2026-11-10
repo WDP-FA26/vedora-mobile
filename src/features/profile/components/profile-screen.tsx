@@ -5,8 +5,9 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useSignOut } from '@/features/auth/hooks/use-auth-actions';
+import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
 import { PostCard } from '@/features/feed/components/post-card';
 import { useDietaryRestrictions } from '@/features/meal-plan/hooks/use-meal-plan';
 import { useTheme } from '@/hooks/use-theme';
@@ -52,18 +53,23 @@ export function ProfileScreen() {
   const dietary = useDietaryRestrictions(token);
   const postsQuery = useProfilePosts(profile?.id, token);
   const signOut = useSignOut();
-  const [contentTab, setContentTab] = useState<'posts' | 'videos'>('posts');
+  const [contentTab, setContentTab] = useState<'posts' | 'blogs'>('posts');
   const posts = postsQuery.data?.items ?? [];
-  const shownPosts = contentTab === 'videos' ? posts.filter((post) => post.media.some((media) => media.type === 'VIDEO')) : posts;
+  const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
   const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
+  const liked = dietary.data?.liked ?? [];
 
   if (!hydrated) return <SafeAreaView edges={['top']} style={[styles.screen, styles.center, { backgroundColor: theme.background }]}><ActivityIndicator color={theme.primary} /></SafeAreaView>;
   if (!token) return (
     <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.background }]}>
+        <Text style={[styles.headerTitle, styles.headerText, { color: theme.foreground }]}>Hồ sơ</Text>
+        <HeaderButton label="Cài đặt và thông tin Vedora" icon={{ ios: 'gearshape', android: 'settings', web: 'settings' }} color={theme.foreground} onPress={() => router.push('/about')} />
+      </View>
       <View style={styles.guest}>
         <Image source={require('@/assets/branding/avocado-sticker.png')} style={styles.guestSticker} contentFit="contain" accessibilityLabel="Hình quả bơ Vedora" />
         <Text style={[styles.title, { color: theme.foreground }]}>Hồ sơ của bạn</Text>
-        <Text style={[styles.guestDescription, { color: theme.mutedForeground }]}>Đăng nhập để xem bài viết, video và hồ sơ ăn uống của mình.</Text>
+        <Text style={[styles.guestDescription, { color: theme.mutedForeground }]}>Đăng nhập để xem video ăn uống, blog và hồ sơ ăn uống của mình.</Text>
         <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/login', params: { returnTo: '/me' } })} style={[styles.primaryButton, { backgroundColor: theme.primary }]}><Text style={[styles.buttonText, { color: theme.primaryForeground }]}>Đăng nhập</Text></Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/register', params: { returnTo: '/me' } })} style={[styles.outlineButton, { borderColor: theme.border }]}><Text style={[styles.outlineText, { color: theme.primary }]}>Tạo tài khoản</Text></Pressable>
       </View>
@@ -71,7 +77,7 @@ export function ProfileScreen() {
   );
 
   const stats = profile ? [
-    { label: 'Bài viết', value: profile.postCount, onPress: () => setContentTab('posts') },
+    { label: 'Đã đăng', value: profile.postCount, onPress: () => setContentTab('posts') },
     { label: 'Người theo dõi', value: profile.followerCount, onPress: () => router.push({ pathname: '/profile/[id]/followers', params: { id: profile.id } }) },
     { label: 'Đang theo dõi', value: profile.followingCount, onPress: () => router.push({ pathname: '/profile/[id]/following', params: { id: profile.id } }) },
   ] : [];
@@ -83,7 +89,8 @@ export function ProfileScreen() {
           <Text style={[styles.headerTitle, { color: theme.foreground }]}>Hồ sơ</Text>
           {profile ? <Text numberOfLines={1} style={[styles.handle, { color: theme.mutedForeground }]}>@{profile.username}</Text> : null}
         </View>
-        <HeaderButton label="Bài viết đã lưu" icon={{ ios: 'bookmark', android: 'bookmark', web: 'bookmark' }} color={theme.foreground} onPress={() => router.push('/bookmarks')} />
+        <HeaderButton label="Bài viết và công thức đã lưu" icon={{ ios: 'bookmark', android: 'bookmark', web: 'bookmark' }} color={theme.foreground} onPress={() => router.push('/bookmarks')} />
+        <HeaderButton label="Cài đặt và thông tin Vedora" icon={{ ios: 'gearshape', android: 'settings', web: 'settings' }} color={theme.foreground} onPress={() => router.push('/about')} />
         <HeaderButton label="Đăng xuất" icon={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} color={theme.destructive} busy={signOut.isPending} onPress={() => confirmSignOut(() => signOut.mutate(undefined, { onSuccess: () => router.replace('/') }))} />
       </View>
       {signOut.isError ? <Text accessibilityRole="alert" style={[styles.helper, styles.signOutError, { color: theme.destructive }]}>Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.</Text> : null}
@@ -156,31 +163,55 @@ export function ProfileScreen() {
                   {avoided.length > MAX_AVOIDED_CHIPS ? <View style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>+{avoided.length - MAX_AVOIDED_CHIPS}</Text></View> : null}
                 </View>
               ) : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa khai báo</Text>}
+            <View style={styles.dietaryLabelRow}>
+              <SymbolView name={{ ios: 'hand.thumbsup', android: 'thumb_up', web: 'thumb_up' }} size={16} tintColor={theme.primary} />
+              <Text style={[styles.dietaryLabel, { color: theme.foreground }]}>Thích</Text>
+            </View>
+            {dietary.isPending ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải…</Text>
+              : dietary.isError ? <Text style={[styles.helper, { color: theme.destructive }]}>Chưa tải được</Text>
+              : liked.length ? <View style={styles.chips}>
+                {liked.slice(0, MAX_AVOIDED_CHIPS).map(({ id, name }) => <View key={id} style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>{name}</Text></View>)}
+                {liked.length > MAX_AVOIDED_CHIPS ? <View style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>+{liked.length - MAX_AVOIDED_CHIPS}</Text></View> : null}
+              </View> : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa chọn</Text>}
+          </Pressable>
+
+          <Pressable accessibilityRole="button" accessibilityLabel="Gói của bạn. Xem gói dịch vụ và thanh toán" onPress={() => router.push('/billing')} style={({ pressed }) => [styles.card, styles.billing, { backgroundColor: theme.secondary, borderColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>
+            <View style={styles.billingStickerFrame}>
+              <Image source={require('@/assets/branding/carrot-sticker.png')} style={styles.billingSticker} contentFit="contain" accessible={false} />
+            </View>
+            <View style={styles.dietaryHeading}>
+              <Text style={[styles.sectionTitle, { color: theme.secondaryForeground }]}>Gói của bạn</Text>
+              <Text style={[styles.helper, { color: theme.secondaryForeground }]}>Gói dịch vụ & thanh toán</Text>
+            </View>
+            <View style={[styles.billingArrow, { backgroundColor: theme.card }]}>
+              <SymbolView name={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} size={17} tintColor={theme.primary} />
+            </View>
           </Pressable>
 
           <View style={[styles.segment, { backgroundColor: theme.muted }]}>
-            {(['posts', 'videos'] as const).map((tab) => {
+            {(['posts', 'blogs'] as const).map((tab) => {
               const selected = contentTab === tab;
               return (
                 <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setContentTab(tab)} style={[styles.segmentItem, selected && [styles.segmentSelected, { backgroundColor: theme.card }]]}>
-                  <SymbolView name={tab === 'posts' ? { ios: 'square.grid.2x2', android: 'grid_view', web: 'grid_view' } : { ios: 'play.rectangle', android: 'smart_display', web: 'smart_display' }} size={16} tintColor={selected ? theme.primary : theme.mutedForeground} />
-                  <Text style={[styles.segmentText, { color: selected ? theme.primary : theme.mutedForeground }]}>{tab === 'posts' ? `Bài viết · ${profile.postCount}` : 'Video'}</Text>
+                  <SymbolView name={tab === 'posts' ? { ios: 'play.rectangle', android: 'smart_display', web: 'smart_display' } : { ios: 'doc.text', android: 'article', web: 'article' }} size={16} tintColor={selected ? theme.primary : theme.mutedForeground} />
+                  <Text style={[styles.segmentText, { color: selected ? theme.primary : theme.mutedForeground }]}>{tab === 'posts' ? 'Bài viết' : 'Blog của tôi'}</Text>
                 </Pressable>
               );
             })}
           </View>
 
+          {contentTab === 'blogs' ? <MyBlogsScreen embedded /> : <>
           {postsQuery.isPending && !posts.length ? <View style={styles.loading}><ActivityIndicator color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải bài viết…</Text></View> : null}
           {postsQuery.isError ? <Pressable accessibilityRole="button" onPress={() => void postsQuery.refetch()} style={[styles.card, styles.state, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.helper, { color: theme.destructive }]}>Không tải được bài viết. Chạm để thử lại.</Text></Pressable> : null}
           {!postsQuery.isPending && !postsQuery.isError && shownPosts.length === 0 ? (
             <View style={[styles.card, styles.empty, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[styles.emptyIcon, { backgroundColor: theme.secondary }]}><SymbolView name={contentTab === 'posts' ? { ios: 'leaf', android: 'eco', web: 'eco' } : { ios: 'video', android: 'videocam', web: 'videocam' }} size={25} tintColor={theme.primary} /></View>
-              <Text style={[styles.stateTitle, { color: theme.foreground }]}>{contentTab === 'posts' ? 'Chưa có bài viết' : 'Chưa có video đã đăng'}</Text>
-              <Text style={[styles.helper, styles.centerText, { color: theme.mutedForeground }]}>{contentTab === 'posts' ? 'Bài đăng công khai sẽ hiện ở đây.' : 'Video trong những bài đăng gần đây sẽ hiện ở đây.'}</Text>
+              <View style={[styles.emptyIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: 'video', android: 'videocam', web: 'videocam' }} size={25} tintColor={theme.primary} /></View>
+              <Text style={[styles.stateTitle, { color: theme.foreground }]}>Chưa có video đã đăng</Text>
+              <Text style={[styles.helper, styles.centerText, { color: theme.mutedForeground }]}>Các bài video ăn uống của bạn sẽ hiện ở đây.</Text>
             </View>
           ) : null}
-          {contentTab === 'videos' && shownPosts.length > 0 ? <Text style={[styles.helper, styles.videoNote, { color: theme.mutedForeground }]}>Video từ những bài viết gần đây của bạn.</Text> : null}
           {shownPosts.map((post) => <PostCard key={post.id} post={post} visible />)}
+          </>}
         </> : null}
       </ScrollView>
     </SafeAreaView>
@@ -225,6 +256,10 @@ const styles = StyleSheet.create({
   dietaryTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   dietaryIcon: { width: 48, height: 48, borderRadius: Radius['2xl'], alignItems: 'center', justifyContent: 'center' },
   dietarySticker: { width: 34, height: 38 },
+  billing: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: Spacing.three },
+  billingStickerFrame: { width: 52, height: 56, borderRadius: Radius['2xl'], backgroundColor: BrandColors.cream, alignItems: 'center', justifyContent: 'center' },
+  billingSticker: { width: 44, height: 52 },
+  billingArrow: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   dietaryHeading: { flex: 1, minWidth: 0 },
   dietaryLabelRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one, marginTop: Spacing.one },
   dietaryLabel: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
@@ -237,7 +272,6 @@ const styles = StyleSheet.create({
   segmentText: { fontFamily: Fonts.sansBold, fontSize: 14 },
   empty: { minHeight: 200, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.two },
   emptyIcon: { width: 52, height: 52, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  videoNote: { paddingHorizontal: Spacing.three },
   guest: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.four, gap: Spacing.three },
   guestSticker: { width: 112, height: 112 },
   title: { fontFamily: Fonts.headingBold, fontSize: 23 },
