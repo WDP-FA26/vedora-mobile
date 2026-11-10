@@ -1,4 +1,3 @@
-import { Image } from 'expo-image';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { useRef, useState } from 'react';
 import { SymbolView } from 'expo-symbols';
@@ -6,6 +5,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { ZoomImage } from '@/shared/components/image-viewer';
 import { ApiError } from '@/shared/api/api-error';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -89,7 +89,7 @@ function PaymentContent({ id }: { id: string }) {
           {data.qr ? <>
             <BillingText variant="caption">Quét mã bằng ứng dụng ngân hàng, hoặc lưu ảnh QR về máy.</BillingText>
             <View style={styles.qrFrame}>
-              <Image source={{ uri: data.qr.imageUrl }} style={styles.qr} contentFit="contain" accessibilityLabel={`QR chuyển khoản ${money(data.amount)} cho gói ${planName(data.planCode)}`} onError={() => setQrError(true)} onLoad={() => setQrError(false)} />
+              <ZoomImage source={{ uri: data.qr.imageUrl }} style={styles.qr} contentFit="contain" accessibilityLabel={`QR chuyển khoản ${money(data.amount)} cho gói ${planName(data.planCode)}`} onError={() => setQrError(true)} onLoad={() => setQrError(false)} />
             </View>
             {qrError ? <BillingNotice error>Không tải được QR. Bạn có thể chuyển khoản bằng thông tin bên dưới.</BillingNotice> : null}
             <Link href={data.qr.downloadUrl} target="_blank" asChild><Pressable accessibilityRole="link" style={({ pressed }) => [styles.qrLink, { backgroundColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>

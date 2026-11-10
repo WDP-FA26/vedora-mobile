@@ -149,3 +149,26 @@ export function parseMarkdown(content: string): Block[] {
   flushList();
   return blocks;
 }
+
+/**
+ * Flattens Markdown to plain text for previews (feed card, blog list), where the API's `excerpt` is the
+ * source text cut at a fixed length: headings, emphasis, lists, quotes, links, images and code lose their
+ * marks, and a mark cut off at the end of the preview is dropped too.
+ */
+export function plainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?(```|$)/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/(^|\s)#{1,6}(?=\s|$)/g, ' ')
+    .replace(/^\s{0,3}>\s?/gm, '')
+    .replace(/^\s*([-*+]|\d+[.)])\s+/gm, '')
+    .replace(/^\s*([-*_]\s*){3,}$/gm, ' ')
+    .replace(/(\*\*|__|~~)/g, '')
+    .replace(/(^|[\s(])[*_]+(?=\S)/g, '$1')
+    .replace(/(\S)[*_]+(?=[\s).,;:!?]|$)/g, '$1')
+    .replace(/`+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}

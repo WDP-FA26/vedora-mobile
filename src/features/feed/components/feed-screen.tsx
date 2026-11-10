@@ -19,8 +19,8 @@ import { useTheme } from "@/hooks/use-theme";
 import { ApiError } from "@/shared/api/api-error";
 import { useSessionStore } from "@/shared/stores/session-store";
 
-import { useSignOut } from "@/features/auth/hooks/use-auth-actions";
 import { FollowingScreen } from "@/features/following/components/following-screen";
+import { MessageBell } from "@/features/messaging/components/message-bell";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { useExploreTabBarScroll } from "@/features/navigation/hooks/use-explore-tab-bar-scroll";
 import { getShowcasePosts, type ShowcasePost } from "../data/showcase-posts";
@@ -38,7 +38,7 @@ type FeedItem =
 
 const filters: { value: FeedFilter | "following"; label: string }[] = [
   { value: "all", label: "Dành cho bạn" },
-  { value: "following", label: "Đang theo dõi" },
+  { value: "following", label: "Theo dõi" },
   { value: "blogs", label: "Blog" },
 ];
 const viewabilityConfig = { itemVisiblePercentThreshold: 50 };
@@ -48,10 +48,8 @@ export function FeedScreen() {
   const isDark = useColorScheme() === "dark";
   const accessToken = useSessionStore((state) => state.accessToken);
   const displayName = useSessionStore((state) => state.displayName);
-  const signOut = useSignOut();
   const compose = useComposeActions();
   const [filter, setFilter] = useState<FeedFilter | "following">("all");
-  const [accountOpen, setAccountOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const { onScroll: onHomeScroll, reset: resetHomeScroll } = useExploreTabBarScroll();
@@ -91,17 +89,6 @@ export function FeedScreen() {
     >
       <View style={[styles.header, { borderBottomColor: theme.border, backgroundColor: theme.background }]}>
         <View style={styles.headerTop}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Mở menu tài khoản"
-            accessibilityState={{ expanded: accountOpen }}
-            onPress={() => setAccountOpen((open) => !open)}
-            style={[styles.accountAvatar, { backgroundColor: theme.secondary, borderColor: theme.border }]}
-          >
-            <Text style={[styles.accountInitial, { color: theme.secondaryForeground }]}>
-              {displayName?.trim().charAt(0).toUpperCase() || "V"}
-            </Text>
-          </Pressable>
           <View style={[styles.wordmarkFrame, isDark && styles.wordmarkDark]}>
             <Image
               source={require("@/assets/branding/logo.png")}
@@ -114,57 +101,10 @@ export function FeedScreen() {
             <Pressable accessibilityRole="button" accessibilityLabel="Tìm bài viết" onPress={() => router.push("/search")} style={styles.searchButton}>
               <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }} size={22} tintColor={theme.foreground} />
             </Pressable>
+            <MessageBell />
             <NotificationBell />
           </View>
         </View>
-        {accountOpen ? (
-          <View style={[styles.accountMenu, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <Text style={[styles.menuTitle, { color: theme.foreground }]}>
-              {accessToken ? displayName || "Tài khoản Vedora" : "Chào bạn đến Vedora"}
-            </Text>
-            <Text style={[styles.menuDescription, { color: theme.mutedForeground }]}>
-              {accessToken ? "Đang xem trang Khám phá" : "Đăng nhập để thả mầm và lưu bài viết"}
-            </Text>
-            {accessToken ? (
-              <View>
-              <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/billing'); }} style={[styles.menuAction, { backgroundColor: theme.secondary }]}>
-                <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>Gói của bạn</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/blogs'); }} style={[styles.menuAction, { backgroundColor: theme.secondary }]}>
-                <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>Blog của bạn</Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: signOut.isPending }}
-                disabled={signOut.isPending}
-                onPress={() => { setAccountOpen(false); signOut.mutate(); }}
-                style={[styles.menuAction, { backgroundColor: theme.secondary }]}
-              >
-                <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>
-                  {signOut.isPending ? "Đang đăng xuất..." : "Đăng xuất"}
-                </Text>
-              </Pressable>
-              </View>
-            ) : (
-              <View style={styles.guestActions}>
-                <Pressable accessibilityRole="button" onPress={() => router.push("/login")} style={[styles.menuAction, { backgroundColor: theme.primary }]}>
-                  <Text style={[styles.menuActionText, { color: theme.primaryForeground }]}>Đăng nhập</Text>
-                </Pressable>
-                <Pressable accessibilityRole="button" onPress={() => router.push("/register")} style={[styles.menuAction, { backgroundColor: theme.secondary }]}>
-                  <Text style={[styles.menuActionText, { color: theme.secondaryForeground }]}>Tạo tài khoản</Text>
-                </Pressable>
-              </View>
-            )}
-            <Pressable accessibilityRole="button" onPress={() => { setAccountOpen(false); router.push('/about'); }} style={[styles.menuAction, { backgroundColor: theme.muted }]}>
-              <Text style={[styles.menuActionText, { color: theme.foreground }]}>Thông tin Vedora</Text>
-            </Pressable>
-          </View>
-        ) : null}
-        {signOut.isError ? (
-          <Text accessibilityRole="alert" style={[styles.signOutError, { color: theme.destructive }]}>
-            Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.
-          </Text>
-        ) : null}
         <View style={styles.filters} accessibilityRole="tablist">
           {filters.map((item) => (
             <Pressable
@@ -177,11 +117,25 @@ export function FeedScreen() {
               }}
               style={[styles.filter, { borderBottomColor: filter === item.value ? theme.primary : "transparent" }]}
             >
-              <Text style={[styles.filterText, { color: filter === item.value ? theme.primary : theme.mutedForeground }]}>
+              <Text
+                numberOfLines={1}
+                style={[styles.filterText, { color: filter === item.value ? theme.primary : theme.mutedForeground }]}
+              >
                 {item.label}
               </Text>
             </Pressable>
           ))}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Xem video dạng lướt"
+            onPress={() => router.push("/videos")}
+            style={[styles.filter, { borderBottomColor: "transparent" }]}
+          >
+            <View style={styles.videoLabel}>
+              <SymbolView name={{ ios: "play.circle.fill", android: "play_circle", web: "play_circle" }} size={17} tintColor={theme.primary} />
+              <Text numberOfLines={1} style={[styles.filterText, { color: theme.primary }]}>Video</Text>
+            </View>
+          </Pressable>
         </View>
       </View>
 
@@ -361,59 +315,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.three,
     minHeight: 58,
   },
-  headerActions: { flexDirection: "row", width: 80, justifyContent: "flex-end" },
+  headerActions: { flexDirection: "row", alignItems: "center" },
   searchButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  accountAvatar: {
-    marginRight: 40,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  accountInitial: { fontFamily: Fonts.headingBold, fontSize: 16 },
   wordmarkFrame: { paddingHorizontal: 3, paddingVertical: 2, borderRadius: Radius.md },
   wordmarkDark: { backgroundColor: "#fffefa" },
   wordmark: { width: 105, height: 38 },
   headerSpacer: { width: 40, height: 40 },
-  accountMenu: {
-    marginHorizontal: Spacing.three,
-    marginBottom: Spacing.two,
-    borderWidth: 1,
-    borderRadius: Radius["2xl"],
-    padding: Spacing.three,
-    gap: Spacing.one,
-  },
-  menuTitle: { fontFamily: Fonts.headingBold, fontSize: 15 },
-  menuDescription: { fontFamily: Fonts.sans, fontSize: 13 },
-  guestActions: { flexDirection: "row", gap: Spacing.two, marginTop: Spacing.two },
-  menuAction: {
-    alignSelf: "flex-start",
-    borderRadius: Radius.xl,
-    minHeight: 38,
-    paddingHorizontal: Spacing.three,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: Spacing.two,
-  },
-  menuActionText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
-  signOutError: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two, fontFamily: Fonts.sans, fontSize: 12 },
+  // Tabs hug their text and the row spreads them with identical gaps, so the space between labels is even
+  // however long each label is. The container inset plus the tab padding lines the first label up with the page margin.
   filters: {
     width: "100%",
-    maxWidth: 420,
+    maxWidth: 480,
     alignSelf: "center",
     flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: Spacing.two,
   },
   filter: {
-    flex: 1,
     minHeight: 48,
     alignItems: "center",
     justifyContent: "center",
     borderBottomWidth: 2,
-    paddingHorizontal: Spacing.one,
+    paddingHorizontal: Spacing.two,
   },
+  videoLabel: { flexDirection: "row", alignItems: "center", gap: Spacing.one + Spacing.half },
   filterText: { fontFamily: Fonts.sansSemibold, fontSize: 14, textAlign: "center" },
   timeline: { width: "100%", maxWidth: 620, alignSelf: "center" },
   list: {

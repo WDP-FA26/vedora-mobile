@@ -6,6 +6,7 @@ import { Pressable, StyleSheet, Text, View, useColorScheme } from "react-native"
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import { plainText } from "@/features/blogs/utils/markdown";
 import { useSessionStore } from "@/shared/stores/session-store";
 
 import { PostMenu } from "@/features/posts/components/post-menu";
@@ -30,6 +31,23 @@ function formatCount(value: number): string {
   }).format(value);
 }
 
+function hashtagNodes(text: string, color: string, keyPrefix: string) {
+  return text.split(/(#[^\s#]+)/g).map((part, index) => (
+    <Text key={`${keyPrefix}${index}`} style={part.startsWith("#") ? { color } : undefined}>{part}</Text>
+  ));
+}
+
+/**
+ * A video post is saved as "title, blank line, description". The title is its own bold block and the
+ * description sits right under it, so the blank line no longer shows as an empty row. Other posts are one block.
+ */
+function splitBody(body: string, isVideoPost: boolean) {
+  if (!isVideoPost) return { title: null, description: body };
+  const firstBreak = body.indexOf("\n");
+  const titleEnd = firstBreak < 0 ? body.length : firstBreak;
+  return { title: body.slice(0, titleEnd).trim(), description: body.slice(titleEnd).trim() };
+}
+
 export function PostCard({
   post,
   visible,
@@ -52,7 +70,8 @@ export function PostCard({
   const canExpand = body.length > 240 || body.split("\n").length > 5;
   const videos = post.media.filter((media) => media.type === "VIDEO");
   const imageCount = post.media.filter((media) => media.type === "IMAGE").length;
-  const bodyParts = body.split(/(#[^\s#]+)/g);
+  const { title, description } = splitBody(body, videos.length > 0);
+  const descriptionNodes = hashtagNodes(description, theme.primary, "d");
 
   function requireLogin(action: () => void) {
     if (accessToken) action();
@@ -120,14 +139,15 @@ export function PostCard({
       {body && canExpand && !detail ? (
         <View>
           <Pressable onPress={openDetail} accessibilityRole="link" accessibilityLabel="Xem chi tiết bài viết">
-            <Text
-              numberOfLines={expanded ? undefined : 4}
-              style={[styles.body, { color: theme.foreground }]}
-            >
-              {bodyParts.map((part, index) => (
-                <Text key={index} style={part.startsWith("#") ? { color: theme.primary } : undefined}>{part}</Text>
-              ))}
-            </Text>
+            {title ? <Text numberOfLines={expanded ? undefined : 2} style={[styles.body, styles.videoTitle, { color: theme.foreground }]}>{title}</Text> : null}
+            {description ? (
+              <Text
+                numberOfLines={expanded ? undefined : 4}
+                style={[styles.body, title ? styles.videoDescription : null, { color: theme.foreground }]}
+              >
+                {descriptionNodes}
+              </Text>
+            ) : null}
           </Pressable>
           <Pressable
             onPress={() => setExpanded((value) => !value)}
@@ -142,11 +162,12 @@ export function PostCard({
         </View>
       ) : body ? (
         <Pressable onPress={openDetail} disabled={detail} accessibilityRole={detail ? undefined : "link"} accessibilityLabel={detail ? undefined : "Xem chi tiết bài viết"}>
-          <Text style={[styles.body, { color: theme.foreground }]}>
-            {bodyParts.map((part, index) => (
-              <Text key={index} style={part.startsWith("#") ? { color: theme.primary } : undefined}>{part}</Text>
-            ))}
-          </Text>
+          {title ? <Text style={[styles.body, styles.videoTitle, { color: theme.foreground }]}>{title}</Text> : null}
+          {description ? (
+            <Text style={[styles.body, title ? styles.videoDescription : null, { color: theme.foreground }]}>
+              {descriptionNodes}
+            </Text>
+          ) : null}
         </Pressable>
       ) : null}
 
@@ -181,7 +202,7 @@ export function PostCard({
                 numberOfLines={detail ? undefined : 2}
                 style={[styles.excerpt, { color: theme.mutedForeground }]}
               >
-                {post.blog.excerpt}
+                {plainText(post.blog.excerpt)}
               </Text>
             ) : null}
             {post.blog.recipes.length > 0 ? (
@@ -209,21 +230,6 @@ export function PostCard({
       ) : null}
 
       <View style={[styles.actions, { borderTopColor: theme.border }]} accessibilityRole="toolbar">
-        <Pressable accessibilityRole="button" accessibilityLabel={`${post.commentCount} bình luận`} onPress={openDetail} style={styles.actionButton}>
-          <SymbolView name={{ ios: "bubble.left", android: "chat_bubble", web: "chat_bubble" }} size={19} tintColor={theme.mutedForeground} />
-          <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.commentCount)}</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={post.isReposted ? `Bỏ đăng lại, ${post.repostCount} lượt` : `Đăng lại, ${post.repostCount} lượt`}
-          accessibilityState={{ selected: post.isReposted, disabled: repost.isPending }}
-          disabled={repost.isPending}
-          onPress={() => requireLogin(() => repost.mutate(!post.isReposted))}
-          style={styles.actionButton}
-        >
-          <SymbolView name={{ ios: "arrow.2.squarepath", android: "repeat", web: "repeat" }} size={20} tintColor={post.isReposted ? theme.primary : theme.mutedForeground} />
-          <Text style={[styles.stat, { color: post.isReposted ? theme.primary : theme.mutedForeground }]}>{formatCount(post.repostCount)}</Text>
-        </Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
@@ -241,6 +247,21 @@ export function PostCard({
         >
           <SymbolView name={{ ios: post.isLiked ? "leaf.fill" : "leaf", android: "eco", web: "eco" }} size={21} tintColor={post.isLiked ? theme.primary : theme.mutedForeground} />
           <Text style={[styles.stat, { color: post.isLiked ? theme.primary : theme.mutedForeground }]}>{formatCount(post.likeCount)}</Text>
+        </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${post.commentCount} bình luận`} onPress={openDetail} style={styles.actionButton}>
+          <SymbolView name={{ ios: "bubble.left", android: "chat_bubble", web: "chat_bubble" }} size={19} tintColor={theme.mutedForeground} />
+          <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.commentCount)}</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={post.isReposted ? `Bỏ đăng lại, ${post.repostCount} lượt` : `Đăng lại, ${post.repostCount} lượt`}
+          accessibilityState={{ selected: post.isReposted, disabled: repost.isPending }}
+          disabled={repost.isPending}
+          onPress={() => requireLogin(() => repost.mutate(!post.isReposted))}
+          style={styles.actionButton}
+        >
+          <SymbolView name={{ ios: "arrow.2.squarepath", android: "repeat", web: "repeat" }} size={20} tintColor={post.isReposted ? theme.primary : theme.mutedForeground} />
+          <Text style={[styles.stat, { color: post.isReposted ? theme.primary : theme.mutedForeground }]}>{formatCount(post.repostCount)}</Text>
         </Pressable>
         <View accessible accessibilityLabel={`${post.viewCount} lượt xem`} style={styles.statGroup}>
           <SymbolView name={{ ios: "chart.bar", android: "bar_chart", web: "bar_chart" }} size={18} tintColor={theme.mutedForeground} />
@@ -308,7 +329,9 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   typeText: { fontFamily: Fonts.sansSemibold, fontSize: 11 },
-  body: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 23, marginTop: Spacing.three },
+  body: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 22, marginTop: Spacing.three },
+  videoTitle: { fontFamily: Fonts.headingBold, fontSize: 17, lineHeight: 24 },
+  videoDescription: { marginTop: Spacing.half },
   expand: {
     fontFamily: Fonts.sansSemibold,
     fontSize: 13,

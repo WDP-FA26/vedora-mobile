@@ -11,6 +11,7 @@ import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
 import { PostCard } from '@/features/feed/components/post-card';
 import { useDietaryRestrictions } from '@/features/meal-plan/hooks/use-meal-plan';
 import { useTheme } from '@/hooks/use-theme';
+import { ZoomImage } from '@/shared/components/image-viewer';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useMyProfile, useProfilePosts } from '../hooks/use-profile';
@@ -89,6 +90,7 @@ export function ProfileScreen() {
           <Text style={[styles.headerTitle, { color: theme.foreground }]}>Hồ sơ</Text>
           {profile ? <Text numberOfLines={1} style={[styles.handle, { color: theme.mutedForeground }]}>@{profile.username}</Text> : null}
         </View>
+        <HeaderButton label="Tin nhắn" icon={{ ios: 'bubble.left.and.bubble.right', android: 'chat', web: 'chat' }} color={theme.foreground} onPress={() => router.push('/messages')} />
         <HeaderButton label="Bài viết và công thức đã lưu" icon={{ ios: 'bookmark', android: 'bookmark', web: 'bookmark' }} color={theme.foreground} onPress={() => router.push('/bookmarks')} />
         <HeaderButton label="Cài đặt và thông tin Vedora" icon={{ ios: 'gearshape', android: 'settings', web: 'settings' }} color={theme.foreground} onPress={() => router.push('/about')} />
         <HeaderButton label="Đăng xuất" icon={{ ios: 'rectangle.portrait.and.arrow.right', android: 'logout', web: 'logout' }} color={theme.destructive} busy={signOut.isPending} onPress={() => confirmSignOut(() => signOut.mutate(undefined, { onSuccess: () => router.replace('/') }))} />
@@ -108,10 +110,10 @@ export function ProfileScreen() {
         {profile ? <>
           <View style={[styles.card, styles.hero, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={[styles.cover, { backgroundColor: theme.secondary }]}>
-              {profile.coverUrl ? <Image source={{ uri: profile.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Ảnh bìa hồ sơ" /> : <><View style={[styles.coverCircle, { borderColor: theme.primary }]} /><View style={[styles.coverDot, { backgroundColor: theme.primary }]} /></>}
+              {profile.coverUrl ? <ZoomImage source={{ uri: profile.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Ảnh bìa hồ sơ" /> : <><View style={[styles.coverCircle, { borderColor: theme.primary }]} /><View style={[styles.coverDot, { backgroundColor: theme.primary }]} /></>}
             </View>
             <View style={styles.identity}>
-              <ProfileAvatar profile={profile} size={96} style={styles.avatar} />
+              <ProfileAvatar profile={profile} size={96} style={styles.avatar} zoomable />
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.foreground }]}>{profile.fullName}</Text>
                 {profile.isProfessional ? <SymbolView name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={19} tintColor={theme.primary} /> : null}

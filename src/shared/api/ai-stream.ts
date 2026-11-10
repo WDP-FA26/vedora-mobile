@@ -7,9 +7,19 @@ import { useSessionStore } from '@/shared/stores/session-store';
 
 import { ApiError } from './api-error';
 
+/**
+ * One piece of the answer in stream order, shaped like an AI SDK UI-message part so a whole conversation
+ * can be sent back to the API: streamed text, or a tool call that is waiting for (or already has) its output.
+ */
+export type AiPart =
+  | { type: 'text'; text: string }
+  | { type: `tool-${string}`; toolCallId: string; state: 'input-available' | 'output-available'; input: unknown; output?: unknown };
+
 export type AiStreamResult = {
   text: string;
   tools: { name: string; callId: string; output: unknown }[];
+  /** Text and tool calls in the order they arrived; a tool still in `input-available` is waiting on the client. */
+  parts: AiPart[];
   refused: boolean;
 };
 
@@ -50,10 +60,14 @@ export class AiStreamParser {
   private readonly names = new Map<string, string>();
   private readonly tools: AiStreamResult['tools'] = [];
   private text = '';
+  private readonly parts: AiPart[] = [];
   private refused = false;
   private sawEvent = false;
 
-  constructor(private readonly onText?: (text: string) => void) {}
+  constructor(
+    private readonly onText?: (text: string) => void,
+    private readonly onParts?: (parts: AiPart[]) => void,
+  ) {}
 
   push(chunk: string) {
     this.buffer += chunk;
@@ -68,10 +82,10 @@ export class AiStreamParser {
   finish(): AiStreamResult {
     if (this.buffer) this.line(this.buffer);
     this.buffer = '';
-    if (!this.sawEvent || (!this.text.trim() && this.tools.length === 0)) {
+    if (!this.sawEvent || (!this.text.trim() && this.tools.length === 0 && this.parts.length === 0)) {
       throw new Error('Trợ lý chưa trả lời được. Vui lòng thử lại.');
     }
-    return { text: this.text.trim(), tools: this.tools, refused: this.refused };
+    return { text: this.text.trim(), tools: this.tools, parts: this.parts.map((part) => ({ ...part })), refused: this.refused };
   }
 
   private line(raw: string) {
@@ -91,13 +105,29 @@ export class AiStreamParser {
       const delta = textDeltaSchema.safeParse(part);
       if (!delta.success) throw new Error(INVALID_RESPONSE);
       this.text += delta.data.delta;
+      const last = this.parts.at(-1);
+      if (last?.type === 'text') last.text += delta.data.delta;
+      else this.parts.push({ type: 'text', text: delta.data.delta });
       this.onText?.(this.text);
+      this.onParts?.(this.parts.map((item) => ({ ...item })));
     } else if (part.type === 'tool-input-start' || part.type === 'tool-input-available') {
       const input = toolInputSchema.safeParse(part);
-      if (input.success) this.names.set(input.data.toolCallId, input.data.toolName);
+      if (input.success) {
+        this.names.set(input.data.toolCallId, input.data.toolName);
+        if (part.type === 'tool-input-available') {
+          this.parts.push({ type: `tool-${input.data.toolName}`, toolCallId: input.data.toolCallId, state: 'input-available', input: part.input });
+          this.onParts?.(this.parts.map((item) => ({ ...item })));
+        }
+      }
     } else if (part.type === 'tool-output-available') {
       const output = toolOutputSchema.safeParse(part);
       if (output.success) {
+        const call = this.parts.find((item) => item.type !== 'text' && item.toolCallId === output.data.toolCallId);
+        if (call && call.type !== 'text') {
+          call.state = 'output-available';
+          call.output = output.data.output;
+          this.onParts?.(this.parts.map((item) => ({ ...item })));
+        }
         this.tools.push({
           name: output.data.toolName ?? this.names.get(output.data.toolCallId) ?? '',
           callId: output.data.toolCallId,
@@ -135,6 +165,8 @@ export type AiStreamRequest = {
   signal?: AbortSignal;
   /** Called with the whole answer so far after every streamed chunk of text. */
   onText?: (text: string) => void;
+  /** Called with every part so far (text and tool calls, in order) whenever one changes. */
+  onParts?: (parts: AiPart[]) => void;
 };
 
 function withTimeout(signal: AbortSignal | undefined, timeoutMs: number) {
@@ -192,7 +224,7 @@ export async function requestAiStream(request: AiStreamRequest): Promise<AiStrea
       throw new ApiError(response.status, body.success ? body.data.code : undefined, message);
     }
 
-    const parser = new AiStreamParser(request.onText);
+    const parser = new AiStreamParser(request.onText, request.onParts);
     if (!response.body) {
       parser.push(await response.text());
       return parser.finish();
