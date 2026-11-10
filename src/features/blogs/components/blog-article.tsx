@@ -1,9 +1,9 @@
-import { Image } from 'expo-image';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { ZoomImage } from '@/shared/components/image-viewer';
 
 import { useBlog } from '../hooks/use-blog';
 import { parseMarkdown, type Block, type InlineNode } from '../utils/markdown';
@@ -22,7 +22,7 @@ function Inline({ nodes, theme }: { nodes: InlineNode[]; theme: Theme }) {
           case 'bold':
             return <Text key={index} style={{ fontFamily: Fonts.sansBold }}>{node.text}</Text>;
           case 'italic':
-            return <Text key={index} style={{ fontStyle: 'italic' }}>{node.text}</Text>;
+            return <Text key={index} style={{ fontFamily: Fonts.sansItalic }}>{node.text}</Text>;
           case 'code':
             return <Text key={index} style={{ fontFamily: Fonts.mono, fontSize: 14, backgroundColor: theme.secondary }}>{node.text}</Text>;
           case 'link':
@@ -39,7 +39,7 @@ function BlogImage({ url, alt }: { url: string; alt: string }) {
   const theme = useTheme();
   const [ratio, setRatio] = useState(16 / 10);
   return (
-    <Image
+    <ZoomImage
       source={{ uri: url }}
       accessibilityLabel={alt || 'Ảnh trong bài viết'}
       contentFit="cover"
