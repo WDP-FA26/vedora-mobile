@@ -749,3 +749,9 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: (1) Bấm phát video trong bài viết trước đây gỡ ảnh bìa ngay nên khung hình đen chớp lên rồi mới có hình. Nay ảnh bìa giữ nguyên, phủ lớp tối và vòng xoay lớn cho đến khi khung hình đầu tiên hiện (`onFirstFrameRender` của expo-video) thì mới biến mất. (2) Video ở feed chỉ dừng khi cuộn khỏi màn hình, nên mở tab Video (hoặc màn khác) thì tiếng feed vẫn chạy chồng lên. Nay video feed tự dừng khi rời màn hình (`useIsFocused`). Chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Trang chủ: bấm ▶ trên một video: ảnh bìa vẫn hiện kèm vòng xoay, không chớp đen; khi có hình thì video phát, vòng xoay biến mất. (2) Mạng chậm: vòng xoay hiện lâu hơn nhưng không chớp. (3) Đang phát video ở feed, bấm tab "Video": chỉ nghe tiếng video ở màn Video, video feed đã dừng. (4) Đóng màn Video quay về feed: video feed vẫn dừng, bấm phát tiếp được. (5) Đang phát video, mở một bài viết hoặc hồ sơ: tiếng video feed tắt. (6) Bấm phát rồi cuộn đi ngay trước khi có hình, cuộn lại: video tiếp tục tải và phát. (7) Video lỗi: vẫn hiện "Không phát được video. Chạm để thử lại."
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Logo Vedora đầy đủ ở đầu trang Home
+
+- Kết quả đã làm: Thay biểu tượng V ở đầu Home chào mừng bằng logo Vedora đầy đủ có sẵn trong assets/branding/logo.png. Logo nằm dưới vùng an toàn, trên nền sáng bo góc để đọc rõ trên ảnh bìa ở cả theme sáng và tối. Trang bảng tin đã có logo đầy đủ nên giữ nguyên.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Đăng xuất hoặc mở app khi chưa đăng nhập để vào Home chào mừng. (2) Kiểm tra logo Vedora đầy đủ ở góc trên trái ảnh bìa, không bị tai thỏ/thanh trạng thái che. (3) Đổi theme thiết bị sáng/tối, kiểm tra logo rõ và đúng tỷ lệ. (4) Kiểm tra màn nhỏ và xoay ngang, logo không đè tiêu đề. (5) Bấm Khám phá bài viết, Đăng nhập và Tạo tài khoản, kiểm tra điều hướng vẫn hoạt động.
+- Người thực hiện: Codex.
