@@ -100,7 +100,12 @@ export function FeedScreen() {
             />
           </View>
           <View style={styles.headerActions}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Tìm bài viết" onPress={() => router.push("/search")} style={styles.searchButton}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={filter === "recipes" ? "Tìm công thức" : "Tìm kiếm"}
+              onPress={() => router.push({ pathname: "/search", params: filter === "recipes" ? { tab: "recipes" } : {} })}
+              style={styles.searchButton}
+            >
               <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }} size={22} tintColor={theme.foreground} />
             </Pressable>
             <NotificationBell />

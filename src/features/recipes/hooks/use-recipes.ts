@@ -7,12 +7,13 @@ import { getFavoriteRecipePage, getRecipe, getRecipePage, setRecipeFavorite } fr
 import type { RecipeFilters } from '../types/recipe.schema';
 import { updateFavoriteDetail, updateFavoritePages } from '../utils/recipe-favorite-cache';
 
-export function useRecipes(filters: RecipeFilters) {
+export function useRecipes(filters: RecipeFilters, enabled = true) {
   return useInfiniteQuery({
     queryKey: recipeKeys.list(filters),
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) => getRecipePage({ filters, page: pageParam, signal }),
     getNextPageParam: (lastPage, _pages, lastPageParam) => (lastPage.meta.hasNextPage ? lastPageParam + 1 : undefined),
+    enabled,
   });
 }
 
