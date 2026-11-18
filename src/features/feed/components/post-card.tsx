@@ -11,6 +11,7 @@ import { HEART_COLOR } from "@/shared/components/reaction-burst";
 import { useSessionStore } from "@/shared/stores/session-store";
 
 import { PostMenu } from "@/features/posts/components/post-menu";
+import { ProfessionalName } from '@/shared/components/professional-name';
 
 import { useFeedActions } from "../hooks/use-feed";
 import type { FeedPost } from "../types/feed.schema";
@@ -128,12 +129,7 @@ export function PostCard({
           </View>
         )}
         <View style={styles.authorDetails}>
-          <Text
-            numberOfLines={1}
-            style={[styles.authorName, { color: theme.foreground }]}
-          >
-            {post.author.fullName}
-          </Text>
+          <ProfessionalName name={post.author.fullName} isProfessional={post.author.isProfessional} textStyle={[styles.authorName, { color: theme.foreground }]} />
           <Text
             numberOfLines={1}
             style={[styles.meta, { color: theme.mutedForeground }]}

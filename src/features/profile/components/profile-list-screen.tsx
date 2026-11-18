@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -54,7 +55,7 @@ export function ProfileListScreen({ kind }: { kind: ProfileListKind }) {
                 </View>
               )}
               <View style={styles.names}>
-                <Text numberOfLines={1} style={[styles.name, { color: theme.foreground }]}>{item.fullName}</Text>
+                <ProfessionalName name={item.fullName} isProfessional={item.isProfessional} textStyle={[styles.name, { color: theme.foreground }]} />
                 <Text numberOfLines={1} style={[styles.sub, { color: theme.mutedForeground }]}>@{item.username}</Text>
               </View>
             </Pressable>

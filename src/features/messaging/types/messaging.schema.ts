@@ -20,7 +20,7 @@ export const sharedPostSchema = z.object({
   title: z.string().nullable(),
   excerpt: z.string(),
   imageUrl: z.string().nullable(),
-  author: peerSchema.omit({ isProfessional: true }),
+  author: peerSchema.extend({ isProfessional: z.boolean().default(false) }),
 });
 
 export const sharePostInputSchema = z.object({

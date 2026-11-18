@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useMemo } from 'react';
@@ -197,7 +198,7 @@ function ConversationRow({ conversation }: { conversation: Conversation }) {
       <ProfileAvatar profile={peer} size={52} style={styles.avatar} />
       <View style={styles.rowBody}>
         <View style={styles.rowTop}>
-          <Text numberOfLines={1} style={[styles.name, { color: theme.foreground }]}>{peer.fullName}</Text>
+          <ProfessionalName name={peer.fullName} isProfessional={peer.isProfessional} textStyle={[styles.name, { color: theme.foreground }]} />
           <KindLabel conversation={conversation} />
           <View style={styles.spacer} />
           {lastMessage ? <Text style={[styles.time, { color: unread ? theme.primary : theme.mutedForeground }]}>{formatMessageTime(lastMessage.createdAt)}</Text> : null}

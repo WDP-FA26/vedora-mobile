@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { router } from "expo-router";
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
@@ -93,7 +94,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
                 accessibilityLabel="Danh sách người đang theo dõi"
               >
                 {feed.authors.map((author) => (
-                  <View key={author.id} style={styles.creator} accessible accessibilityLabel={`${author.fullName}, @${author.username}`}>
+                  <View key={author.id} style={styles.creator} accessible accessibilityLabel={`${author.fullName}, @${author.username}${author.isProfessional ? ', Chuyên gia đã xác minh' : ''}`}>
                     {author.avatarUrl ? (
                       <Image source={{ uri: author.avatarUrl }} style={[styles.creatorAvatar, { backgroundColor: theme.secondary }]} contentFit="cover" />
                     ) : (
@@ -103,9 +104,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
                         </Text>
                       </View>
                     )}
-                    <Text numberOfLines={1} style={[styles.creatorName, { color: theme.foreground }]}>
-                      {author.fullName}
-                    </Text>
+                    <ProfessionalName name={author.fullName} isProfessional={author.isProfessional} textStyle={[styles.creatorName, { color: theme.foreground }]} badgeSize={14} />
                   </View>
                 ))}
               </ScrollView>

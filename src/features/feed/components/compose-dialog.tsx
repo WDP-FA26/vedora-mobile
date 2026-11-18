@@ -7,6 +7,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { MAX_POST_LENGTH, MAX_VIDEO_DURATION_SECONDS, type SelectedComposeVideo } from "../types/compose.schema";
 import { composeVideoBody, filledDescription } from "../utils/compose-body";
 
@@ -17,6 +18,7 @@ export type { SelectedComposeVideo } from "../types/compose.schema";
 export type ComposeDialogProps = {
   visible: boolean;
   authorName?: string | null;
+  authorProfessional?: boolean;
   initialMode?: Mode;
   onClose: () => void;
   onPickVideo: () => Promise<SelectedComposeVideo | null>;
@@ -64,6 +66,7 @@ function LocalVideoPreview({ uri }: { uri: string }) {
 export function ComposeDialog({
   visible,
   authorName,
+  authorProfessional,
   initialMode = "choose",
   onClose,
   onPickVideo,
@@ -231,7 +234,7 @@ export function ComposeDialog({
             <ScrollView style={[styles.body, compact && styles.bodyCompact]} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
               <View style={styles.authorRow}>
                 <View style={[styles.avatar, { backgroundColor: theme.secondary }]}><Text style={[styles.avatarText, { color: theme.secondaryForeground }]}>{displayName.charAt(0).toUpperCase()}</Text></View>
-                <View><Text style={[styles.authorName, { color: theme.foreground }]}>{displayName}</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Công khai</Text></View>
+                <View><ProfessionalName name={displayName} isProfessional={authorProfessional} textStyle={[styles.authorName, { color: theme.foreground }]} /><Text style={[styles.caption, { color: theme.mutedForeground }]}>Công khai</Text></View>
               </View>
               <Text style={[styles.previewHeadline, { color: theme.foreground }]}>{title.trim() || "Tiêu đề video"}</Text>
               <Text style={[styles.previewText, { color: theme.foreground }]}>{filledDescription(description) || "Nội dung hướng dẫn của bạn sẽ hiện ở đây."}</Text>
@@ -262,7 +265,7 @@ export function ComposeDialog({
             <ScrollView style={[styles.body, compact && styles.bodyCompact]} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
               <View style={styles.authorRow}>
                 <View style={[styles.avatar, { backgroundColor: theme.secondary }]}><Text style={[styles.avatarText, { color: theme.secondaryForeground }]}>{displayName.charAt(0).toUpperCase()}</Text></View>
-                <View style={styles.authorDetails}><Text style={[styles.authorName, { color: theme.foreground }]}>{displayName}</Text><View style={[styles.audienceChip, { borderColor: theme.border }]}><SymbolView name={{ ios: "globe", android: "public", web: "public" }} size={14} tintColor={theme.mutedForeground} /><Text style={[styles.audienceText, { color: theme.mutedForeground }]}>Công khai</Text></View></View>
+                <View style={styles.authorDetails}><ProfessionalName name={displayName} isProfessional={authorProfessional} textStyle={[styles.authorName, { color: theme.foreground }]} /><View style={[styles.audienceChip, { borderColor: theme.border }]}><SymbolView name={{ ios: "globe", android: "public", web: "public" }} size={14} tintColor={theme.mutedForeground} /><Text style={[styles.audienceText, { color: theme.mutedForeground }]}>Công khai</Text></View></View>
               </View>
               <View style={[styles.guideBanner, { backgroundColor: isDark ? theme.secondary : "#fff4de", borderColor: theme.border }]}>
                 <View style={styles.guideBannerCopy}>

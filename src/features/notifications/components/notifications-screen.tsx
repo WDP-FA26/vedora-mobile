@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -84,9 +85,8 @@ export function NotificationsScreen() {
                 </View>
               )}
               <View style={styles.copy}>
-                <Text style={[styles.text, { color: theme.foreground }]}>
-                  <Text style={styles.bold}>{item.actor?.fullName ?? 'Vedora'}</Text> {notificationText(item)}
-                </Text>
+                <ProfessionalName name={item.actor?.fullName ?? 'Vedora'} isProfessional={item.actor?.isProfessional} textStyle={[styles.text, styles.bold, { color: theme.foreground }]} badgeSize={14} />
+                <Text style={[styles.text, { color: theme.foreground }]}>{notificationText(item)}</Text>
                 <Text style={[styles.sub, { color: theme.mutedForeground }]}>{formatTime(item.createdAt)}</Text>
               </View>
               {!item.readAt ? <View accessibilityLabel="Chưa đọc" style={[styles.dot, { backgroundColor: theme.primary }]} /> : null}

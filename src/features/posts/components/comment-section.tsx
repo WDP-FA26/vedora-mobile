@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
@@ -144,7 +145,7 @@ function CommentRow({ comment, postAuthorId, meId, draft, onReply, highlighted }
         <View style={[styles.bubble, { backgroundColor: theme.muted }]}>
           <View style={styles.nameRow}>
             <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/profile/[id]', params: { id: comment.author.id } })} style={styles.nameButton}>
-              <Text numberOfLines={1} style={[styles.author, { color: theme.foreground }]}>{comment.author.fullName}</Text>
+              <ProfessionalName name={comment.author.fullName} isProfessional={comment.author.isProfessional} textStyle={[styles.author, { color: theme.foreground }]} badgeSize={14} />
             </Pressable>
             {isPostAuthor ? (
               <View style={[styles.badge, { backgroundColor: theme.secondary }]}>

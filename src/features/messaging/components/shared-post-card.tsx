@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -16,7 +17,8 @@ export function SharedPostCard({ message }: { message: Message }) {
       onPress={() => router.push({ pathname: '/posts/[id]', params: { id: post.id } })}
       style={({ pressed }) => [styles.card, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.7 : 1 }]}>
       {post.imageUrl ? <Image source={{ uri: post.imageUrl }} style={styles.image} contentFit="cover" accessibilityLabel="Ảnh bài viết được chia sẻ" /> : null}
-      <Text numberOfLines={1} style={[styles.author, { color: theme.mutedForeground }]}>{post.author.fullName} · {post.type === 'BLOG' ? 'Blog' : 'Bài viết'}</Text>
+      <ProfessionalName name={post.author.fullName} isProfessional={post.author.isProfessional} textStyle={[styles.author, { color: theme.mutedForeground }]} badgeSize={14} />
+      <Text style={[styles.author, { color: theme.mutedForeground }]}>{post.type === 'BLOG' ? 'Blog' : 'Bài viết'}</Text>
       {post.title ? <Text numberOfLines={2} style={[styles.title, { color: theme.foreground }]}>{post.title}</Text> : null}
       {post.excerpt ? <Text numberOfLines={3} style={[styles.excerpt, { color: theme.foreground }]}>{post.excerpt}</Text> : null}
       <Text style={[styles.author, { color: theme.primary }]}>Xem bài viết ›</Text>
