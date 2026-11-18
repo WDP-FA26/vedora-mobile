@@ -34,7 +34,7 @@ export function NotificationsScreen() {
       if (item.postId && item.postType === 'BLOG') router.push({ pathname: '/blogs/[id]/edit', params: { id: item.postId } });
       else if (item.postId) router.push({ pathname: '/posts/[id]', params: { id: item.postId } });
     } else if (item.type === 'FOLLOW' || !item.postId) router.push({ pathname: '/profile/[id]', params: { id: item.actor.id } });
-    else router.push({ pathname: '/posts/[id]', params: { id: item.postId } });
+    else router.push({ pathname: '/posts/[id]', params: { id: item.postId, ...(item.commentId ? { comment: item.commentId } : {}) } });
   }
 
   return (

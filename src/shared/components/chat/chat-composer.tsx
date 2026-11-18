@@ -1,11 +1,12 @@
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
+import { useState, type Ref, type ComponentRef } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type ChatComposerProps = {
+  inputRef?: Ref<ComponentRef<typeof TextInput>>;
   value: string;
   onChangeText: (value: string) => void;
   onSubmit: () => void;
@@ -27,6 +28,7 @@ const INPUT_MAX_HEIGHT = 120;
 
 /** Bottom message bar: input and round send button share one centred row and grow upward together. */
 export function ChatComposer({
+  inputRef,
   value,
   onChangeText,
   onSubmit,
@@ -64,6 +66,7 @@ export function ChatComposer({
           {value.endsWith('\n') ? `${value} ` : value || ' '}
         </Text>
         <TextInput
+          ref={inputRef}
           accessibilityLabel={inputLabel}
           editable={!inputDisabled}
           maxLength={maxLength}

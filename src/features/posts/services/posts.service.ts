@@ -17,6 +17,24 @@ export function getCommentPage({ postId, cursor, signal }: { postId: string; cur
   });
 }
 
+export function getComment(postId: string, commentId: string, signal?: AbortSignal) {
+  return requestJson(commentSchema, { method: 'GET', url: `/posts/${postId}/comments/${commentId}`, signal });
+}
+
+export function getReplyPage({ postId, rootId, cursor, signal }: { postId: string; rootId: string; cursor: string | null; signal?: AbortSignal }) {
+  return requestJson(commentPageSchema, {
+    method: 'GET', url: `/posts/${postId}/comments/${rootId}/replies`,
+    params: cursor ? { cursor } : undefined, signal,
+  });
+}
+
+export function createReply(postId: string, targetId: string, body: string) {
+  return requestJson(commentSchema, {
+    method: 'POST', url: `/posts/${postId}/comments/${targetId}/replies`,
+    data: commentFormSchema.parse({ body }),
+  });
+}
+
 export function createComment(postId: string, body: string) {
   return requestJson(commentSchema, {
     method: 'POST',

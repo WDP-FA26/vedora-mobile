@@ -10,6 +10,10 @@ export const MAX_SEARCH_QUERY_LENGTH = 200;
 export const commentSchema = z.object({
   id: z.string(),
   postId: z.string(),
+  parentId: z.string().nullable().default(null),
+  replyToId: z.string().nullable().default(null),
+  replyToAuthor: feedPostSchema.shape.author.nullable().default(null),
+  replyCount: z.number().int().nonnegative().default(0),
   body: z.string(),
   author: feedPostSchema.shape.author,
   createdAt: z.string(),
