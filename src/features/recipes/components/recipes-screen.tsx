@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View, type FlatListProps } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -29,6 +30,7 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
   const [suitableForMe, setSuitableForMe] = useState(false);
   const q = useDebounced(text.trim(), 350);
   const recipes = useRecipes({ q, suitableForMe: !!token && suitableForMe });
+  const pull = usePullToRefresh(recipes.refetch);
   const items = recipes.data?.pages.flatMap((page) => page.items) ?? [];
 
   function toggleSuitable() {
@@ -50,8 +52,8 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
         contentContainerStyle={styles.list}
         onEndReached={() => { if (recipes.hasNextPage && !recipes.isFetching && !recipes.isFetchNextPageError) void recipes.fetchNextPage(); }}
         onEndReachedThreshold={0.5}
-        refreshing={recipes.isRefetching}
-        onRefresh={() => void recipes.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
         ListHeaderComponent={(
           <View style={styles.header}>
             <View style={styles.headingRow}>

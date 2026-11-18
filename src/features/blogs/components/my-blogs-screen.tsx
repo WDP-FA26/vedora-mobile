@@ -4,6 +4,7 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -14,6 +15,7 @@ export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
   const blogs = useMyBlogs();
+  const pull = usePullToRefresh(blogs.refetch);
   const items = blogs.data?.pages.flatMap((page) => page.items) ?? [];
   const Container = embedded ? View : SafeAreaView;
   const renderBlog = (item: (typeof items)[number]) => (
@@ -64,8 +66,8 @@ export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
         data={items}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
-        refreshing={blogs.isRefetching && !blogs.isFetchingNextPage}
-        onRefresh={() => void blogs.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
         onEndReached={() => { if (blogs.hasNextPage && !blogs.isFetchingNextPage) void blogs.fetchNextPage(); }}
         onEndReachedThreshold={0.4}
         ListEmptyComponent={empty}

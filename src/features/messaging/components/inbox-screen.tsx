@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -87,7 +88,6 @@ function InboxList({ strangersOnly = false }: { strangersOnly?: boolean }) {
   const failed = sources.some((query) => query.isError);
   const hasMore = sources.some((query) => query.hasNextPage);
   const loadingMore = sources.some((query) => query.isFetchingNextPage);
-  const refreshing = sources.some((query) => query.isRefetching) && !loadingMore;
 
   function loadMore() {
     for (const query of sources) if (query.hasNextPage && !query.isFetchingNextPage) void query.fetchNextPage();
@@ -95,6 +95,7 @@ function InboxList({ strangersOnly = false }: { strangersOnly?: boolean }) {
   function refresh() {
     for (const query of sources) void query.refetch();
   }
+  const pull = usePullToRefresh(() => Promise.all(sources.map((query) => query.refetch())));
 
   return (
     <FlatList
@@ -103,7 +104,7 @@ function InboxList({ strangersOnly = false }: { strangersOnly?: boolean }) {
       renderItem={({ item }) => <ConversationRow conversation={item} />}
       ListHeaderComponent={group}
       contentContainerStyle={items.length || group ? styles.list : styles.emptyList}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.primary} colors={[theme.primary]} />}
+      refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={theme.primary} colors={[theme.primary]} />}
       onEndReached={() => { if (hasMore) loadMore(); }}
       onEndReachedThreshold={0.4}
       ListEmptyComponent={group ? undefined : pending ? (

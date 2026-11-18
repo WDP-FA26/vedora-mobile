@@ -16,6 +16,7 @@ import { SymbolView } from "expo-symbols";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { ApiError } from "@/shared/api/api-error";
 import { useSessionStore } from "@/shared/stores/session-store";
 
@@ -61,6 +62,7 @@ export function FeedScreen() {
   const apiFilter: FeedFilter = filter === "blogs" ? "blogs" : "all";
   const listed = filter === "all" || filter === "blogs";
   const feed = useFeed(apiFilter, listed);
+  const pull = usePullToRefresh(feed.restart);
   const staleCursor = feed.isFetchNextPageError && feed.error instanceof ApiError && feed.error.status === 400;
   const posts =
     feed.data?.pages.flatMap((page) =>
@@ -140,10 +142,8 @@ export function FeedScreen() {
           )
             void feed.fetchNextPage();
         }}
-        refreshing={feed.isRefetching && !feed.isFetchingNextPage}
-        onRefresh={() => {
-          void feed.restart();
-        }}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
         ListHeaderComponent={
           <View>
             <View style={[styles.composer, { backgroundColor: theme.card, borderColor: theme.border }]}>
