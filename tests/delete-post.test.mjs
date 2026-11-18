@@ -19,9 +19,10 @@ registerHooks({
     return next(specifier, context);
   },
   load(url, context, next) {
-    if (url.startsWith(sourceRoot.href) && /\.tsx?$/.test(url)) {
+    const pathname = new URL(url).pathname;
+    if (url.startsWith(sourceRoot.href) && /\.tsx?$/.test(pathname)) {
       const source = readFileSync(fileURLToPath(url), 'utf8');
-      return { format: 'module', shortCircuit: true, source: url.endsWith('.tsx')
+      return { format: 'module', shortCircuit: true, source: pathname.endsWith('.tsx')
         ? ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext } }).outputText
         : stripTypeScriptTypes(source, { mode: 'transform' }) };
     }
@@ -63,6 +64,7 @@ mock.module(local('shared/config/env.ts'), { namedExports: { WEB_URL: 'https://e
 mock.module(local('shared/stores/session-store.ts'), { namedExports: { useSessionStore: (select) => select({ accessToken: token }) } });
 mock.module(local('features/profile/hooks/use-profile.ts'), { namedExports: { useMyProfile: () => ({ data: { id: memberId } }) } });
 mock.module(local('features/posts/hooks/use-posts.ts'), { namedExports: { useReportPost: () => ({}) } });
+mock.module(local('features/messaging/components/share-post-picker.tsx'), { namedExports: { SharePostPicker: 'SharePostPicker' } });
 
 const { deletePost } = await import('../src/features/posts/services/posts.service.ts');
 const { useDeletePost } = await import('../src/features/posts/hooks/use-delete-post.ts');
@@ -99,6 +101,7 @@ test('successful deletion cancels stale detail reads, removes details/comments, 
   client.setQueryData(['post', 'other'], { id: 'other' });
   client.setQueryData(['profile', 'me'], { postCount: 9 });
   client.setQueryData(['notifications', 'list'], { items: [] });
+  client.setQueryData(['messaging', 'messages', 'chat'], { items: [{ sharedPostId: 'post-id' }] });
   let signal;
   const staleRead = client.fetchQuery({ queryKey: ['post', 'post-id'], queryFn: (context) => { signal = context.signal; return new Promise(() => {}); } }).catch(() => {});
   await useDeletePost('post-id', 'POST').mutateAsync();
@@ -111,6 +114,7 @@ test('successful deletion cancels stale detail reads, removes details/comments, 
   assert.equal(client.getQueryData(['post', 'other']).id, 'other');
   assert.equal(client.getQueryState(['profile', 'me']).isInvalidated, true);
   assert.equal(client.getQueryState(['notifications', 'list']).isInvalidated, true);
+  assert.equal(client.getQueryState(['messaging', 'messages', 'chat']).isInvalidated, true);
 });
 
 test('a failed DELETE preserves cached content', async () => {
@@ -126,6 +130,27 @@ test('guests and other authors never see the delete option', () => {
   assert.equal(button(render(), 'Xóa bài viết'), undefined);
   token = null; memberId = 'owner'; slots = [];
   assert.equal(button(render(), 'Xóa bài viết'), undefined);
+});
+
+test('sharing is hidden for drafts and opens the recipient picker without sending for published posts', () => {
+  reset();
+  const shareOnly = render({ variant: 'share' });
+  assert.ok(button(shareOnly, 'Gửi bài viết qua tin nhắn'));
+  assert.equal(find(shareOnly, (node) => node.type === 'Text' && node.props.children === 'Chia sẻ bài viết').length, 0);
+  assert.equal(button(shareOnly, 'Xóa bài viết'), undefined);
+  assert.equal(button(shareOnly, 'Thêm tùy chọn cho bài viết'), undefined);
+  assert.equal(button(render({ canShare: false }), 'Gửi bài viết qua tin nhắn'), undefined);
+  button(render(), 'Thêm tùy chọn cho bài viết').props.onPress();
+  button(render(), 'Gửi bài viết qua tin nhắn').props.onPress();
+  const picker = find(render(), (node) => node.type === 'SharePostPicker')[0];
+  assert.equal(picker.props.postId, 'post-id');
+  assert.equal(requests.length, 0);
+  picker.props.lockRef.current = true;
+  find(render(), (node) => node.type === 'Modal')[0].props.onRequestClose();
+  assert.equal(find(render(), (node) => node.type === 'Modal')[0].props.visible, true);
+  picker.props.lockRef.current = false;
+  picker.props.onSent();
+  assert.equal(find(render(), (node) => node.type === 'Modal')[0].props.visible, false);
 });
 
 test('delete requires confirmation; cancel sends no request; double confirmation sends once and blocks closing while pending', async () => {

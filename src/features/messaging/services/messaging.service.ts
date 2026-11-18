@@ -8,11 +8,18 @@ import {
   messagePageSchema,
   readResultSchema,
   sendResultSchema,
+  sharePostInputSchema,
+  type SharePostInput,
   type MessagingBox,
 } from '../types/messaging.schema';
 
 const INBOX_PAGE_SIZE = 20;
 const HISTORY_PAGE_SIZE = 30;
+
+export function sharePost({ conversationId, userId, ...input }: SharePostInput & { conversationId?: string | null; userId: string }) {
+  const url = conversationId ? `/messaging/conversations/${conversationId}/shared-posts` : `/messaging/users/${userId}/shared-posts`;
+  return requestJson(sendResultSchema, { method: 'POST', url, data: sharePostInputSchema.parse(input) });
+}
 
 export function getContact(userId: string, signal?: AbortSignal) {
   return requestJson(contactSchema, { method: 'GET', url: `/messaging/users/${userId}`, signal });

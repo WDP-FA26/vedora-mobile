@@ -1,15 +1,15 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import type { FeedPost } from '@/features/feed/types/feed.schema';
+import { SharePostPicker } from '@/features/messaging/components/share-post-picker';
 import { useMyProfile } from '@/features/profile/hooks/use-profile';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
-import { WEB_URL } from '@/shared/config/env';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useReportPost } from '../hooks/use-posts';
@@ -22,10 +22,10 @@ import {
   type ReportReason,
 } from '../types/posts.schema';
 
-type Step = 'menu' | 'report' | 'done' | 'delete';
+type Step = 'menu' | 'report' | 'done' | 'delete' | 'share';
 
 /** Readers can report; only the signed-in author can confirm deletion. */
-export function PostMenu({ postId, authorId, returnTo, postType, title, canShare = true, onDeleted }: { postId: string; authorId: string; returnTo: string; postType: FeedPost['type']; title?: string; canShare?: boolean; onDeleted?: () => void }) {
+export function PostMenu({ postId, authorId, returnTo, postType, title, canShare = true, onDeleted, variant = 'menu' }: { postId: string; authorId: string; returnTo: string; postType: FeedPost['type']; title?: string; canShare?: boolean; onDeleted?: () => void; variant?: 'menu' | 'share' }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const token = useSessionStore((state) => state.accessToken);
@@ -33,6 +33,8 @@ export function PostMenu({ postId, authorId, returnTo, postType, title, canShare
   const report = useReportPost(postId);
   const deletion = useDeletePost(postId, postType);
   const deleteLock = useRef(false);
+  const shareLock = useRef(false);
+  const shareAttempts = useRef<Record<string, string>>({});
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('menu');
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -42,7 +44,7 @@ export function PostMenu({ postId, authorId, returnTo, postType, title, canShare
   const itemName = postType === 'BLOG' ? 'Blog' : 'bài viết';
 
   function close() {
-    if (deleteLock.current) return;
+    if (deleteLock.current || shareLock.current) return;
     setOpen(false);
     setStep('menu');
     setReason(null);
@@ -98,43 +100,44 @@ export function PostMenu({ postId, authorId, returnTo, postType, title, canShare
     }
   }
 
-  async function share() {
-    close();
-    const url = `${WEB_URL}/posts/${postId}`;
-    try {
-      await Share.share({ message: url, url });
-    } catch {
-      // The user dismissed or the platform cannot share; nothing to recover.
-    }
+  function openShare() {
+    if (!canShare) return;
+    if (!token) { close(); router.push({ pathname: '/login', params: { returnTo } }); return; }
+    setStep('share');
+    setOpen(true);
   }
 
   return (
     <>
-      <Pressable accessibilityRole="button" accessibilityLabel="Thêm tùy chọn cho bài viết" onPress={() => setOpen(true)} hitSlop={8} style={styles.trigger}>
-        <SymbolView name={{ ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' }} size={20} tintColor={theme.mutedForeground} />
+      <Pressable accessibilityRole="button" accessibilityLabel={variant === 'share' ? 'Gửi bài viết qua tin nhắn' : 'Thêm tùy chọn cho bài viết'} onPress={variant === 'share' ? openShare : () => setOpen(true)} style={styles.trigger}>
+        <SymbolView name={variant === 'share' ? { ios: 'paperplane', android: 'share', web: 'share' } : { ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' }} size={20} tintColor={theme.mutedForeground} />
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
         <Pressable style={styles.backdrop} onPress={close}>
           <Pressable style={[styles.sheet, { backgroundColor: theme.card, borderColor: theme.border, paddingBottom: Math.max(Spacing.three, insets.bottom) }]} onPress={() => undefined}>
             {step === 'menu' ? (
               <>
-                {canShare ? <Pressable accessibilityRole="button" onPress={() => void share()} style={styles.option}>
-                  <SymbolView name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }} size={20} tintColor={theme.foreground} />
-                  <Text style={[styles.optionText, { color: theme.foreground }]}>Chia sẻ bài viết</Text>
+                {canShare ? <Pressable accessibilityRole="button" accessibilityLabel="Gửi bài viết qua tin nhắn" onPress={openShare} style={styles.option}>
+                  <SymbolView name={{ ios: 'paperplane', android: 'send', web: 'send' }} size={20} tintColor={theme.foreground} />
+                  <Text style={[styles.optionText, { color: theme.foreground }]}>Gửi qua tin nhắn</Text>
                 </Pressable> : null}
-                {!isOwn ? (
+                {variant === 'menu' && !isOwn ? (
                   <Pressable accessibilityRole="button" onPress={openReport} style={styles.option}>
                     <SymbolView name={{ ios: 'flag', android: 'flag', web: 'flag' }} size={20} tintColor={theme.destructive} />
                     <Text style={[styles.optionText, { color: theme.destructive }]}>Báo cáo bài viết</Text>
                   </Pressable>
                 ) : null}
-                {isOwn ? (
+                {variant === 'menu' && isOwn ? (
                   <Pressable accessibilityRole="button" accessibilityLabel={`Xóa ${itemName}`} onPress={() => { setError(''); setStep('delete'); }} style={styles.option}>
                     <SymbolView name={{ ios: 'trash', android: 'delete', web: 'delete' }} size={20} tintColor={theme.destructive} />
                     <Text style={[styles.optionText, { color: theme.destructive }]}>Xóa {itemName}</Text>
                   </Pressable>
                 ) : null}
               </>
+            ) : null}
+            {step === 'share' && token ? (
+              me.data ? <SharePostPicker postId={postId} selfId={me.data.id} lockRef={shareLock} attemptsRef={shareAttempts} onSent={close} />
+                : <Pressable accessibilityRole="button" onPress={() => void me.refetch()} style={styles.option}><Text style={[styles.optionText, { color: theme.foreground }]}>{me.isError ? 'Không tải được hồ sơ · Thử lại' : 'Đang tải hồ sơ…'}</Text></Pressable>
             ) : null}
             {step === 'delete' && isOwn ? (
               <ScrollView contentContainerStyle={styles.done}>
@@ -195,7 +198,7 @@ export function PostMenu({ postId, authorId, returnTo, postType, title, canShare
 }
 
 const styles = StyleSheet.create({
-  trigger: { minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
+  trigger: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { maxHeight: '80%', borderTopLeftRadius: Radius['2xl'], borderTopRightRadius: Radius['2xl'], borderWidth: 1, padding: Spacing.three, gap: Spacing.one },
   title: { fontFamily: Fonts.headingBold, fontSize: 17, marginBottom: Spacing.two },

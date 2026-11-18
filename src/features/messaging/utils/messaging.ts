@@ -37,6 +37,7 @@ export function messagingErrorText(error: unknown, fallback = 'Chưa gửi đư�
   if (code === 'MESSAGE_REQUEST_RECEIVER_REQUIRED') return 'Chỉ người nhận mới chấp nhận hoặc xóa được lời mời này.';
   if (code === 'MESSAGE_REQUEST_NOT_PENDING') return 'Lời mời này đã được xử lý. Trạng thái đang được tải lại.';
   if (code === 'MESSAGE_ID_CONFLICT') return 'Tin nhắn này đã được gửi với nội dung khác. Hãy nhập lại rồi gửi.';
+  if (code === 'SHARED_POST_UNAVAILABLE') return 'Bài viết không còn khả dụng hoặc chưa được xuất bản.';
   if (status === 401) return 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.';
   if (status === 404) return 'Không tìm thấy người nhận hoặc cuộc trò chuyện.';
   if (status === 409) return 'Chưa gửi được do trùng lặp thao tác. Nội dung vẫn còn, hãy thử lại.';

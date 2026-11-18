@@ -4,6 +4,7 @@ import { blogsKeys } from '@/features/blogs/data/blogs.keys';
 import { feedKeys } from '@/features/feed/data/feed.keys';
 import type { FeedPost } from '@/features/feed/types/feed.schema';
 import { notificationKeys } from '@/features/notifications/data/notification.keys';
+import { messagingKeys } from '@/features/messaging/data/messaging.keys';
 import { profileKeys } from '@/features/profile/data/profile.keys';
 
 import { postsKeys } from '../data/posts.keys';
@@ -24,6 +25,7 @@ export function useDeletePost(postId: string, type: FeedPost['type']) {
       for (const queryKey of lists) void client.resetQueries({ queryKey });
       void client.invalidateQueries({ queryKey: profileKeys.all });
       void client.invalidateQueries({ queryKey: notificationKeys.all });
+      void client.invalidateQueries({ queryKey: messagingKeys.all });
     },
   });
 }
