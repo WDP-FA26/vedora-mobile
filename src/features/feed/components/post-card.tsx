@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View, useColorScheme } from "react-native"
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { plainText } from "@/features/blogs/utils/markdown";
+import { HEART_COLOR } from "@/shared/components/reaction-burst";
 import { useSessionStore } from "@/shared/stores/session-store";
 
 import { PostMenu } from "@/features/posts/components/post-menu";
@@ -234,8 +235,8 @@ export function PostCard({
           accessibilityRole="button"
           accessibilityLabel={
             post.isLiked
-              ? `Bỏ thả mầm, ${post.likeCount} lượt`
-              : `Thả mầm, ${post.likeCount} lượt`
+              ? `Bỏ thích, ${post.likeCount} lượt thích`
+              : `Thích, ${post.likeCount} lượt thích`
           }
           accessibilityState={{
             selected: post.isLiked,
@@ -245,8 +246,8 @@ export function PostCard({
           onPress={() => requireLogin(() => like.mutate(!post.isLiked))}
           style={styles.actionButton}
         >
-          <SymbolView name={{ ios: post.isLiked ? "leaf.fill" : "leaf", android: "eco", web: "eco" }} size={21} tintColor={post.isLiked ? theme.primary : theme.mutedForeground} />
-          <Text style={[styles.stat, { color: post.isLiked ? theme.primary : theme.mutedForeground }]}>{formatCount(post.likeCount)}</Text>
+          <SymbolView name={{ ios: post.isLiked ? "heart.fill" : "heart", android: "favorite", web: "favorite" }} size={21} tintColor={post.isLiked ? HEART_COLOR : theme.mutedForeground} />
+          <Text style={[styles.stat, { color: post.isLiked ? HEART_COLOR : theme.mutedForeground }]}>{formatCount(post.likeCount)}</Text>
         </Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel={`${post.commentCount} bình luận`} onPress={openDetail} style={styles.actionButton}>
           <SymbolView name={{ ios: "bubble.left", android: "chat_bubble", web: "chat_bubble" }} size={19} tintColor={theme.mutedForeground} />

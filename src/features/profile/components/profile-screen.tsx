@@ -1,15 +1,18 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useSignOut } from '@/features/auth/hooks/use-auth-actions';
 import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
+import { blogsKeys } from '@/features/blogs/data/blogs.keys';
 import { PostCard } from '@/features/feed/components/post-card';
 import { useDietaryRestrictions } from '@/features/meal-plan/hooks/use-meal-plan';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ZoomImage } from '@/shared/components/image-viewer';
 import { useSessionStore } from '@/shared/stores/session-store';
@@ -59,6 +62,14 @@ export function ProfileScreen() {
   const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
   const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
   const liked = dietary.data?.liked ?? [];
+  const queryClient = useQueryClient();
+  const pull = usePullToRefresh(() => Promise.all([
+    profileQuery.refetch(),
+    dietary.refetch(),
+    // refetch() ignores `enabled`, so posts wait until the profile id is known.
+    profile ? postsQuery.refetch() : undefined,
+    queryClient.refetchQueries({ queryKey: blogsKeys.mine, type: 'active' }),
+  ]));
 
   if (!hydrated) return <SafeAreaView edges={['top']} style={[styles.screen, styles.center, { backgroundColor: theme.background }]}><ActivityIndicator color={theme.primary} /></SafeAreaView>;
   if (!token) return (
@@ -97,7 +108,10 @@ export function ProfileScreen() {
       </View>
       {signOut.isError ? <Text accessibilityRole="alert" style={[styles.helper, styles.signOutError, { color: theme.destructive }]}>Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.</Text> : null}
 
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={token ? <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={theme.primary} colors={[theme.primary]} /> : undefined}>
         {profileQuery.isPending && !profile ? <View style={styles.loading}><ActivityIndicator color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải hồ sơ…</Text></View> : null}
         {!profile && profileQuery.isError ? (
           <View style={[styles.card, styles.state, { borderColor: theme.border, backgroundColor: theme.card }]}>
