@@ -1,9 +1,10 @@
 import { useEvent } from 'expo';
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
+import { useIsFocused } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -60,7 +61,7 @@ export function FeedVideo({ media, visible }: { media: VideoMedia; visible: bool
   return (
     <View onLayout={(event) => setAvailable(event.nativeEvent.layout.width)}>
       {available > 0 && opened ? (
-        <PlayingVideo playbackUrl={playbackUrl} frame={frame} visible={visible} onClose={() => setOpened(false)} />
+        <PlayingVideo playbackUrl={playbackUrl} posterUrl={media.posterUrl} frame={frame} visible={visible} onClose={() => setOpened(false)} />
       ) : null}
       {available > 0 && !opened ? (
         <Pressable accessibilityRole="button" accessibilityLabel="Phát video" onPress={() => setOpened(true)} style={[styles.media, frame]}>
@@ -81,16 +82,21 @@ export function FeedVideo({ media, visible }: { media: VideoMedia; visible: bool
   );
 }
 
-function PlayingVideo({ playbackUrl, frame, visible, onClose }: { playbackUrl: string; frame: Frame; visible: boolean; onClose: () => void }) {
+function PlayingVideo({ playbackUrl, posterUrl, frame, visible, onClose }: { playbackUrl: string; posterUrl: string | null; frame: Frame; visible: boolean; onClose: () => void }) {
   const theme = useTheme();
+  // Leaving the screen (e.g. opening the Video tab) must silence this player, not only scrolling it away.
+  const focused = useIsFocused();
+  const active = visible && focused;
+  const [rendered, setRendered] = useState(false);
   const player = useVideoPlayer({ uri: playbackUrl, contentType: 'hls' }, (instance) => {
     instance.play();
   });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
 
   useEffect(() => {
-    if (!visible) player.pause();
-  }, [player, visible]);
+    if (!active) player.pause();
+    else if (!rendered) player.play(); // scrolled away before the first frame: resume loading when back
+  }, [player, active, rendered]);
 
   if (status === 'error') {
     return (
@@ -100,11 +106,23 @@ function PlayingVideo({ playbackUrl, frame, visible, onClose }: { playbackUrl: s
     );
   }
 
-  return <VideoView player={player} nativeControls contentFit="contain" style={[styles.media, frame]} />;
+  return (
+    <View style={[styles.media, frame]}>
+      <VideoView player={player} nativeControls contentFit="contain" style={StyleSheet.absoluteFill} onFirstFrameRender={() => setRendered(true)} />
+      {/* Poster and spinner cover the black view until the first frame, so the tap never flashes. */}
+      {!rendered ? (
+        <View accessibilityLabel="Đang tải video" style={StyleSheet.absoluteFill}>
+          <Image source={posterUrl ? { uri: posterUrl } : undefined} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <View style={styles.loading}><ActivityIndicator size="large" color="#fffefa" /></View>
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
   media: { borderRadius: Radius.xl, overflow: 'hidden', backgroundColor: '#17251a' },
+  loading: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(20,38,26,0.45)' },
   playBadge: { position: 'absolute', alignSelf: 'center', top: '40%', width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(20,38,26,0.82)', alignItems: 'center', justifyContent: 'center' },
   playGlyph: { fontSize: 18, color: '#fffefa', marginLeft: 3 },
   placeholder: { width: '85%', height: 96, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center', gap: Spacing.one, padding: Spacing.three },
