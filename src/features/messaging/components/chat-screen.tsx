@@ -1,7 +1,7 @@
 import { router, useIsFocused } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, FlatList, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
+import { ActivityIndicator, Alert, AppState, FlatList, Keyboard, KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -11,7 +11,7 @@ import { useTheme } from '@/hooks/use-theme';
 import { ChatComposer } from '@/shared/components/chat/chat-composer';
 import { useSessionStore } from '@/shared/stores/session-store';
 
-import { useContact, useConversation, useMarkRead, useMessages, useSendMessage } from '../hooks/use-messaging';
+import { useAcceptRequest, useContact, useConversation, useDeleteRequest, useMarkRead, useMessages, useSendMessage } from '../hooks/use-messaging';
 import { MAX_MESSAGE_LENGTH, type Message } from '../types/messaging.schema';
 import { createClientMessageId, formatMessageTime, mergeMessages, messagingErrorText } from '../utils/messaging';
 
@@ -28,6 +28,8 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
   const history = useMessages(activeId);
   const send = useSendMessage();
   const markRead = useMarkRead();
+  const accept = useAcceptRequest();
+  const removeRequest = useDeleteRequest();
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [atBottom, setAtBottom] = useState(true);
@@ -37,7 +39,9 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
 
   const peer = conversation.data?.peer ?? contact.data?.peer;
   const relation = conversation.data ?? contact.data;
-  const messages = useMemo(() => mergeMessages(history.data?.pages), [history.data]);
+  const deletedThrough = conversation.data?.deletedThroughSequence ?? 0;
+  // History you deleted from a request stays hidden even if an older cached page still has it.
+  const messages = useMemo(() => mergeMessages(history.data?.pages).filter((message) => message.sequence > deletedThrough), [history.data, deletedThrough]);
   const newestFirst = useMemo(() => [...messages].reverse(), [messages]);
   const peerRead = conversation.data?.peerReadSequence ?? 0;
   const lastMine = [...messages].reverse().find((message) => message.senderId !== peer?.id);
@@ -74,6 +78,36 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
     }
   }
 
+  async function acceptRequest() {
+    if (!activeId || accept.isPending) return;
+    setError('');
+    try {
+      await accept.mutateAsync(activeId);
+    } catch (caught) {
+      setError(messagingErrorText(caught, 'Chưa chấp nhận được lời mời. Hãy thử lại.'));
+    }
+  }
+
+  function confirmDeleteRequest() {
+    // The API hides history only up to the newest message shown here, so later messages are never deleted unseen.
+    const through = messages.at(-1);
+    if (!activeId || !through || removeRequest.isPending) return;
+    Alert.alert('Xóa lời mời nhắn tin?', `Các tin nhắn này sẽ bị xóa ở phía bạn. ${peer?.fullName ?? 'Người gửi'} không nhận được thông báo; nếu họ nhắn tiếp, lời mời sẽ hiện lại.`, [
+      { text: 'Hủy', style: 'cancel' },
+      {
+        text: 'Xóa',
+        style: 'destructive',
+        onPress: () => {
+          setError('');
+          removeRequest.mutate({ id: activeId, throughMessageId: through.id }, {
+            onSuccess: () => (router.canGoBack() ? router.back() : router.replace('/messages')),
+            onError: (caught) => setError(messagingErrorText(caught, 'Chưa xóa được lời mời. Hãy thử lại.')),
+          });
+        },
+      },
+    ]);
+  }
+
   function onScroll(event: NativeSyntheticEvent<NativeScrollEvent>) {
     setAtBottom(event.nativeEvent.contentOffset.y < 60);
   }
@@ -108,7 +142,9 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
   }
 
   const canSend = relation?.canSend ?? false;
-  const incomingRequest = conversation.data?.requestDirection === 'incoming';
+  const canAccept = conversation.data?.canAcceptRequest ?? false;
+  const canDelete = conversation.data?.canDeleteRequest ?? false;
+  const handling = accept.isPending || removeRequest.isPending;
 
   return (
     <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -145,7 +181,35 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
           )}
         />
         {error ? <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>{error}</Text> : null}
-        {canSend ? (
+        {canAccept || canDelete ? (
+          <View style={[styles.request, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Spacing.three + insets.bottom }]}>
+            <Text style={[styles.followText, { color: theme.foreground }]}>
+              {peer.fullName} muốn nhắn tin với bạn. Chấp nhận để trả lời, không cần theo dõi lại.
+            </Text>
+            <View style={styles.requestActions}>
+              {canDelete ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: handling || messages.length === 0 }}
+                  disabled={handling || messages.length === 0}
+                  onPress={confirmDeleteRequest}
+                  style={({ pressed }) => [styles.requestButton, { borderColor: theme.border, opacity: handling ? 0.5 : pressed ? 0.7 : 1 }]}>
+                  {removeRequest.isPending ? <ActivityIndicator color={theme.destructive} /> : <Text style={[styles.requestButtonText, { color: theme.destructive }]}>Xóa</Text>}
+                </Pressable>
+              ) : null}
+              {canAccept ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: handling }}
+                  disabled={handling}
+                  onPress={() => void acceptRequest()}
+                  style={({ pressed }) => [styles.requestButton, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: handling ? 0.5 : pressed ? 0.8 : 1 }]}>
+                  {accept.isPending ? <ActivityIndicator color={theme.primaryForeground} /> : <Text style={[styles.requestButtonText, { color: theme.primaryForeground }]}>Chấp nhận</Text>}
+                </Pressable>
+              ) : null}
+            </View>
+          </View>
+        ) : canSend ? (
           <View style={{ backgroundColor: theme.card, paddingBottom: keyboardVisible ? 0 : insets.bottom }}>
             <ChatComposer
               value={draft}
@@ -161,7 +225,7 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
         ) : relation ? (
           <View style={[styles.follow, { backgroundColor: theme.card, borderTopColor: theme.border, paddingBottom: Spacing.three + (keyboardVisible ? 0 : insets.bottom) }]}>
             <Text style={[styles.followText, { color: theme.foreground }]}>
-              {incomingRequest ? `${peer.fullName} đã theo dõi bạn. Theo dõi lại để trả lời.` : `Theo dõi ${peer.fullName} để nhắn tin.`}
+              {`Theo dõi ${peer.fullName} để nhắn tin.`}
             </Text>
             <FollowButton profileId={peer.id} />
           </View>
@@ -243,6 +307,10 @@ const styles = StyleSheet.create({
   error: { paddingHorizontal: Spacing.three, paddingBottom: Spacing.two, textAlign: 'center', fontFamily: Fonts.sansMedium, fontSize: 13, lineHeight: 19 },
   follow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.three, paddingHorizontal: Spacing.three, paddingTop: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth },
   followText: { flex: 1, fontFamily: Fonts.sans, fontSize: 14, lineHeight: 20 },
+  request: { gap: Spacing.three, paddingHorizontal: Spacing.three, paddingTop: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth },
+  requestActions: { flexDirection: 'row', gap: Spacing.two },
+  requestButton: { flex: 1, minHeight: 44, borderRadius: Radius.xl, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.three },
+  requestButtonText: { fontFamily: Fonts.sansBold, fontSize: 15 },
   bubbleRow: { flexDirection: 'row' },
   bubbleRowMine: { justifyContent: 'flex-end' },
   bubbleColumn: { flexShrink: 1, maxWidth: '82%', alignItems: 'flex-start', gap: 2 },

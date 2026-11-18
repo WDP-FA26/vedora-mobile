@@ -56,6 +56,11 @@ export const conversationSchema = z.object({
   unreadCount: z.number().int().nonnegative(),
   myReadSequence: z.number().int().nonnegative(),
   peerReadSequence: z.number().int().nonnegative(),
+  /** Receiver only, while the request is pending: show Chấp nhận / Xóa. Defaults keep an older API working. */
+  canAcceptRequest: z.boolean().default(false),
+  canDeleteRequest: z.boolean().default(false),
+  /** Messages at or below this sequence were deleted on your side and must not be shown. */
+  deletedThroughSequence: z.number().int().nonnegative().default(0),
   ...relationshipShape,
 });
 
@@ -67,6 +72,11 @@ export const conversationPageSchema = z.object({
 export const sendResultSchema = z.object({
   conversationId: z.string(),
   message: messageSchema,
+});
+
+export const deleteRequestResultSchema = z.object({
+  conversationId: z.string(),
+  deletedThroughSequence: z.number().int().nonnegative(),
 });
 
 export const readResultSchema = z.object({
