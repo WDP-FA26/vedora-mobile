@@ -3,11 +3,12 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { feedKeys } from '@/features/feed/data/feed.keys';
 import { messagingKeys } from '@/features/messaging/data/messaging.keys';
 import { useSessionStore } from '@/shared/stores/session-store';
+import { uploadImageToStorage } from '@/shared/api/upload-image';
 
 import { profileKeys } from '../data/profile.keys';
 import { ApiError } from '@/shared/api/api-error';
 
-import { activateImage, dismissSuggestion, getMyProfile, getProfile, getSuggestions, getProfileListPage, getProfilePosts, getRelationship, removeImage, requestImageUpload, setFollow, updateMyProfile, updateMyUsername, uploadImageToStorage } from '../services/profile.service';
+import { activateImage, dismissSuggestion, getMyProfile, getProfile, getSuggestions, getProfileListPage, getProfilePosts, getRelationship, removeImage, requestImageUpload, setFollow, updateMyProfile, updateMyUsername } from '../services/profile.service';
 import { IMAGE_CONTENT_TYPES, MAX_IMAGE_MB, type FollowSuggestionList, type ImageKind, type Profile, type ProfileListKind } from '../types/profile.schema';
 
 export function useMyProfile(session: string | null) {

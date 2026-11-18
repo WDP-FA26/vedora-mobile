@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useSignOut } from '@/features/auth/hooks/use-auth-actions';
 import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
+import { VerificationEntry } from '@/features/verification/components/verification-entry';
 import { blogsKeys } from '@/features/blogs/data/blogs.keys';
 import { PostCard } from '@/features/feed/components/post-card';
 import { useDietaryRestrictions } from '@/features/meal-plan/hooks/use-meal-plan';
@@ -130,7 +131,7 @@ export function ProfileScreen() {
               <ProfileAvatar profile={profile} size={96} style={styles.avatar} zoomable />
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.foreground }]}>{profile.fullName}</Text>
-                {profile.isProfessional ? <SymbolView name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={19} tintColor={theme.primary} /> : null}
+                {profile.isProfessional ? <SymbolView accessibilityLabel="Chuyên gia đã xác minh" name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={19} tintColor={BrandColors.verified} /> : null}
               </View>
               <Text style={[styles.handle, { color: theme.mutedForeground }]}>@{profile.username}</Text>
               {profile.isProfessional ? <View style={[styles.badge, { backgroundColor: theme.secondary }]}><Text style={[styles.badgeText, { color: theme.secondaryForeground }]}>Chuyên gia đã xác minh</Text></View> : null}
@@ -155,6 +156,8 @@ export function ProfileScreen() {
               <Text style={[styles.buttonText, { color: theme.primaryForeground }]}>Chỉnh sửa hồ sơ</Text>
             </Pressable>
           </View>
+
+          <VerificationEntry />
 
           <Pressable accessibilityRole="button" accessibilityLabel="Xem chi tiết hồ sơ ăn uống" onPress={() => router.push('/dietary-profile')} style={({ pressed }) => [styles.card, styles.dietary, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.85 : 1 }]}>
             <View style={styles.dietaryTop}>
