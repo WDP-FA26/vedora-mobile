@@ -14,6 +14,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { useAcceptRequest, useContact, useConversation, useDeleteRequest, useMarkRead, useMessages, useSendMessage } from '../hooks/use-messaging';
 import { MAX_MESSAGE_LENGTH, type Message } from '../types/messaging.schema';
 import { createClientMessageId, formatMessageTime, mergeMessages, messagingErrorText } from '../utils/messaging';
+import { SharedPostCard } from './shared-post-card';
 
 /** Opens either an existing conversation (`conversationId`) or a person (`userId`), which creates nothing until the first send. */
 export function ChatScreen({ conversationId, userId }: { conversationId?: string; userId?: string }) {
@@ -276,7 +277,7 @@ function MessageBubble({ message, mine, seen }: { message: Message; mine: boolea
             ? { backgroundColor: theme.primary, borderBottomRightRadius: Radius.sm }
             : { backgroundColor: theme.card, borderBottomLeftRadius: Radius.sm },
         ]}>
-          <Text selectable style={[styles.bubbleText, { color: mine ? theme.primaryForeground : theme.foreground }]}>{message.body}</Text>
+          {message.sharedPostId ? <SharedPostCard message={message} /> : <Text selectable style={[styles.bubbleText, { color: mine ? theme.primaryForeground : theme.foreground }]}>{message.body}</Text>}
         </View>
         <Text style={[styles.meta, { color: theme.mutedForeground }]}>
           {formatMessageTime(message.createdAt)}{seen ? ' · Đã xem' : ''}

@@ -14,6 +14,20 @@ export const peerSchema = z.object({
   isProfessional: z.boolean(),
 });
 
+export const sharedPostSchema = z.object({
+  id: z.string(),
+  type: z.enum(['POST', 'BLOG']),
+  title: z.string().nullable(),
+  excerpt: z.string(),
+  imageUrl: z.string().nullable(),
+  author: peerSchema.omit({ isProfessional: true }),
+});
+
+export const sharePostInputSchema = z.object({
+  clientMessageId: z.uuid({ version: 'v4' }),
+  postId: z.uuid({ version: 'v4' }),
+});
+
 export const messageSchema = z.object({
   id: z.string(),
   conversationId: z.string(),
@@ -22,6 +36,8 @@ export const messageSchema = z.object({
   clientMessageId: z.string(),
   sequence: z.number().int(),
   body: z.string(),
+  sharedPostId: z.string().nullable().default(null),
+  sharedPost: sharedPostSchema.nullable().default(null),
   createdAt: z.string(),
 });
 
@@ -87,5 +103,6 @@ export const readResultSchema = z.object({
 
 export type Peer = z.output<typeof peerSchema>;
 export type Message = z.output<typeof messageSchema>;
+export type SharePostInput = z.output<typeof sharePostInputSchema>;
 export type Contact = z.output<typeof contactSchema>;
 export type Conversation = z.output<typeof conversationSchema>;
