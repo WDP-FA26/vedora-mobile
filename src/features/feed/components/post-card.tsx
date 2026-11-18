@@ -133,7 +133,7 @@ export function PostCard({
             <Text style={[styles.typeText, { color: theme.primary }]}>Blog</Text>
           </View>
         ) : null}
-        <PostMenu postId={post.id} authorId={post.author.id} returnTo="/explore" />
+        <PostMenu postId={post.id} authorId={post.author.id} postType={post.type} title={post.blog?.title ?? body} returnTo="/explore" onDeleted={detail ? () => router.replace('/explore') : undefined} />
       </View>
 
       <View style={styles.postContent}>

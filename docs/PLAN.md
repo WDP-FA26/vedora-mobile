@@ -850,3 +850,16 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả đã làm: Đóng gói code trả lời bình luận, thông báo trả lời và test hồi quy trên branch feat/expert-verification để commit/push theo yêu cầu. Giữ báo cáo đối chiếu SRS tại máy. Các kiểm tra kỹ thuật của tính năng đã hoàn tất ở bước triển khai.
 - Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Mở chi tiết bài viết trên bản code mới, nhấn Trả lời và gửi phản hồi. (2) Trả lời tiếp một phản hồi, kiểm tra đúng người và hai cấp. (3) Mở thông báo trả lời, kiểm tra đúng luồng; thử sửa/xóa phản hồi của mình.
 - Người thực hiện: Codex.
+
+## 2026-11-19 — Xóa bài viết và Blog của mình
+
+- Kết quả đã làm: Đọc backend main tại 62f0fc6e, nối DELETE /posts/:id cho bài thường và DELETE /blogs/:id cho Blog (204 không body). Menu dấu ba chấm chỉ hiện Xóa với tài khoản tác giả; có màn xác nhận, tiêu đề/nội dung nhận diện, cảnh báo không hoàn tác và nút Hủy. Blog của tôi có menu riêng ngoài vùng chạm chỉnh sửa, áp dụng cả bản nháp và đã đăng; bản nháp không có Chia sẻ. Khóa gửi trùng và đóng hộp khi đang xóa, hiển thị lỗi quyền/không tồn tại/hết phiên/mạng. Thành công hủy request đọc cũ, xóa cache chi tiết/bình luận, reset danh sách và cursor của feed/hồ sơ/đang theo dõi/tìm kiếm/đã lưu/Blog, làm mới số bài và thông báo. Xóa từ chi tiết quay về Khám phá. Không thêm thư viện; chưa commit/push.
+- Kiểm tra kỹ thuật: 6 test xóa và 6 test reply đều qua; TypeScript và Expo lint không có lỗi/cảnh báo. Xuất bundle Android/web thành công; Metro tự quét lại sau cảnh báo cache cũ. Chưa thao tác xóa nội dung thật hoặc kiểm thử trên thiết bị Android.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Đăng nhập, mở bài của mình trên feed hoặc hồ sơ → dấu ba chấm → Xóa bài viết; kiểm tra nội dung nhận diện và cảnh báo, nhấn Hủy để bảo đảm bài còn. (2) Mở lại xác nhận → Xóa vĩnh viễn, bấm nhanh nhiều lần: chỉ một yêu cầu, nút hiện Đang xóa; bài biến mất khỏi feed/hồ sơ/đã lưu/tìm kiếm. (3) Xóa trong chi tiết bài: quay về Khám phá, mở liên kết cũ không hiển thị bài đã xóa. (4) Tôi → Blog của tôi, dùng dấu ba chấm trên cả Blog nháp và đã đăng → Xóa Blog → xác nhận; kiểm tra danh sách cập nhật và nhấn menu không mở màn chỉnh sửa. (5) Mở bài hoặc Blog người khác, rồi thử khi chưa đăng nhập: không được thấy Xóa. (6) Tắt mạng lúc xác nhận: có lỗi, nội dung còn và có thể đóng/thử lại; thử nội dung đã bị xóa hoặc quyền bị backend từ chối. (7) Tải nhiều trang trước khi xóa rồi tải thêm, kiểm tra không lỗi cursor; kiểm tra Android/web, theme tối, chữ lớn và nút không bị thanh điều hướng che.
+- Người thực hiện: Codex.
+
+## 2026-11-19 — Commit chức năng xóa bài và Blog
+
+- Kết quả đã làm: Đóng gói chức năng xóa bài/Blog của tác giả, xác nhận xóa, cập nhật cache và test hồi quy vào commit trên branch feat/expert-verification theo yêu cầu. Giữ báo cáo SRS local; chưa push.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Mở bài của mình → dấu ba chấm → Xóa → Hủy, kiểm tra bài còn. (2) Xác nhận xóa và kiểm tra bài biến mất. (3) Blog của tôi → dấu ba chấm → Xóa Blog, kiểm tra cả nháp và đã đăng.
+- Người thực hiện: Codex.
