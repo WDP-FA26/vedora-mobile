@@ -30,11 +30,24 @@ export function askMealPlanner(threadId: string, messages: { role: 'user' | 'ass
   return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { threadId, messages: messages.slice(-10) }, onText });
 }
 
+/** One page of saved conversations, most recently used first. */
+export function getPlannerThreads({ page, limit = 20, signal }: { page: number; limit?: number; signal?: AbortSignal }) {
+  return requestJson(plannerThreadPageSchema, { method: 'GET', url: '/meal-plan/chat/threads', params: { page, limit }, signal });
+}
+
+/** A saved conversation with all its messages. */
+export function getPlannerThread(threadId: string, signal?: AbortSignal) {
+  return requestJson(plannerThreadSchema, { method: 'GET', url: `/meal-plan/chat/threads/${threadId}`, signal });
+}
+
 /** The most recently used saved conversation with all its messages, or null when there is none yet. */
 export async function getLatestPlannerThread(signal?: AbortSignal): Promise<PlannerThread | null> {
-  const page = await requestJson(plannerThreadPageSchema, { method: 'GET', url: '/meal-plan/chat/threads', params: { limit: 1 }, signal });
-  const id = page.items[0]?.id;
-  return id ? requestJson(plannerThreadSchema, { method: 'GET', url: `/meal-plan/chat/threads/${id}`, signal }) : null;
+  const id = (await getPlannerThreads({ page: 1, limit: 1, signal })).items[0]?.id;
+  return id ? getPlannerThread(id, signal) : null;
+}
+
+export async function deletePlannerThread(threadId: string) {
+  await apiClient.delete(`/meal-plan/chat/threads/${threadId}`);
 }
 
 /** Merges these proposal statuses into the saved thread (other proposals keep theirs). */

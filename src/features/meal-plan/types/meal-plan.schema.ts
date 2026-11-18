@@ -62,7 +62,17 @@ export const plannerThreadSchema = z.object({
   })),
 });
 
-export const plannerThreadPageSchema = z.object({ items: z.array(z.object({ id: z.string() })) });
+/** A page of `GET /meal-plan/chat/threads`, most recently used first. */
+export const plannerThreadPageSchema = z.object({
+  items: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    messageCount: z.number(),
+    lastMessagePreview: z.string().nullable(),
+    lastMessageAt: z.string(),
+  })),
+  meta: z.object({ page: z.number(), hasNextPage: z.boolean() }),
+});
 
 export const dietaryRestrictionsSchema = z.object({
   ingredients: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
@@ -81,5 +91,6 @@ export const mealDayInputSchema = z.object({
 export type MealPlan = z.output<typeof mealPlanSchema>;
 export type MealPlanProposal = z.output<typeof proposalSchema>;
 export type PlannerThread = z.output<typeof plannerThreadSchema>;
+export type PlannerThreadSummary = z.output<typeof plannerThreadPageSchema>['items'][number];
 export type DietaryRestrictions = z.output<typeof dietaryRestrictionsSchema>;
 export type MealDayInput = z.input<typeof mealDayInputSchema>;
