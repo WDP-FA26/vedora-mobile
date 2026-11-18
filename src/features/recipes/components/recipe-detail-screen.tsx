@@ -12,6 +12,7 @@ import { ApiError } from '@/shared/api/api-error';
 import { useRecipe } from '../hooks/use-recipes';
 import { formatIngredient, recipeMinutes } from '../utils/recipe-format';
 import { RecipeSaveButton } from './recipe-save-button';
+import { RecipeRating } from './recipe-rating';
 
 export function RecipeDetailScreen() {
   const theme = useTheme();
@@ -56,6 +57,7 @@ export function RecipeDetailScreen() {
                 {[minutes !== null ? `${minutes} phút` : null, `${data.servings} khẩu phần`].filter(Boolean).join(' · ')}
               </Text>
               <RecipeSaveButton recipe={data} />
+              <RecipeRating key={data.id} recipeId={data.id} />
               {data.post ? (
                 <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/posts/[id]', params: { id: data.post!.id } })}>
                   <Text style={[styles.link, { color: theme.primary }]}>Xem bài viết của {data.post.author.fullName}</Text>
