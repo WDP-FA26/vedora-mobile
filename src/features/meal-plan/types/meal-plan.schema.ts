@@ -47,6 +47,23 @@ export const proposalSchema = z.object({
   })),
 });
 
+export const proposalStatuses = ['staged', 'saved', 'dismissed'] as const;
+
+/** One saved assistant conversation (`GET /meal-plan/chat/threads/:id`), oldest message first. */
+export const plannerThreadSchema = z.object({
+  id: z.string(),
+  proposalStatuses: z.record(z.string(), z.enum(proposalStatuses)),
+  messages: z.array(z.object({
+    id: z.string(),
+    role: z.enum(['user', 'assistant']),
+    text: z.string(),
+    parts: z.array(z.record(z.string(), z.unknown())),
+    metadata: z.object({ refused: z.boolean().optional() }).nullable().optional(),
+  })),
+});
+
+export const plannerThreadPageSchema = z.object({ items: z.array(z.object({ id: z.string() })) });
+
 export const dietaryRestrictionsSchema = z.object({
   ingredients: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
   groups: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
@@ -63,5 +80,6 @@ export const mealDayInputSchema = z.object({
 
 export type MealPlan = z.output<typeof mealPlanSchema>;
 export type MealPlanProposal = z.output<typeof proposalSchema>;
+export type PlannerThread = z.output<typeof plannerThreadSchema>;
 export type DietaryRestrictions = z.output<typeof dietaryRestrictionsSchema>;
 export type MealDayInput = z.input<typeof mealDayInputSchema>;
