@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
 import { useSessionStore } from '@/shared/stores/session-store';
@@ -91,8 +92,8 @@ function BillingContent({ token }: { token: string }) {
         : 'Chưa tạo được giao dịch. Hãy kiểm tra giao dịch đang chờ hoặc thử lại. Đừng chuyển tiền khi chưa có thông tin thanh toán.');
     } finally { lock.current = false; }
   }
-  function refresh() { if (!busy) { void catalog.refetch(); void overview.refetch(); } }
-  return <BillingLayout title="Gói của bạn" refreshing={catalog.isFetching || overview.isFetching || busy} onRefresh={refresh}>
+  const pull = usePullToRefresh(() => (busy ? undefined : Promise.all([catalog.refetch(), overview.refetch()])));
+  return <BillingLayout title="Gói của bạn" refreshing={pull.refreshing || busy} onRefresh={pull.onRefresh}>
     {loading ? <BillingLoading /> : null}
     {unavailable ? <BillingNotice error title="Chưa tải được thông tin">Kéo xuống hoặc bấm biểu tượng làm mới để thử lại. Phải tải xong mới mua được gói.</BillingNotice> : null}
     {error ? <BillingNotice error title="Chưa thể tạo thanh toán">{error}</BillingNotice> : null}

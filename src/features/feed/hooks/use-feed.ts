@@ -1,5 +1,7 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 
+import { showReactionBurst } from '@/shared/stores/reaction-burst-store';
+
 import { feedKeys } from '../data/feed.keys';
 import { getFeedPage, setPostBookmark, setPostLike, setPostRepost } from '../services/feed.service';
 import type { FeedFilter, FeedPage, FeedPost } from '../types/feed.schema';
@@ -48,6 +50,7 @@ export function useFeedActions(postId: string) {
   const queryClient = useQueryClient();
   const like = useMutation({
     mutationFn: (liked: boolean) => setPostLike(postId, liked),
+    onMutate: (liked) => { if (liked) showReactionBurst('like'); },
     onSuccess: (result) => patchCachedPost(queryClient, postId, { isLiked: result.isLiked, likeCount: result.likeCount }),
   });
   const bookmark = useMutation({
@@ -59,6 +62,7 @@ export function useFeedActions(postId: string) {
   });
   const repost = useMutation({
     mutationFn: (reposted: boolean) => setPostRepost(postId, reposted),
+    onMutate: (reposted) => { if (reposted) showReactionBurst('repost'); },
     onSuccess: (result) => patchCachedPost(queryClient, postId, { isReposted: result.isReposted, repostCount: result.repostCount }),
   });
   return { like, bookmark, repost };

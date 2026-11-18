@@ -675,3 +675,71 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Thanh mục ở trang chủ nay theo thứ tự Dành cho bạn, Theo dõi, Công thức, Video, Blog (`feed/components/feed-tabs.tsx`). Công thức chuyển từ tab dưới thành mục của thanh này (`RecipesList`, vẫn có tìm kiếm, bộ lọc "Hợp với mình", công thức đã lưu). Video vẫn mở màn lướt toàn màn hình. Thanh mục cuộn ngang được khi nhãn không vừa chiều rộng và có dấu hiệu để người dùng biết vuốt được: mũi tên ở phía còn mục (chạm để cuộn, che gọn nhãn bị cắt), tự trượt nhẹ một lần khi mở app để gợi ý, và tự cuộn mục vừa chọn vào giữa. Thanh tab dưới còn 5 mục: Trang chủ, Thực đơn của tôi, Trợ lý Vedora (giữa), Tin nhắn (có số chưa đọc), Tôi; biểu tượng chuông tin nhắn ở đầu trang chủ được bỏ vì đã có tab. Hộp thư thành tab (`app/(tabs)/messages.tsx`) nên bỏ nút quay lại; các màn chat vẫn mở chồng lên. Các nơi từng quay về `/recipes` nay quay về trang chủ. Chưa chạy được bản web để xem (Metro hết bộ nhớ), chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Mở app: thanh tab dưới có 5 mục như trên, không còn Công thức. (2) Trang chủ: thanh mục theo đúng thứ tự; trên máy màn hình nhỏ có mũi tên bên phải và thanh tự trượt nhẹ một lần. (3) Vuốt thanh mục sang phải/trái, chạm mũi tên: cuộn được; chạm một mục bị cắt: mục đó cuộn vào giữa. (4) Chạm Công thức: hiện kho công thức; cuộn xuống thì thanh tab dưới ẩn như các mục khác; mở một công thức rồi bấm Quay lại về đúng chỗ. (5) Chạm Video: mở màn lướt; quay lại vẫn ở mục cũ. (6) Chạm tab Tin nhắn: hộp thư hiện trong tab, huy hiệu số chưa đọc đúng; mở một cuộc trò chuyện rồi quay lại. (7) Tôi > Tin nhắn vẫn mở được hộp thư. (8) Khách chưa đăng nhập ở Công thức bấm "Hợp với mình": đăng nhập xong quay về trang chủ. (9) Thử iPhone, Android, chữ lớn, theme tối.
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Hộp thư: gom tin nhắn từ người lạ vào một mục
+
+- Kết quả: Tin nhắn người lạ (người bạn chưa theo dõi nhắn trước) không còn nằm lẫn trong hộp thư. Đầu danh sách có một dòng "Tin nhắn từ người lạ" hiện tên và tin mới nhất, tổng số tin chưa đọc và số cuộc trò chuyện; bấm vào mở màn `/messages/strangers` chỉ liệt kê các cuộc đó (kéo để làm mới, cuộn để tải thêm, nút Quay lại). Tin bạn gửi đang "Chờ phản hồi" và bạn bè vẫn ở hộp thư chính. Không đổi API. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Dùng tài khoản B (chưa được A theo dõi) nhắn cho A. (2) Đăng nhập A, mở tab Tin nhắn: B không hiện thành dòng riêng; ở đầu danh sách có dòng "Tin nhắn từ người lạ" với "B: <nội dung>", số chưa đọc, "1 cuộc trò chuyện". (3) Bấm dòng đó: mở danh sách người lạ, có B với nhãn "Tin nhắn lạ". (4) Bấm B: mở chat; quay lại: về danh sách người lạ, số chưa đọc giảm. (5) Bấm Quay lại: về hộp thư. (6) Tài khoản không có tin người lạ: không có dòng gom. (7) A nhắn cho người chưa theo dõi lại: cuộc đó vẫn ở hộp thư chính với nhãn "Chờ phản hồi". (8) Theme tối, chữ lớn.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Video: tải sẵn video kề bên, lướt tới là phát ngay
+
+- Kết quả: Trước đây màn Video chỉ tạo trình phát cho video đang xem nên mỗi lần lướt phải tải lại từ đầu. Nay video đang xem cùng video ngay trước và ngay sau đều có trình phát nạp sẵn (tối đa 3 cái, theo cách "Preloading videos" của `expo-video` SDK 58): video kề bên tải trước vài giây mà không hiển thị, chỉ video trên màn hình được phát. Mỗi trình phát chỉ tải trước tối đa 10 giây để không tốn dữ liệu cho video người dùng bỏ qua. Video rời màn hình vẫn dừng và quay về đầu như cũ. Chưa thử trên máy thật; chưa làm phần tải sẵn danh sách video từ trang chủ.
+- Bước kiểm tra UI: (1) Mở Video: video đầu tải như trước. (2) Đợi vài giây rồi vuốt lên: video kế phát gần như ngay, không còn vòng xoay chờ. (3) Vuốt tiếp nhiều video liên tục: mỗi video đều phát nhanh; vuốt ngược lại video trước cũng phát ngay và bắt đầu từ đầu. (4) Chỉ nghe tiếng của video đang xem, không có tiếng video khác chạy ngầm. (5) Chạm để dừng/phát, bật/tắt tiếng vẫn đúng. (6) Mở bình luận rồi quay lại: video vẫn phát. (7) Lướt khoảng 30 video trên Android máy yếu: không giật, không thoát app. (8) Thử mạng 4G yếu: video kề bên vẫn phát nhanh hơn trước.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Nút thích thành trái tim, hiệu ứng tim/đăng lại giữa màn hình, chạm hai lần để thích video
+
+- Kết quả: Biểu tượng thích (trước là lá mầm) đổi thành trái tim ở bài viết, chi tiết bài, màn Video và thẻ bài mẫu; khi đã thích tim màu đỏ, nhãn đọc màn hình là "Thích/Bỏ thích". Khi thích hoặc đăng lại, giữa màn hình bật lên trái tim đỏ lớn (hoặc vòng tròn biểu tượng đăng lại xoay vào), nảy nhẹ rồi bay lên và mờ dần, kiểu Instagram (`shared/components/reaction-burst.tsx`, gọi qua `showReactionBurst` trong `use-feed.ts` nên mọi nút thích/đăng lại đều có). Bỏ thích/bỏ đăng lại không có hiệu ứng. Ở màn Video, chạm hai lần lên video để thích (đã thích thì chỉ hiện tim, không bỏ thích); chạm một lần vẫn dừng/phát, chậm khoảng 0,25 giây để phân biệt với chạm hai lần. Khi máy bật "Giảm chuyển động" thì không hiện hiệu ứng. Chưa xem trên máy thật hay bản web.
+- Bước kiểm tra UI: (1) Trang chủ: nút thích là trái tim rỗng; bấm: tim đỏ lớn bật lên giữa màn hình rồi biến mất, nút thành tim đỏ, số tăng. (2) Bấm lại để bỏ thích: không có hiệu ứng, tim trở lại rỗng. (3) Bấm Đăng lại: biểu tượng đăng lại xoay vào giữa màn hình rồi mờ đi; bỏ đăng lại không có hiệu ứng. (4) Mở chi tiết bài: thích/đăng lại hoạt động như trên. (5) Màn Video: nút thích bên phải là tim, đỏ khi đã thích. (6) Chạm hai lần nhanh lên video: tim lớn hiện giữa màn hình, nút thích đỏ; chạm hai lần nữa: chỉ hiện tim, vẫn giữ thích. (7) Chạm một lần: video dừng sau chút xíu, chạm lần nữa phát lại. (8) Chưa đăng nhập, chạm hai lần: chuyển sang đăng nhập. (9) Bật "Giảm chuyển động" trong cài đặt máy: thích vẫn hoạt động nhưng không có tim lớn. (10) Theme tối, Android và iPhone.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Ô "Chia sẻ cách nấu món chay của bạn" hiện ảnh đại diện
+
+- Kết quả: Ô tròn cạnh ô tạo bài ở trang chủ trước chỉ hiện chữ cái đầu tên. Nay dùng `ProfileAvatar` với hồ sơ của mình (`useMyProfile`) nên hiện ảnh đại diện; chưa có ảnh thì vẫn là chữ cái đầu, khách chưa đăng nhập hiện "V". Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Đăng nhập tài khoản có ảnh đại diện, mở trang chủ: ô tròn cạnh "Chia sẻ cách nấu món chay của bạn" hiện ảnh. (2) Tôi > Sửa hồ sơ, đổi ảnh, quay lại trang chủ: ảnh mới. (3) Tài khoản chưa có ảnh: hiện chữ cái đầu tên. (4) Đăng xuất: hiện "V". (5) Theme tối.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Bỏ lựa chọn "Công thức" (biên tập công thức) khi tạo bài trên mobile
+
+- Kết quả: Cửa sổ "Chia sẻ món chay theo cách của bạn" không còn thẻ "Công thức — Biên tập công thức đầy đủ" (đang khóa với nhãn "Sắp có"); chỉ còn Video hướng dẫn và Blog. Xem công thức vẫn như cũ.
+- Bước kiểm tra UI: (1) Trang chủ, bấm "Chia sẻ cách nấu món chay của bạn": cửa sổ chỉ có hai lựa chọn Video hướng dẫn và Blog, không còn thẻ Công thức hay nhãn "Sắp có". (2) Bấm Video hướng dẫn: vào màn đăng video. (3) Bấm Blog: mở trình viết blog. (4) Mục Công thức ở trang chủ vẫn xem được công thức.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Trợ lý viết blog: khung ảnh skeleton sáng khi đang tạo ảnh
+
+- Kết quả: Khi trợ lý đang tạo hoặc chỉnh ảnh, dưới dòng "Đang tạo ảnh…"/"Đang chỉnh ảnh…" có một khung xám đúng tỉ lệ ảnh sắp ra (vuông, 16:9…), biểu tượng ảnh ở giữa và một vệt sáng chạy chéo qua liên tục; ảnh xong thì khung được thay bằng ảnh thật ở cùng chỗ. Theme tối vệt sáng dịu hơn; bật "Giảm chuyển động" thì khung đứng yên. Hook dùng chung `hooks/use-reduce-motion.ts` (hiệu ứng tim cũng dùng). Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Mở bài blog, mở Trợ lý, nhờ "tạo ảnh bìa 16:9 cho bài": hiện "Đang tạo ảnh…" và khung chữ nhật ngang có vệt sáng chạy qua. (2) Nhờ tạo ảnh vuông: khung vuông. (3) Ảnh xong: khung biến mất, ảnh hiện đúng chỗ, không nhảy bố cục nhiều. (4) Nhờ chỉnh ảnh vừa tạo: cũng có khung với "Đang chỉnh ảnh…". (5) Hết lượt tạo ảnh hoặc lỗi: khung biến mất, hiện thông báo như cũ. (6) Theme tối: vệt sáng nhẹ, không chói. (7) Bật Giảm chuyển động: khung đứng yên.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Trợ lý viết blog: ô nhập không còn bị đẩy lên khi mở bàn phím
+
+- Kết quả: Khi bàn phím mở, khoảng đệm cho thanh điều hướng/thanh home phía dưới vẫn được cộng thêm trên Android nên ô nhập nằm cao hơn mép bàn phím một đoạn. Nay khoảng đệm dưới chỉ áp dụng khi bàn phím đóng (giống màn chat tin nhắn). Trên iOS, chiều cao bàn phím tính từ mép trên bàn phím đến đáy màn hình để không còn khoảng trống khi bàn phím đổi kích thước hoặc đóng. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Android: mở bài blog, mở Trợ lý, chạm ô nhập: ô nhập nằm sát ngay trên bàn phím, không có khoảng trống. (2) Đóng bàn phím: ô nhập về đáy, không bị thanh điều hướng che. (3) iPhone có thanh home: như trên; bật/tắt thanh gợi ý từ của bàn phím, đổi bàn phím emoji: ô nhập luôn sát bàn phím. (4) Đóng bàn phím bằng cách kéo danh sách tin nhắn: không còn khoảng trống ở dưới. (5) Gõ tin nhiều dòng: ô nhập cao lên, vẫn sát bàn phím.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Vòng xoay "kéo để tải lại" không còn bị kẹt khi quay lại màn hình
+
+- Kết quả: Các danh sách đang cho vòng xoay ở đầu hiện cả khi app tự tải lại ngầm (ví dụ khi quay về màn hình hoặc mở lại app); iOS hay để vòng xoay đứng mãi sau đó và phải kéo lại mới hết. Thêm `hooks/use-pull-to-refresh.ts`: vòng xoay chỉ hiện khi người dùng tự kéo và tắt khi tải xong; tải ngầm vẫn chạy nhưng không hiện vòng xoay. Áp dụng cho trang chủ, Theo dõi, Công thức, Công thức đã lưu, Blog của tôi, Tin nhắn, Gói của bạn. Màn Thanh toán giữ nguyên vì vòng xoay ở đó báo đang kiểm tra trạng thái giao dịch. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Trang chủ: mở một bài viết hoặc hồ sơ rồi quay lại: không có vòng xoay ở đầu danh sách, nội dung vẫn tự cập nhật. (2) Đưa app xuống nền vài phút rồi mở lại: không có vòng xoay kẹt. (3) Kéo xuống để tải lại: vòng xoay hiện, tải xong tự biến mất. (4) Lặp lại (1)–(3) ở Theo dõi, Công thức, Công thức đã lưu, Blog của tôi, Tin nhắn, Gói của bạn. (5) Tin nhắn: mở một cuộc trò chuyện rồi quay lại: không có vòng xoay kẹt. (6) Gói của bạn: đang bấm mua gói thì vẫn hiện vòng xoay như trước.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Hồ sơ: bỏ nút "Tải lại danh sách" ở tab Blog, thay bằng kéo để tải lại
+
+- Kết quả: Tab Blog trong màn Hồ sơ có nút chữ "Tải lại danh sách" nằm ngay trên danh sách, trông lạc chỗ. Đã bỏ nút; thay vào đó cả màn Hồ sơ kéo xuống để tải lại (hồ sơ, sở thích ăn uống, bài viết và blog của tôi), vòng xoay chỉ hiện khi tự kéo. Blog vẫn tự cập nhật sau khi lưu/đăng bài như trước; nút "Thử lại" khi lỗi và "Xem thêm blog" giữ nguyên. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Tôi > tab Blog: không còn nút "Tải lại danh sách", danh sách blog hiện ngay dưới thanh tab. (2) Kéo màn Hồ sơ xuống: vòng xoay hiện rồi tắt, danh sách blog cập nhật. (3) Ở tab Bài viết kéo xuống: bài viết và thông tin hồ sơ cập nhật. (4) Viết hoặc sửa một blog rồi quay lại tab Blog: bài mới/đã sửa hiện mà không cần kéo. (5) Tắt mạng rồi mở tab Blog: hiện "Không tải được danh sách blog" và nút Thử lại. (6) Chưa đăng nhập: màn Hồ sơ không kéo để tải lại.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Thực đơn của tôi: chạm vào món để xem công thức
+
+- Kết quả: Mỗi món trong thực đơn trước chỉ chạm được ảnh (phóng to) và nút Đổi món. Nay chạm vào tên món (có dòng "Xem công thức ›" bên dưới) mở trang công thức của món đó (`/recipes/[id]`, id món trong thực đơn chính là id công thức ở API). Chạm ảnh vẫn phóng to, nút Đổi món giữ nguyên; bản xem trước đề xuất cũng mở được công thức. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Mở tab Thực đơn của tôi, chọn một ngày có món: dưới tên mỗi món có "Xem công thức ›". (2) Chạm tên món: mở đúng trang công thức của món đó. (3) Bấm Quay lại: về thực đơn, vẫn ở ngày đang chọn. (4) Chạm ảnh món: ảnh phóng to như trước, không mở công thức. (5) Bấm Đổi món: vẫn nhờ trợ lý đổi món, không mở công thức. (6) Khi đang xem bản đề xuất (chưa lưu): chạm món vẫn mở công thức. (7) Tên món dài: xuống dòng gọn, không đè nút Đổi món.
+- Người thực hiện: Claude.
+
+## 2026-11-18 — Gộp tìm kiếm Công thức vào tìm kiếm chung ở header
+
+- Kết quả: Trước có hai chỗ tìm: kính lúp ở header (chỉ tìm bài viết) và ô "Tìm món hoặc nguyên liệu..." trong mục Công thức. Nay chỉ còn kính lúp; màn tìm kiếm có hai tab Bài viết và Công thức. Đang ở mục Công thức bấm kính lúp thì mở thẳng tab Công thức, mục khác mở tab Bài viết. Tab Công thức tìm theo món/nguyên liệu như trước và có nút "Hợp với mình". Mục Công thức bỏ ô tìm, giữ bộ lọc "Hợp với mình"; các gợi ý Nấm, Đậu hũ, Canh nay mở màn tìm kiếm với từ đó. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Trang chủ, mục Dành cho bạn: bấm kính lúp: mở tìm kiếm ở tab Bài viết, bàn phím bật, gõ từ khóa ra bài viết. (2) Chuyển sang tab Công thức: ô nhập đổi gợi ý thành "Tìm món hoặc nguyên liệu...", kết quả là công thức với từ đang gõ. (3) Quay lại, chọn mục Công thức rồi bấm kính lúp: mở thẳng tab Công thức. (4) Mục Công thức không còn ô tìm; bấm "Nấm": mở tìm kiếm tab Công thức với chữ "Nấm" và kết quả. (5) Tab Công thức, chưa gõ gì: hiện lời nhắc nhập món; bật "Hợp với mình": hiện món hợp hồ sơ; chưa đăng nhập bấm "Hợp với mình": chuyển sang đăng nhập. (6) Bộ lọc "Hợp với mình" ở mục Công thức vẫn lọc danh sách. (7) Bấm một công thức trong kết quả: mở trang công thức, Quay lại về kết quả cũ. (8) Theme tối, chữ lớn.
+- Người thực hiện: Claude.
+
+- Bổ sung (cùng ngày): chữ gợi ý trong ô tìm kiếm bị lệch so với biểu tượng kính lúp (font Source Sans có khoảng đệm riêng trên Android, ô nhập lại không cao bằng thanh). Ô nhập nay cao đúng 40, chữ căn giữa theo chiều dọc và bỏ khoảng đệm font. Kiểm tra: mở tìm kiếm ở cả hai tab: chữ gợi ý và chữ đang gõ nằm thẳng hàng với kính lúp và nút xóa, trên Android và iPhone, cả khi chữ lớn. Người thực hiện: Claude.

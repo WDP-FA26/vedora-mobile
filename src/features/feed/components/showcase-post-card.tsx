@@ -118,7 +118,7 @@ export function ShowcasePostCard({ post }: { post: ShowcasePost }) {
           ) : null}
 
           <View style={[styles.stats, { borderTopColor: theme.border }]}>
-            <Stat name={{ ios: "leaf", android: "eco", web: "eco" }} count={post.stats.sprouts} color={theme.mutedForeground} label="thả mầm" />
+            <Stat name={{ ios: "heart", android: "favorite", web: "favorite" }} count={post.stats.sprouts} color={theme.mutedForeground} label="lượt thích" />
             <Stat name={{ ios: "bubble.left", android: "chat_bubble", web: "chat_bubble" }} count={post.stats.comments} color={theme.mutedForeground} label="bình luận" />
             <Stat name={{ ios: "arrow.2.squarepath", android: "repeat", web: "repeat" }} count={post.stats.reposts} color={theme.mutedForeground} label="đăng lại" />
             <Stat name={{ ios: "chart.bar", android: "bar_chart", web: "bar_chart" }} count={post.stats.views} color={theme.mutedForeground} label="lượt xem" />

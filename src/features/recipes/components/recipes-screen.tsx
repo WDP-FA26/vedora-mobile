@@ -1,34 +1,24 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View, type FlatListProps } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, type FlatListProps } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useRecipes } from '../hooks/use-recipes';
-import { MAX_RECIPE_QUERY_LENGTH } from '../types/recipe.schema';
 import { RecipeCard } from './recipe-card';
 
-function useDebounced<T>(value: T, delayMs: number) {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), delayMs);
-    return () => clearTimeout(timer);
-  }, [value, delayMs]);
-  return debounced;
-}
-
-/** The recipe catalogue as the "Công thức" tab of the home feed; the feed supplies the header and the safe area. */
+/** The recipe catalogue as the "Công thức" tab of the home feed; the feed supplies the header (whose search opens on recipes) and the safe area. */
 export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['onScroll'] }) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
-  const [text, setText] = useState('');
   const [suitableForMe, setSuitableForMe] = useState(false);
-  const q = useDebounced(text.trim(), 350);
-  const recipes = useRecipes({ q, suitableForMe: !!token && suitableForMe });
+  const recipes = useRecipes({ q: '', suitableForMe: !!token && suitableForMe });
+  const pull = usePullToRefresh(recipes.refetch);
   const items = recipes.data?.pages.flatMap((page) => page.items) ?? [];
 
   function toggleSuitable() {
@@ -50,8 +40,8 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
         contentContainerStyle={styles.list}
         onEndReached={() => { if (recipes.hasNextPage && !recipes.isFetching && !recipes.isFetchNextPageError) void recipes.fetchNextPage(); }}
         onEndReachedThreshold={0.5}
-        refreshing={recipes.isRefetching}
-        onRefresh={() => void recipes.refetch()}
+        refreshing={pull.refreshing}
+        onRefresh={pull.onRefresh}
         ListHeaderComponent={(
           <View style={styles.header}>
             <View style={styles.headingRow}>
@@ -74,28 +64,9 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
                 <Image source={require('@/assets/branding/carrot-sticker.png')} style={styles.heroSticker} contentFit="contain" accessible={false} />
               </View>
             </View>
-            <View style={[styles.search, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <SymbolView name={{ ios: 'magnifyingglass', android: 'search', web: 'search' }} size={19} tintColor={theme.mutedForeground} />
-              <TextInput
-                accessibilityLabel="Tìm công thức theo món hoặc nguyên liệu"
-                value={text}
-                onChangeText={setText}
-                maxLength={MAX_RECIPE_QUERY_LENGTH}
-                placeholder="Tìm món hoặc nguyên liệu..."
-                placeholderTextColor={theme.mutedForeground}
-                returnKeyType="search"
-                autoCapitalize="none"
-                style={[styles.searchInput, { color: theme.foreground }]}
-              />
-              {text.length > 0 ? (
-                <Pressable accessibilityRole="button" accessibilityLabel="Xóa nội dung tìm kiếm" onPress={() => setText('')} style={styles.clear}>
-                  <SymbolView name={{ ios: 'xmark.circle.fill', android: 'cancel', web: 'cancel' }} size={19} tintColor={theme.mutedForeground} />
-                </Pressable>
-              ) : null}
-            </View>
             <View style={styles.suggestions}>
               {['Nấm', 'Đậu hũ', 'Canh'].map((keyword) => (
-                <Pressable key={keyword} accessibilityRole="button" accessibilityLabel={`Tìm công thức ${keyword}`} accessibilityState={{ selected: text === keyword }} onPress={() => setText(text === keyword ? '' : keyword)} style={[styles.suggestion, { backgroundColor: text === keyword ? theme.secondary : theme.card, borderColor: text === keyword ? theme.primary : theme.border }]}>
+                <Pressable key={keyword} accessibilityRole="button" accessibilityLabel={`Tìm công thức ${keyword}`} onPress={() => router.push({ pathname: '/search', params: { tab: 'recipes', q: keyword } })} style={[styles.suggestion, { backgroundColor: theme.card, borderColor: theme.border }]}>
                   <Text style={[styles.chipText, { color: theme.foreground }]}>{keyword}</Text>
                 </Pressable>
               ))}
@@ -116,7 +87,7 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
               </View>
             </Pressable>
             <View style={styles.sectionRow}>
-              <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.foreground }]}>{q ? 'Kết quả tìm kiếm' : token && suitableForMe ? 'Món hợp với bạn' : 'Khám phá món ngon'}</Text>
+              <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.foreground }]}>{token && suitableForMe ? 'Món hợp với bạn' : 'Khám phá món ngon'}</Text>
               {recipes.isFetching && !recipes.isPending ? <ActivityIndicator size="small" color={theme.primary} /> : null}
             </View>
           </View>
@@ -128,8 +99,8 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
         ) : (
           <View style={[styles.empty, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <Image source={require('@/assets/branding/avocado-sticker.png')} style={styles.emptySticker} contentFit="contain" accessible={false} />
-            <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{q || (token && suitableForMe) ? 'Chưa tìm thấy món phù hợp' : 'Chưa có công thức'}</Text>
-            <Text style={[styles.sub, { color: theme.mutedForeground }]}>{q || (token && suitableForMe) ? 'Thử từ khóa khác hoặc bỏ bộ lọc.' : 'Kho công thức hiện chưa có món nào.'}</Text>
+            <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{token && suitableForMe ? 'Chưa tìm thấy món phù hợp' : 'Chưa có công thức'}</Text>
+            <Text style={[styles.sub, { color: theme.mutedForeground }]}>{token && suitableForMe ? 'Thử bỏ bộ lọc.' : 'Kho công thức hiện chưa có món nào.'}</Text>
           </View>
         )}
         ListFooterComponent={recipes.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : recipes.isError && items.length ? (
@@ -168,9 +139,6 @@ const styles = StyleSheet.create({
   headingCopy: { flex: 1, minWidth: 0 },
   heading: { fontFamily: Fonts.headingBold, fontSize: 23, lineHeight: 31 },
   headingSub: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 18 },
-  search: { minHeight: 52, borderWidth: 1, borderRadius: Radius.xl, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two },
-  searchInput: { flex: 1, minWidth: 0, minHeight: 50, fontFamily: Fonts.sans, fontSize: 14, paddingVertical: 0 },
-  clear: { minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
   chipText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   state: { padding: Spacing.five, textAlign: 'center' },
   sub: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },

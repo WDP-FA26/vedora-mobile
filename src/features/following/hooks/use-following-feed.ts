@@ -65,7 +65,6 @@ export function useFollowingFeed() {
       (Boolean(profileId) && following.isPending) ||
       authorPosts.some((query) => query.isPending)
     ),
-    refreshing: me.isRefetching || following.isRefetching || authorPosts.some((query) => query.isRefetching),
     error: me.isError || following.isError || authorPosts.some((query) => query.isError),
     hasMoreAuthors: Boolean(following.hasNextPage),
     loadingMoreAuthors: following.isFetchingNextPage,
@@ -75,10 +74,6 @@ export function useFollowingFeed() {
       if (following.isError) void following.refetch();
       for (const query of authorPosts) if (query.isError) void query.refetch();
     },
-    refresh: () => {
-      void me.refetch();
-      void following.refetch();
-      for (const query of authorPosts) void query.refetch();
-    },
+    refresh: () => Promise.all([me.refetch(), following.refetch(), ...authorPosts.map((query) => query.refetch())]),
   };
 }

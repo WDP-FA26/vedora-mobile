@@ -253,11 +253,6 @@ export function ComposeDialog({
                 <View style={[styles.choiceIcon, { backgroundColor: theme.primary }]}><SymbolView name={{ ios: "video", android: "videocam", web: "videocam" }} size={25} tintColor={theme.primaryForeground} /></View>
                 <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Video hướng dẫn</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Chia sẻ cách nấu bằng video và phần hướng dẫn ngắn.</Text></View>
               </Pressable>
-              <View accessibilityState={{ disabled: true }} style={[styles.choice, { borderColor: theme.border, backgroundColor: theme.card }]}>
-                <View style={[styles.choiceIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: "book.closed", android: "menu_book", web: "menu_book" }} size={25} tintColor={theme.primary} /></View>
-                <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Công thức</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Biên tập công thức đầy đủ.</Text></View>
-                <Text style={[styles.comingSoon, { color: theme.mutedForeground, backgroundColor: theme.muted }]}>Sắp có</Text>
-              </View>
               <Pressable accessibilityRole="button" onPress={() => { onClose(); router.push('/blogs/new'); }} style={[styles.choice, { borderColor: theme.border, backgroundColor: theme.card }]}>
                 <View style={[styles.choiceIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: "doc.text", android: "article", web: "article" }} size={25} tintColor={theme.primary} /></View>
                 <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Blog</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Viết bài dài, thêm ảnh và lưu nháp.</Text></View>
@@ -331,7 +326,6 @@ const styles = StyleSheet.create({
   choiceCopy: { flex: 1, gap: 3 },
   choiceTitle: { fontFamily: Fonts.headingBold, fontSize: 16 },
   choiceDescription: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
-  comingSoon: { borderRadius: 100, overflow: "hidden", paddingHorizontal: 9, paddingVertical: 5, fontFamily: Fonts.sansSemibold, fontSize: 12 },
   authorRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, marginBottom: Spacing.three },
   avatar: { width: 45, height: 45, borderRadius: 23, justifyContent: "center", alignItems: "center" },
   avatarText: { fontFamily: Fonts.headingBold, fontSize: 16 },

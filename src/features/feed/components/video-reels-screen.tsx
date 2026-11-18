@@ -4,12 +4,14 @@ import { router, useIsFocused } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, type FlatListProps } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View, type FlatListProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
+import { HEART_COLOR } from '@/shared/components/reaction-burst';
+import { showReactionBurst } from '@/shared/stores/reaction-burst-store';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useFeed, useFeedActions } from '../hooks/use-feed';
@@ -23,6 +25,12 @@ const WHITE = '#fffefa';
 const VIEWABILITY = { itemVisiblePercentThreshold: 80 };
 /** Keep loading while fewer than this many videos are ahead of the one being watched. */
 const PREFETCH_AHEAD = 3;
+/** Videos this close to the one on screen keep a loaded player, so a swipe plays without waiting. */
+const WARM_DISTANCE = 1;
+/** Seconds buffered ahead; caps data spent on neighbours the viewer may skip. */
+const BUFFER_AHEAD_SEC = 10;
+/** Two taps closer than this like the video; a single tap waits this long before pausing. */
+const DOUBLE_TAP_MS = 250;
 
 const formatCount = (value: number) => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 
@@ -66,8 +74,15 @@ export function VideoReelsScreen() {
         <FlatList
           data={reels}
           keyExtractor={(reel) => reel.post.id}
-          renderItem={({ item }) => (
-            <ReelItem reel={item} height={height} active={item.post.id === currentId && focused} muted={muted} bottomInset={insets.bottom} />
+          renderItem={({ item, index }) => (
+            <ReelItem
+              reel={item}
+              height={height}
+              active={item.post.id === currentId && focused}
+              warm={Math.abs(index - currentIndex) <= WARM_DISTANCE}
+              muted={muted}
+              bottomInset={insets.bottom}
+            />
           )}
           pagingEnabled
           snapToInterval={height}
@@ -123,7 +138,7 @@ function RoundButton({ label, icon, onPress }: { label: string; icon: IconName; 
   );
 }
 
-function ReelItem({ reel, height, active, muted, bottomInset }: { reel: Reel; height: number; active: boolean; muted: boolean; bottomInset: number }) {
+function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Reel; height: number; active: boolean; warm: boolean; muted: boolean; bottomInset: number }) {
   const { post, media } = reel;
   const accessToken = useSessionStore((state) => state.accessToken);
   const { like, bookmark, repost } = useFeedActions(post.id);
@@ -147,15 +162,36 @@ function ReelItem({ reel, height, active, muted, bottomInset }: { reel: Reel; he
     else router.push({ pathname: '/login', params: { returnTo: '/explore' } });
   }
 
+  const lastTap = useRef(0);
+  const pendingTap = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(pendingTap.current), []);
+
+  // Double tap likes (never unlikes, like Instagram); a single tap still pauses, just after the double-tap window.
+  function onTap() {
+    const now = Date.now();
+    if (now - lastTap.current < DOUBLE_TAP_MS) {
+      clearTimeout(pendingTap.current);
+      lastTap.current = 0;
+      requireLogin(() => {
+        if (post.isLiked || like.isPending) showReactionBurst('like');
+        else like.mutate(true);
+      });
+      return;
+    }
+    lastTap.current = now;
+    pendingTap.current = setTimeout(() => setPaused((value) => !value), DOUBLE_TAP_MS);
+  }
+
   return (
     <View style={{ height }}>
       {!started ? <Image source={media.posterUrl ? { uri: media.posterUrl } : undefined} style={StyleSheet.absoluteFill} contentFit={fit} /> : null}
-      {active ? <ReelPlayer url={reel.playbackUrl} fit={fit} muted={muted} paused={paused} onStarted={() => setStarted(true)} /> : null}
+      {warm || active ? <ReelPlayer url={reel.playbackUrl} fit={fit} active={active} muted={muted} paused={paused} onStarted={() => setStarted(true)} /> : null}
 
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={paused ? 'Phát video' : 'Tạm dừng video'}
-        onPress={() => setPaused((value) => !value)}
+        accessibilityHint="Chạm hai lần liên tiếp để thích"
+        onPress={onTap}
         style={StyleSheet.absoluteFill}>
         {paused ? <View style={styles.pauseBadge}><SymbolView name={{ ios: 'play.fill', android: 'play_arrow', web: 'play_arrow' }} size={34} tintColor={WHITE} /></View> : null}
       </Pressable>
@@ -175,8 +211,9 @@ function ReelItem({ reel, height, active, muted, bottomInset }: { reel: Reel; he
 
         <View style={styles.actions}>
           <ReelAction
-            label={post.isLiked ? 'Bỏ thả mầm' : 'Thả mầm'}
-            icon={{ ios: post.isLiked ? 'leaf.fill' : 'leaf', android: 'eco', web: 'eco' }}
+            label={post.isLiked ? 'Bỏ thích' : 'Thích'}
+            icon={{ ios: post.isLiked ? 'heart.fill' : 'heart', android: 'favorite', web: 'favorite' }}
+            activeColor={HEART_COLOR}
             count={post.likeCount}
             active={post.isLiked}
             disabled={like.isPending}
@@ -209,8 +246,8 @@ function ReelItem({ reel, height, active, muted, bottomInset }: { reel: Reel; he
   );
 }
 
-function ReelAction({ label, icon, count, active, disabled, onPress }: {
-  label: string; icon: IconName; count?: number; active?: boolean; disabled?: boolean; onPress: () => void;
+function ReelAction({ label, icon, count, active, activeColor = '#75b65c', disabled, onPress }: {
+  label: string; icon: IconName; count?: number; active?: boolean; activeColor?: string; disabled?: boolean; onPress: () => void;
 }) {
   return (
     <Pressable
@@ -221,7 +258,7 @@ function ReelAction({ label, icon, count, active, disabled, onPress }: {
       onPress={onPress}
       style={({ pressed }) => [styles.action, { opacity: pressed ? 0.7 : 1 }]}>
       <View style={[styles.actionIcon, active && styles.actionIconActive]}>
-        <SymbolView name={icon} size={24} tintColor={active ? '#75b65c' : WHITE} />
+        <SymbolView name={icon} size={24} tintColor={active ? activeColor : WHITE} />
       </View>
       {count !== undefined ? <Text style={styles.actionCount}>{formatCount(count)}</Text> : null}
     </Pressable>
@@ -232,12 +269,21 @@ function setPlayerMuted(player: VideoPlayer, muted: boolean) {
   player.muted = muted;
 }
 
-/** One live player, mounted only for the video on screen so memory stays flat however far you scroll. */
-function ReelPlayer({ url, fit, muted, paused, onStarted }: { url: string; fit: 'cover' | 'contain'; muted: boolean; paused: boolean; onStarted: () => void }) {
+function rewind(player: VideoPlayer) {
+  player.currentTime = 0;
+}
+
+/**
+ * Mounted for the video on screen and its neighbours (at most three players, so memory stays flat).
+ * A neighbour's player fills its buffer without a view; only the active one is shown and played.
+ */
+function ReelPlayer({ url, fit, active, muted, paused, onStarted }: {
+  url: string; fit: 'cover' | 'contain'; active: boolean; muted: boolean; paused: boolean; onStarted: () => void;
+}) {
   const player = useVideoPlayer({ uri: url, contentType: 'hls' }, (instance) => {
     instance.loop = true;
     instance.timeUpdateEventInterval = 0.25;
-    instance.play();
+    if (Platform.OS !== 'web') instance.bufferOptions = { preferredForwardBufferDuration: BUFFER_AHEAD_SEC };
   });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
   const { currentTime } = useEvent(player, 'timeUpdate', { currentTime: 0, bufferedPosition: 0, currentLiveTimestamp: null, currentOffsetFromLive: null });
@@ -251,9 +297,16 @@ function ReelPlayer({ url, fit, muted, paused, onStarted }: { url: string; fit: 
   }, [muted, player]);
 
   useEffect(() => {
-    if (paused) player.pause();
-    else player.play();
-  }, [paused, player]);
+    if (active && !paused) player.play();
+    else player.pause();
+  }, [active, paused, player]);
+
+  // A video that leaves the screen starts from the top next time.
+  useEffect(() => {
+    if (!active) rewind(player);
+  }, [active, player]);
+
+  if (!active) return null;
 
   const duration = player.duration;
   const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;

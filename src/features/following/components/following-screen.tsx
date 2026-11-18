@@ -19,6 +19,7 @@ import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { PostCard } from "@/features/feed/components/post-card";
 import type { FeedPost } from "@/features/feed/types/feed.schema";
 import { SuggestionsRow } from "@/features/profile/components/suggestions-row";
+import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
 import { useTheme } from "@/hooks/use-theme";
 
 import { useFollowingFeed } from "../hooks/use-following-feed";
@@ -29,6 +30,7 @@ const viewabilityConfig = { itemVisiblePercentThreshold: 50 };
 export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const theme = useTheme();
   const feed = useFollowingFeed();
+  const pull = usePullToRefresh(feed.refresh);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const onViewableItemsChanged = useCallback<NonNullable<FlatListProps<FeedPost>['onViewableItemsChanged']>>(
     ({ viewableItems }) => {
@@ -54,8 +56,8 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
       )}
       onViewableItemsChanged={onViewableItemsChanged}
       viewabilityConfig={viewabilityConfig}
-      refreshing={Boolean(feed.accessToken) && feed.refreshing}
-      onRefresh={feed.accessToken ? feed.refresh : undefined}
+      refreshing={Boolean(feed.accessToken) && pull.refreshing}
+      onRefresh={feed.accessToken ? pull.onRefresh : undefined}
       ListHeaderComponent={
         <View>
           <View style={[styles.intro, { backgroundColor: theme.secondary }]}>
