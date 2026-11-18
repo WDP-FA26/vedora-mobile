@@ -15,16 +15,42 @@ export const videoUploadTargetSchema = z.object({
 
 export type VideoUploadTarget = z.output<typeof videoUploadTargetSchema>;
 
-export const createdPostSchema = z.object({
-  id: z.string().min(1),
-  status: z.enum(['PROCESSING', 'PUBLISHED', 'FAILED']),
+const mediaStatuses = ['WAITING_UPLOAD', 'PROCESSING', 'READY', 'FAILED'] as const;
+
+/** A video attached to a draft (`/media` shape, only the fields the app reads). */
+export const draftMediaSchema = z.object({
+  id: z.string(),
+  status: z.enum(mediaStatuses),
+  failureReason: z.string().nullable(),
+  playbackUrl: z.string().nullable(),
+  posterUrl: z.string().nullable(),
+  durationSec: z.number().nullable(),
 });
 
-export const createPostInputSchema = z.object({
-  type: z.literal('POST'),
-  body: z.string().trim().min(1).max(MAX_POST_LENGTH),
-  mediaIds: z.array(z.string().min(1)).max(4).optional(),
+/** A private DRAFT post (`/posts/drafts`); `version` must be sent back with every change. */
+export const postDraftSchema = z.object({
+  id: z.string(),
+  kind: z.enum(['POST', 'VIDEO']),
+  title: z.string(),
+  description: z.string(),
+  version: z.number().int().nonnegative(),
+  updatedAt: z.string(),
+  media: z.array(draftMediaSchema),
 });
+
+export const postDraftPageSchema = z.object({ items: z.array(postDraftSchema) });
+
+/** `upload` is null once the file is already on Cloudinary (a retry after the bytes went through). */
+export const draftUploadSchema = z.object({
+  draft: postDraftSchema,
+  upload: videoUploadTargetSchema.shape.upload.nullable(),
+});
+
+/** The published post; a retried publish returns the same post in whatever status it reached. */
+export const publishedDraftSchema = z.object({ id: z.string(), status: z.string() });
+
+export type DraftMedia = z.output<typeof draftMediaSchema>;
+export type PostDraft = z.output<typeof postDraftSchema>;
 
 export type SelectedComposeVideo = {
   uri: string;
@@ -36,4 +62,3 @@ export type SelectedComposeVideo = {
   file?: globalThis.File;
 };
 
-export type CreatedPost = z.output<typeof createdPostSchema>;

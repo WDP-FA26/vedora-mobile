@@ -5,36 +5,49 @@ import { apiClient } from '@/shared/api/api-client';
 import { requestJson } from '@/shared/api/request-json';
 
 import {
-  createPostInputSchema,
-  createdPostSchema,
-  videoUploadTargetSchema,
+  draftUploadSchema,
+  postDraftPageSchema,
+  postDraftSchema,
+  publishedDraftSchema,
   type SelectedComposeVideo,
   type VideoUploadTarget,
 } from '../types/compose.schema';
 
-export function requestVideoUpload() {
-  return requestJson(videoUploadTargetSchema, {
-    method: 'POST',
-    url: '/media/uploads',
-    data: { type: 'VIDEO' },
-  });
+/** Your video drafts, newest first. Short-post drafts made on the web are left out: the app cannot edit them. */
+export async function getDrafts(signal?: AbortSignal) {
+  const page = await requestJson(postDraftPageSchema, { method: 'GET', url: '/posts/drafts', signal });
+  return page.items.filter((draft) => draft.kind === 'VIDEO');
 }
 
-export async function discardVideoUpload(mediaId: string) {
-  await apiClient.request({ method: 'DELETE', url: `/media/${encodeURIComponent(mediaId)}` });
+/** Also reconciles uploads that finished while no webhook arrived, so read it again after sending a file. */
+export function getDraft(id: string, signal?: AbortSignal) {
+  return requestJson(postDraftSchema, { method: 'GET', url: `/posts/drafts/${id}`, signal });
 }
 
-export function createPost(body: string, mediaIds?: string[]) {
-  const input = createPostInputSchema.parse({
-    type: 'POST',
-    body,
-    ...(mediaIds ? { mediaIds } : {}),
-  });
-  return requestJson(createdPostSchema, {
-    method: 'POST',
-    url: '/posts',
-    data: input,
-  });
+/** Idempotent on the client-made `id`: returns the existing draft on a retry. */
+export function createDraft(id: string) {
+  return requestJson(postDraftSchema, { method: 'POST', url: '/posts/drafts', data: { id, kind: 'VIDEO' } });
+}
+
+export function saveDraft(id: string, input: { expectedVersion: number; title: string; description: string; body: string }) {
+  return requestJson(postDraftSchema, { method: 'PATCH', url: `/posts/drafts/${id}`, data: input });
+}
+
+/** Keep `mediaId` for retries of the same file so the draft never gets a second attachment. */
+export function requestDraftUpload(id: string, mediaId: string) {
+  return requestJson(draftUploadSchema, { method: 'POST', url: `/posts/drafts/${id}/uploads`, data: { mediaId } });
+}
+
+export function removeDraftMedia(id: string, mediaId: string, expectedVersion: number) {
+  return requestJson(postDraftSchema, { method: 'DELETE', url: `/posts/drafts/${id}/media/${mediaId}`, data: { expectedVersion } });
+}
+
+export function publishDraft(id: string, expectedVersion: number) {
+  return requestJson(publishedDraftSchema, { method: 'POST', url: `/posts/drafts/${id}/publish`, data: { expectedVersion } });
+}
+
+export async function deleteDraft(id: string) {
+  await apiClient.delete(`/posts/drafts/${id}`);
 }
 
 /**
