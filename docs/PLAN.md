@@ -743,3 +743,9 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Người thực hiện: Claude.
 
 - Bổ sung (cùng ngày): chữ gợi ý trong ô tìm kiếm bị lệch so với biểu tượng kính lúp (font Source Sans có khoảng đệm riêng trên Android, ô nhập lại không cao bằng thanh). Ô nhập nay cao đúng 40, chữ căn giữa theo chiều dọc và bỏ khoảng đệm font. Kiểm tra: mở tìm kiếm ở cả hai tab: chữ gợi ý và chữ đang gõ nằm thẳng hàng với kính lúp và nút xóa, trên Android và iPhone, cả khi chữ lớn. Người thực hiện: Claude.
+
+## 2026-11-18 — Video ở feed: loading rõ ràng, không còn chồng tiếng khi mở màn Video
+
+- Kết quả: (1) Bấm phát video trong bài viết trước đây gỡ ảnh bìa ngay nên khung hình đen chớp lên rồi mới có hình. Nay ảnh bìa giữ nguyên, phủ lớp tối và vòng xoay lớn cho đến khi khung hình đầu tiên hiện (`onFirstFrameRender` của expo-video) thì mới biến mất. (2) Video ở feed chỉ dừng khi cuộn khỏi màn hình, nên mở tab Video (hoặc màn khác) thì tiếng feed vẫn chạy chồng lên. Nay video feed tự dừng khi rời màn hình (`useIsFocused`). Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Trang chủ: bấm ▶ trên một video: ảnh bìa vẫn hiện kèm vòng xoay, không chớp đen; khi có hình thì video phát, vòng xoay biến mất. (2) Mạng chậm: vòng xoay hiện lâu hơn nhưng không chớp. (3) Đang phát video ở feed, bấm tab "Video": chỉ nghe tiếng video ở màn Video, video feed đã dừng. (4) Đóng màn Video quay về feed: video feed vẫn dừng, bấm phát tiếp được. (5) Đang phát video, mở một bài viết hoặc hồ sơ: tiếng video feed tắt. (6) Bấm phát rồi cuộn đi ngay trước khi có hình, cuộn lại: video tiếp tục tải và phát. (7) Video lỗi: vẫn hiện "Không phát được video. Chạm để thử lại."
+- Người thực hiện: Claude.
