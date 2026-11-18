@@ -10,7 +10,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../hooks/use-notifications';
 import type { AppNotification } from '../types/notification.schema';
-import { NOTIFICATION_TEXT } from '../utils/notification-text';
+import { notificationText } from '../utils/notification-text';
 
 function formatTime(value: string) {
   const date = new Date(value);
@@ -29,7 +29,11 @@ export function NotificationsScreen() {
 
   function open(item: AppNotification) {
     if (!item.readAt) markRead.mutate(item.id);
-    if (item.type === 'FOLLOW' || !item.postId) router.push({ pathname: '/profile/[id]', params: { id: item.actor.id } });
+    if (!item.actor) {
+      // From Vedora: the author's own blog opens in the editor; removed posts have no postId.
+      if (item.postId && item.postType === 'BLOG') router.push({ pathname: '/blogs/[id]/edit', params: { id: item.postId } });
+      else if (item.postId) router.push({ pathname: '/posts/[id]', params: { id: item.postId } });
+    } else if (item.type === 'FOLLOW' || !item.postId) router.push({ pathname: '/profile/[id]', params: { id: item.actor.id } });
     else router.push({ pathname: '/posts/[id]', params: { id: item.postId } });
   }
 
@@ -72,16 +76,16 @@ export function NotificationsScreen() {
               onPress={() => open(item)}
               style={[styles.row, { borderBottomColor: theme.border, backgroundColor: item.readAt ? theme.background : theme.secondary }]}
             >
-              {item.actor.avatarUrl ? (
+              {item.actor?.avatarUrl ? (
                 <Image source={{ uri: item.actor.avatarUrl }} style={styles.avatar} contentFit="cover" />
               ) : (
                 <View style={[styles.avatar, styles.avatarEmpty, { backgroundColor: theme.card }]}>
-                  <Text style={[styles.initial, { color: theme.primary }]}>{item.actor.fullName.trim().charAt(0).toLocaleUpperCase('vi') || 'V'}</Text>
+                  <Text style={[styles.initial, { color: theme.primary }]}>{item.actor?.fullName.trim().charAt(0).toLocaleUpperCase('vi') || 'V'}</Text>
                 </View>
               )}
               <View style={styles.copy}>
                 <Text style={[styles.text, { color: theme.foreground }]}>
-                  <Text style={styles.bold}>{item.actor.fullName}</Text> {NOTIFICATION_TEXT[item.type]}
+                  <Text style={styles.bold}>{item.actor?.fullName ?? 'Vedora'}</Text> {notificationText(item)}
                 </Text>
                 <Text style={[styles.sub, { color: theme.mutedForeground }]}>{formatTime(item.createdAt)}</Text>
               </View>
