@@ -893,3 +893,11 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả đã làm: Đưa nút lưu đè lên góc trên bên phải ảnh bìa Blog trong thẻ và trang chi tiết, có nền nổi để đọc rõ trên ảnh; vùng ảnh đính kèm có vị trí lưu tương tự. Bài không có ảnh giữ nút lưu ở đầu bài. Nút lưu tách khỏi vùng chạm mở bài. Bỏ mục Chia sẻ bài viết qua hệ thống và mã Share.share; giữ Gửi qua tin nhắn theo API shared-posts của backend. Nút gửi ở hàng tương tác mở thẳng bộ chọn người nhận. Chưa commit/push.
 - Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Mở Blog có ảnh bìa ở Khám phá, kiểm tra nút lưu nằm trên góc phải ảnh. (2) Chạm lưu/bỏ lưu, kiểm tra không mở chi tiết và trạng thái thay đổi. (3) Mở chi tiết Blog, kiểm tra ảnh bìa có nút lưu tương tự. (4) Mở bài không có ảnh, kiểm tra nút lưu vẫn dùng được ở đầu bài. (5) Nhấn nút gửi ở hàng nút tim: mở bộ chọn người nhận; menu ba chấm không còn mục Chia sẻ bài viết. (6) Thử gửi qua tin nhắn, khách chưa đăng nhập, ảnh sáng/tối và màn nhỏ.
 - Người thực hiện: Codex.
+
+## 2026-11-19 — Hiện/ẩn mật khẩu bằng biểu tượng con mắt
+
+- Bàn giao: Thực hiện commit và push trên branch feat/expert-verification theo yêu cầu người dùng; giữ các báo cáo SRS local ngoài commit.
+- Kiểm tra: TypeScript và lint đều đạt. Chưa kiểm thử tương tác trên điện thoại thật.
+- Kết quả đã làm: Thêm nút con mắt bên phải ô mật khẩu trong AuthField dùng chung. Mặc định ẩn, bấm để hiện/ẩn từng ô độc lập; có nhãn trợ năng và vùng chạm 44px, chừa khoảng trống tránh chữ đè biểu tượng. Áp dụng cho đăng nhập, đăng ký/nhập lại mật khẩu và đặt lại mật khẩu; giữ giá trị, autocomplete và thao tác gửi form. Không thêm thư viện, chưa commit/push.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Mở Đăng nhập, nhập mật khẩu và kiểm tra mặc định bị che. (2) Bấm con mắt để hiện, bấm lại để ẩn; kiểm tra mật khẩu không mất và nút đăng nhập vẫn hoạt động. (3) Mở Đăng ký, thử hiện/ẩn riêng ô mật khẩu và nhập lại mật khẩu. (4) Thử tương tự ở Đặt lại mật khẩu; ô email/tên đăng nhập/mã xác minh không có con mắt. (5) Kiểm tra Android/iOS/web, bàn phím mở, mật khẩu dài và theme tối.
+- Người thực hiện: Codex.
