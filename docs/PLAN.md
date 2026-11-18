@@ -750,18 +750,6 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Bước kiểm tra UI: (1) Trang chủ: bấm ▶ trên một video: ảnh bìa vẫn hiện kèm vòng xoay, không chớp đen; khi có hình thì video phát, vòng xoay biến mất. (2) Mạng chậm: vòng xoay hiện lâu hơn nhưng không chớp. (3) Đang phát video ở feed, bấm tab "Video": chỉ nghe tiếng video ở màn Video, video feed đã dừng. (4) Đóng màn Video quay về feed: video feed vẫn dừng, bấm phát tiếp được. (5) Đang phát video, mở một bài viết hoặc hồ sơ: tiếng video feed tắt. (6) Bấm phát rồi cuộn đi ngay trước khi có hình, cuộn lại: video tiếp tục tải và phát. (7) Video lỗi: vẫn hiện "Không phát được video. Chạm để thử lại."
 - Người thực hiện: Claude.
 
-## 2026-11-18 — Kịch bản demo mobile cho buổi bảo vệ
-
-- Kết quả: Thêm `docs/DEMO_SCRIPT.md`: kịch bản ~13 phút cho 2 người (Vy, Hương) theo hành trình người dùng, phân phần theo người đã làm, checklist chuẩn bị, lời thoại, phương án dự phòng và câu hỏi Q&A. Không đổi code.
-- Bước kiểm tra UI: (1) Tối trước buổi bảo vệ, chạy thử toàn bộ kịch bản trên 2 máy theo đúng thứ tự mục 1–9. (2) Bấm giờ từng mục, cắt bớt nếu vượt 13 phút. (3) Thử riêng mục 6 (nhắn tin 2 máy) và mục 8 (thanh toán thử) với API thật.
-- Người thực hiện: Claude, theo yêu cầu của Vy Ngo Chi.
-
-## 2026-11-18 — Cẩm nang trả lời hội đồng
-
-- Kết quả: Thêm `docs/DEFENSE_GUIDE.md` giải thích bằng lời thường công nghệ (Expo, Expo Router, Axios, Zod, TanStack Query, Zustand, SSE…) và từng luồng chính (đăng nhập + refresh token, Google OAuth/PKCE, upload video lên Cloudinary, nhắn tin realtime, AI stream, AI lên thực đơn, trợ lý blog, thanh toán SePay), kèm câu hỏi khó, thuật ngữ và bản đồ file. Đối chiếu với code hiện tại; không đổi code.
-- Bước kiểm tra UI: (1) Đọc mục 4 song song với app đang chạy, làm theo từng luồng trên máy để thấy đúng các bước được mô tả. (2) Hai người hỏi chéo nhau bằng mục 6.
-- Người thực hiện: Claude, theo yêu cầu của Vy Ngo Chi.
-
 ## 2026-11-18 — Thông báo khi bình luận bị chặn vì vi phạm Tiêu chuẩn cộng đồng
 
 - Kết quả: Khi API kiểm duyệt từ chối bình luận (mã `CONTENT_REJECTED`), trước app chỉ hiện lỗi chung "Chưa gửi được bình luận…" nên người dùng tưởng lỗi mạng và gửi lại mãi. Nay hiện theo cách các app mạng xã hội hay làm: "Bình luận của bạn không được đăng vì vi phạm Tiêu chuẩn cộng đồng. Hãy sửa lại nội dung rồi gửi lại." kèm liên kết "Xem Tiêu chuẩn cộng đồng" mở trang Tiêu chuẩn cộng đồng. Nội dung vẫn giữ trong ô nhập để sửa. Áp dụng cả khi viết mới lẫn khi sửa bình luận. Lỗi khác vẫn giữ thông báo cũ. Chưa thử trên máy thật.
@@ -779,3 +767,10 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Trước đây cuộc trò chuyện ở tab Trợ lý chỉ nằm trong bộ nhớ, đóng app hoặc đăng nhập lại là mất. Nay mỗi cuộc trò chuyện có một mã (`threadId`) gửi kèm `POST /meal-plan/chat`, API tự lưu câu hỏi và câu trả lời. Mở tab Trợ lý sẽ tải lại cuộc trò chuyện gần nhất (`GET /meal-plan/chat/threads`), gồm cả đề xuất thực đơn và nút "Xem trong Thực đơn". Trạng thái đề xuất (đang xem, đã lưu, đã bỏ qua) được đồng bộ lên API (`PATCH /meal-plan/chat/threads/:id`); đề xuất đang xem dở chưa lưu sẽ được mời xem lại sau khi mở lại app. Header có nút "Cuộc trò chuyện mới" (chỉ hiện khi đã có tin nhắn): bắt đầu cuộc mới, cuộc cũ vẫn được lưu trên server. Chưa có màn chọn lại các cuộc cũ. Chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Đăng nhập, mở tab Trợ lý, hỏi "Gợi ý món sáng nhanh": nhận câu trả lời. (2) Tắt hẳn app rồi mở lại, vào tab Trợ lý: câu hỏi và câu trả lời vẫn còn, không hiện lại các nút "Bắt đầu nhanh". (3) Nhờ lên thực đơn 7 ngày: có nút "Xem trong Thực đơn"; tắt app mở lại: nút vẫn còn, bấm mở được bản nháp ở tab Thực đơn. (4) Lưu thực đơn, tắt app mở lại: nút "Xem trong Thực đơn" của đề xuất đó không còn. (5) Bấm nút bút ở góc phải header: khung chat trống, hiện lại "Bắt đầu nhanh"; hỏi tiếp một câu; tắt app mở lại: thấy cuộc mới này. (6) Khi trợ lý đang trả lời, nút bút bị mờ, bấm không có tác dụng. (7) Đăng xuất, đăng nhập tài khoản khác: không thấy cuộc trò chuyện của tài khoản trước. (8) Tắt mạng rồi mở tab Trợ lý: vẫn chat được bình thường khi có mạng lại. (9) Theme tối, chữ lớn.
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Logo Vedora đầy đủ ở đầu trang Home
+
+- Kết quả đã làm: Thay biểu tượng V ở đầu Home chào mừng bằng logo Vedora đầy đủ có sẵn trong assets/branding/logo.png. Logo nằm dưới vùng an toàn, trên nền sáng bo góc để đọc rõ trên ảnh bìa ở cả theme sáng và tối. Trang bảng tin đã có logo đầy đủ nên giữ nguyên.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Đăng xuất hoặc mở app khi chưa đăng nhập để vào Home chào mừng. (2) Kiểm tra logo Vedora đầy đủ ở góc trên trái ảnh bìa, không bị tai thỏ/thanh trạng thái che. (3) Đổi theme thiết bị sáng/tối, kiểm tra logo rõ và đúng tỷ lệ. (4) Kiểm tra màn nhỏ và xoay ngang, logo không đè tiêu đề. (5) Bấm Khám phá bài viết, Đăng nhập và Tạo tài khoản, kiểm tra điều hướng vẫn hoạt động.
+- Người thực hiện: Codex.
+
