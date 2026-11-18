@@ -14,6 +14,8 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { useMealPlanner } from '../hooks/meal-planner-provider';
 import type { Weekday } from '../types/meal-plan.schema';
 import { dayLabels, sectionLabels } from '../utils/meal-plan';
+import { weekRange } from '../utils/meal-week';
+import { MealWeekSelector } from './meal-week-selector';
 
 const SHORT_DAY: Record<Weekday, string> = { MON: 'T2', TUE: 'T3', WED: 'T4', THU: 'T5', FRI: 'T6', SAT: 'T7', SUN: 'CN' };
 const STICKER = require('@/assets/branding/tomato-sticker.png');
@@ -54,7 +56,7 @@ export function MealPlanScreen() {
   const theme = useTheme();
   const token = useSessionStore((s) => s.accessToken);
   const planner = useMealPlanner();
-  const { plan, draft, suggestion, days, activeDay, save } = planner;
+  const { plan, draft, suggestion, days, activeDay, draftAction } = planner;
 
   if (!token) {
     return (
@@ -81,9 +83,17 @@ export function MealPlanScreen() {
       <AssistantHeader
         avatar={<Image source={STICKER} style={styles.headerSticker} resizeMode="contain" accessibilityLabel="Hình cà chua Vedora" />}
         title="Thực đơn của tôi"
-        subtitle="Lặp lại theo từng thứ trong tuần"
+        subtitle={planner.weekStart ? weekRange(planner.weekStart) : 'Thực đơn theo từng tuần'}
       />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <MealWeekSelector weeks={planner.weeks} selected={planner.weekStart} onChange={planner.changeWeek} disabled={!!draftAction || planner.busy} />
+        {planner.weekend && planner.weekStart === planner.weeks[0] && planner.weeks[1] ? (
+          <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
+            <Text style={[styles.cardTitle, { color: theme.foreground }]}>Chuẩn bị thực đơn cho tuần sau</Text>
+            <Text style={[styles.helper, { color: theme.mutedForeground }]}>Cuối tuần rồi, bạn có thể lên trước thực đơn từ thứ Hai tới. Thực đơn tuần này được giữ riêng.</Text>
+            <PrimaryButton label="Lên thực đơn tuần sau" disabled={!!draftAction || planner.busy} onPress={() => { planner.changeWeek(planner.weeks[1]); planner.startForm(); }} />
+          </View>
+        ) : null}
         {plan.isPending && !plan.data ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={theme.primary} />
@@ -101,7 +111,7 @@ export function MealPlanScreen() {
         {suggestion && !draft ? (
           <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
             <View style={styles.cardCopy}>
-              <Text style={[styles.cardTitle, { color: theme.foreground }]}>Trợ lý vừa đề xuất một thực đơn</Text>
+              <Text style={[styles.cardTitle, { color: theme.foreground }]}>Đề xuất cho {weekRange(suggestion.weekStart)}</Text>
               <Text style={[styles.helper, { color: theme.mutedForeground }]}>Thực đơn đã lưu vẫn giữ nguyên cho đến khi bạn lưu bản mới.</Text>
             </View>
             <PrimaryButton label="Xem đề xuất" onPress={() => planner.previewProposal(suggestion)} />
@@ -112,7 +122,7 @@ export function MealPlanScreen() {
           <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
             <View style={styles.cardCopy}>
               <Text style={[styles.cardTitle, { color: theme.foreground }]}>Bản xem trước chưa lưu</Text>
-              <Text style={[styles.helper, { color: theme.mutedForeground }]}>Xem qua từng ngày, đồng ý thì bấm Lưu để thay thực đơn hiện tại.</Text>
+              <Text style={[styles.helper, { color: theme.mutedForeground }]}>Xem qua từng ngày rồi lưu vào tuần {weekRange(draft.weekStart)}. Các tuần khác được giữ nguyên.</Text>
               {planner.saveError ? (
                 <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>
                   {planner.saveError}
@@ -121,10 +131,10 @@ export function MealPlanScreen() {
             </View>
             <View style={styles.buttonRow}>
               <View style={styles.flex}>
-                <PrimaryButton label={save.isPending ? 'Đang lưu…' : 'Lưu thực đơn'} disabled={save.isPending} onPress={() => void planner.saveDraft()} />
+                <PrimaryButton label={draftAction === 'save' ? 'Đang lưu…' : 'Lưu thực đơn'} disabled={!!draftAction || planner.busy || !plan.data?.editable} onPress={() => void planner.saveDraft()} />
               </View>
               <View style={styles.flex}>
-                <OutlineButton label="Bỏ đề xuất" tone="neutral" disabled={save.isPending} onPress={planner.discardDraft} />
+                <OutlineButton label={draftAction === 'discard' ? 'Đang bỏ…' : 'Bỏ đề xuất'} tone="neutral" disabled={!!draftAction || planner.busy} onPress={() => void planner.discardDraft()} />
               </View>
             </View>
           </View>
@@ -162,13 +172,14 @@ export function MealPlanScreen() {
             {activeDay ? (
               <View style={styles.dayBody}>
                 <View style={styles.dayHeading}>
-                  <Text style={[styles.dayTitle, { color: theme.foreground }]}>{dayLabels[activeDay.day]}</Text>
+                  <Text style={[styles.dayTitle, { color: theme.foreground }]}>{dayLabels[activeDay.day]} · {activeDay.date.split('-').reverse().join('/')}</Text>
                   <View style={[styles.badge, { backgroundColor: draft ? theme.secondary : theme.muted }]}>
                     <Text style={[styles.badgeText, { color: draft ? theme.secondaryForeground : theme.mutedForeground }]}>
                       {draft ? 'Bản xem trước' : `${mealCount} món`}
                     </Text>
                   </View>
                 </View>
+                {!activeDay.editable ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Ngày đã qua · Chỉ xem lại</Text> : null}
                 {activeDay.sections.map(({ section, recipes }) => (
                   <View key={section} style={styles.mealBlock}>
                     <Text style={[styles.mealLabel, { color: theme.mutedForeground }]}>BỮA {sectionLabels[section].toUpperCase()}</Text>
@@ -190,7 +201,7 @@ export function MealPlanScreen() {
                             <Text style={[styles.recipeTitle, { color: theme.foreground }]}>{recipe.title}</Text>
                             <Text style={[styles.recipeHint, { color: theme.primary }]}>Xem công thức ›</Text>
                           </Pressable>
-                          {!draft ? (
+                          {!draft && activeDay.editable ? (
                             <Pressable
                               accessibilityRole="button"
                               accessibilityLabel={`Đổi món ${recipe.title}`}
