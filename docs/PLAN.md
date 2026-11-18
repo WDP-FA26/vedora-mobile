@@ -750,18 +750,6 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Bước kiểm tra UI: (1) Trang chủ: bấm ▶ trên một video: ảnh bìa vẫn hiện kèm vòng xoay, không chớp đen; khi có hình thì video phát, vòng xoay biến mất. (2) Mạng chậm: vòng xoay hiện lâu hơn nhưng không chớp. (3) Đang phát video ở feed, bấm tab "Video": chỉ nghe tiếng video ở màn Video, video feed đã dừng. (4) Đóng màn Video quay về feed: video feed vẫn dừng, bấm phát tiếp được. (5) Đang phát video, mở một bài viết hoặc hồ sơ: tiếng video feed tắt. (6) Bấm phát rồi cuộn đi ngay trước khi có hình, cuộn lại: video tiếp tục tải và phát. (7) Video lỗi: vẫn hiện "Không phát được video. Chạm để thử lại."
 - Người thực hiện: Claude.
 
-## 2026-11-18 — Kịch bản demo mobile cho buổi bảo vệ
-
-- Kết quả: Thêm `docs/DEMO_SCRIPT.md`: kịch bản ~13 phút cho 2 người (Vy, Hương) theo hành trình người dùng, phân phần theo người đã làm, checklist chuẩn bị, lời thoại, phương án dự phòng và câu hỏi Q&A. Không đổi code.
-- Bước kiểm tra UI: (1) Tối trước buổi bảo vệ, chạy thử toàn bộ kịch bản trên 2 máy theo đúng thứ tự mục 1–9. (2) Bấm giờ từng mục, cắt bớt nếu vượt 13 phút. (3) Thử riêng mục 6 (nhắn tin 2 máy) và mục 8 (thanh toán thử) với API thật.
-- Người thực hiện: Claude, theo yêu cầu của Vy Ngo Chi.
-
-## 2026-11-18 — Cẩm nang trả lời hội đồng
-
-- Kết quả: Thêm `docs/DEFENSE_GUIDE.md` giải thích bằng lời thường công nghệ (Expo, Expo Router, Axios, Zod, TanStack Query, Zustand, SSE…) và từng luồng chính (đăng nhập + refresh token, Google OAuth/PKCE, upload video lên Cloudinary, nhắn tin realtime, AI stream, AI lên thực đơn, trợ lý blog, thanh toán SePay), kèm câu hỏi khó, thuật ngữ và bản đồ file. Đối chiếu với code hiện tại; không đổi code.
-- Bước kiểm tra UI: (1) Đọc mục 4 song song với app đang chạy, làm theo từng luồng trên máy để thấy đúng các bước được mô tả. (2) Hai người hỏi chéo nhau bằng mục 6.
-- Người thực hiện: Claude, theo yêu cầu của Vy Ngo Chi.
-
 ## 2026-11-18 — Thông báo khi bình luận bị chặn vì vi phạm Tiêu chuẩn cộng đồng
 
 - Kết quả: Khi API kiểm duyệt từ chối bình luận (mã `CONTENT_REJECTED`), trước app chỉ hiện lỗi chung "Chưa gửi được bình luận…" nên người dùng tưởng lỗi mạng và gửi lại mãi. Nay hiện theo cách các app mạng xã hội hay làm: "Bình luận của bạn không được đăng vì vi phạm Tiêu chuẩn cộng đồng. Hãy sửa lại nội dung rồi gửi lại." kèm liên kết "Xem Tiêu chuẩn cộng đồng" mở trang Tiêu chuẩn cộng đồng. Nội dung vẫn giữ trong ô nhập để sửa. Áp dụng cả khi viết mới lẫn khi sửa bình luận. Lỗi khác vẫn giữ thông báo cũ. Chưa thử trên máy thật.
@@ -785,3 +773,9 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Trước chỉ mở lại được cuộc trò chuyện gần nhất. Nay header tab Trợ lý có nút đồng hồ "Lịch sử trò chuyện", mở drawer trượt ra từ cạnh trái (rộng 85% màn hình, tối đa 360) liệt kê các cuộc đã lưu (`GET /meal-plan/chat/threads`, mới dùng gần nhất lên đầu, cuộn xuống tải thêm), mỗi dòng có tiêu đề, đoạn tin nhắn cuối và thời gian (hiện chữ thường, đã bỏ ký hiệu Markdown như `**`, `##`, `*`, link; dùng chung `plainText` với feed, nay hàm này bỏ thêm dấu `*` gạch đầu dòng còn sót giữa câu); cuộc đang mở được tô nền và ghi "Đang mở". Đóng drawer bằng cách vuốt sang trái, chạm vùng tối bên phải, nút X hoặc nút Back của Android; drawer chỉ mở bằng nút đồng hồ để không đụng cử chỉ vuốt quay lại của hệ điều hành. Chạm một dòng tải lại toàn bộ cuộc đó (`GET /meal-plan/chat/threads/:id`) kèm đề xuất thực đơn. Nút thùng rác xóa cuộc trò chuyện sau khi xác nhận (`DELETE /meal-plan/chat/threads/:id`); xóa đúng cuộc đang mở thì khung chat chuyển sang cuộc mới trống. Chưa có đổi tên cuộc trò chuyện. Chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Đăng nhập, tab Trợ lý: hỏi một câu, bấm nút bút để mở cuộc mới, hỏi câu khác. (2) Bấm nút đồng hồ: drawer "Lịch sử trò chuyện" trượt ra từ trái, nền phía sau tối dần, hiện 2 cuộc, cuộc vừa hỏi nằm trên và ghi "Đang mở". (3) Chạm cuộc còn lại: drawer trượt về, khung chat hiện đúng câu hỏi và câu trả lời của cuộc đó. (4) Hỏi tiếp một câu, mở lại lịch sử: cuộc này lên đầu danh sách. (4b) Cuộc có câu trả lời in đậm, tiêu đề, gạch đầu dòng: đoạn xem trước trong drawer không còn `**`, `##`, `*`. Ở feed, đoạn trích blog có "1 + 1" vẫn giữ dấu `+`. (5) Cuộc có đề xuất thực đơn chưa xem: mở lại thấy nút "Xem trong Thực đơn". (6) Bấm thùng rác ở một cuộc khác, chọn "Hủy": không đổi gì; bấm lại, chọn "Xóa": dòng biến mất. (7) Xóa cuộc đang mở: khung chat trống, hiện "Bắt đầu nhanh". (8) Khi trợ lý đang trả lời: các dòng và nút xóa bị khóa. (9) Tắt mạng rồi mở lịch sử: hiện "Chưa tải được lịch sử. Thử lại"; bật mạng, bấm Thử lại: danh sách hiện. (10) Mở lại drawer rồi lần lượt thử: vuốt panel sang trái quá 1/3 (hoặc vuốt nhanh): drawer đóng; vuốt ngắn rồi thả: drawer bật lại chỗ cũ; chạm vùng tối, nút X, nút Back Android: đều đóng. Cuộn dọc danh sách dài không làm drawer đóng. Trên iPhone có tai thỏ, tiêu đề không bị che. (11) Theme tối, chữ lớn.
 - Người thực hiện: Claude.
+## 2026-11-18 — Logo Vedora đầy đủ ở đầu trang Home
+
+- Kết quả đã làm: Thay biểu tượng V ở đầu Home chào mừng bằng logo Vedora đầy đủ có sẵn trong assets/branding/logo.png. Logo nằm dưới vùng an toàn, trên nền sáng bo góc để đọc rõ trên ảnh bìa ở cả theme sáng và tối. Trang bảng tin đã có logo đầy đủ nên giữ nguyên.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Đăng xuất hoặc mở app khi chưa đăng nhập để vào Home chào mừng. (2) Kiểm tra logo Vedora đầy đủ ở góc trên trái ảnh bìa, không bị tai thỏ/thanh trạng thái che. (3) Đổi theme thiết bị sáng/tối, kiểm tra logo rõ và đúng tỷ lệ. (4) Kiểm tra màn nhỏ và xoay ngang, logo không đè tiêu đề. (5) Bấm Khám phá bài viết, Đăng nhập và Tạo tài khoản, kiểm tra điều hướng vẫn hoạt động.
+- Người thực hiện: Codex.
+

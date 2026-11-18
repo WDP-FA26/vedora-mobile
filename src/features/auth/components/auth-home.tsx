@@ -5,7 +5,7 @@ import { SymbolView } from "expo-symbols";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { BrandColors, Fonts, Radius, Spacing } from "@/constants/theme";
+import { BrandColors, Fonts, Radius, SemanticColors, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 const BANNER_URI = "https://i.pinimg.com/736x/b3/37/2d/b3372d4bd8515bfeb7cfe8fc203fed74.jpg";
@@ -35,12 +35,15 @@ export function AuthHome() {
             />
             <View style={styles.shade} />
             <View style={[styles.bannerCopy, { paddingTop: insets.top + Spacing.three }]}>
-              <Image
-                source={require("@/assets/branding/logo-mark.png")}
-                style={styles.mark}
-                contentFit="contain"
-                accessibilityLabel="Vedora"
-              />
+              <View style={styles.logoFrame}>
+                <Image
+                  source={require("@/assets/branding/logo.png")}
+                  style={styles.logo}
+                  contentFit="contain"
+                  accessible
+                  accessibilityLabel="Logo Vedora"
+                />
+              </View>
               <View style={styles.bannerText}>
                 <Text accessibilityRole="header" style={styles.title}>Ăn sạch, Sống xanh.</Text>
                 <Text style={styles.intro}>Kết nối và chia sẻ hành trình của bạn.</Text>
@@ -119,7 +122,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.five,
   },
-  mark: { width: 56, height: 56 },
+  logoFrame: {
+    alignSelf: "flex-start",
+    backgroundColor: SemanticColors.light.card,
+    borderRadius: Radius.xl,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  logo: { width: 132, height: 48 },
   bannerText: { gap: Spacing.one },
   title: { fontFamily: Fonts.headingExtraBold, fontSize: 32, lineHeight: 42, color: "#fffefa" },
   intro: { fontFamily: Fonts.sans, fontSize: 16, lineHeight: 24, color: "#fffefa" },
