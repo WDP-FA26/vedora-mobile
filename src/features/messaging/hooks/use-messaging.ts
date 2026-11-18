@@ -3,7 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { messagingKeys } from '../data/messaging.keys';
-import { acceptMessageRequest, deleteMessageRequest, getContact, getConversation, getConversations, getMessages, markConversationRead, sendMessage } from '../services/messaging.service';
+import { acceptMessageRequest, deleteMessageRequest, getContact, getConversation, getConversations, getMessages, markConversationRead, sendMessage, sharePost } from '../services/messaging.service';
 import { useMessagingStreamStore } from '../stores/messaging-stream-store';
 import type { MessagingBox } from '../types/messaging.schema';
 
@@ -79,6 +79,16 @@ export function useSendMessage() {
     networkMode: 'always',
     retry: false,
     mutationFn: sendMessage,
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: messagingKeys.all }),
+  });
+}
+
+export function useSharePost() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    networkMode: 'always',
+    retry: false,
+    mutationFn: sharePost,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: messagingKeys.all }),
   });
 }

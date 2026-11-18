@@ -10,6 +10,10 @@ export const MAX_SEARCH_QUERY_LENGTH = 200;
 export const commentSchema = z.object({
   id: z.string(),
   postId: z.string(),
+  parentId: z.string().nullable().default(null),
+  replyToId: z.string().nullable().default(null),
+  replyToAuthor: feedPostSchema.shape.author.nullable().default(null),
+  replyCount: z.number().int().nonnegative().default(0),
   body: z.string(),
   author: feedPostSchema.shape.author,
   createdAt: z.string(),
@@ -25,7 +29,7 @@ export const commentFormSchema = z.object({
   body: z.string().trim().min(1, 'Viết vài chữ trước khi gửi').max(MAX_COMMENT_LENGTH, `Tối đa ${MAX_COMMENT_LENGTH} ký tự`),
 });
 
-export const REPORT_REASONS = ['SPAM', 'HARASSMENT', 'MISINFORMATION', 'HARMFUL_ADVICE', 'INAPPROPRIATE', 'OTHER'] as const;
+export const REPORT_REASONS = ['SPAM', 'HARASSMENT', 'MISINFORMATION', 'HARMFUL_ADVICE', 'NOT_PLANT_BASED', 'INAPPROPRIATE', 'OTHER'] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
@@ -33,6 +37,7 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
   HARASSMENT: 'Quấy rối, công kích người khác',
   MISINFORMATION: 'Thông tin sai lệch',
   HARMFUL_ADVICE: 'Lời khuyên ăn uống, sức khoẻ có thể gây hại',
+  NOT_PLANT_BASED: 'Món ăn hoặc nội dung không thuần thực vật',
   INAPPROPRIATE: 'Nội dung phản cảm',
   OTHER: 'Lý do khác',
 };

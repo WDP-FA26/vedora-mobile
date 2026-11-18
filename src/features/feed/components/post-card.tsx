@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { Pressable, StyleSheet, Text, View, useColorScheme, type LayoutChangeEvent } from "react-native";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -11,6 +11,7 @@ import { HEART_COLOR } from "@/shared/components/reaction-burst";
 import { useSessionStore } from "@/shared/stores/session-store";
 
 import { PostMenu } from "@/features/posts/components/post-menu";
+import { ProfessionalName } from '@/shared/components/professional-name';
 
 import { useFeedActions } from "../hooks/use-feed";
 import type { FeedPost } from "../types/feed.schema";
@@ -54,6 +55,7 @@ export function PostCard({
   visible,
   detail = false,
   blogContent,
+  onLayout,
 }: {
   post: FeedPost;
   visible: boolean;
@@ -61,6 +63,7 @@ export function PostCard({
   detail?: boolean;
   /** Detail screen only: the full article shown in place of the blog summary card. */
   blogContent?: ReactNode;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }) {
   const theme = useTheme();
   const dark = useColorScheme() === "dark";
@@ -73,6 +76,22 @@ export function PostCard({
   const imageCount = post.media.filter((media) => media.type === "IMAGE").length;
   const { title, description } = splitBody(body, videos.length > 0);
   const descriptionNodes = hashtagNodes(description, theme.primary, "d");
+  const saveOnImage = !!post.blog?.coverImageUrl || imageCount > 0;
+
+  function saveButton(overlay = false) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={post.isBookmarked ? "Bỏ lưu bài viết" : "Lưu bài viết"}
+        accessibilityState={{ selected: post.isBookmarked, disabled: bookmark.isPending }}
+        disabled={bookmark.isPending}
+        onPress={() => requireLogin(() => bookmark.mutate(!post.isBookmarked))}
+        style={[styles.saveButton, overlay && styles.saveOverlay, overlay && { backgroundColor: theme.card }]}
+      >
+        <SymbolView name={{ ios: post.isBookmarked ? "bookmark.fill" : "bookmark", android: "bookmark", web: "bookmark" }} size={20} tintColor={post.isBookmarked ? theme.primary : theme.mutedForeground} />
+      </Pressable>
+    );
+  }
 
   function requireLogin(action: () => void) {
     if (accessToken) action();
@@ -89,6 +108,7 @@ export function PostCard({
 
   return (
     <View
+      onLayout={onLayout}
       style={[
         styles.post,
         { backgroundColor: theme.card, borderBottomColor: theme.border },
@@ -112,12 +132,7 @@ export function PostCard({
           </View>
         )}
         <View style={styles.authorDetails}>
-          <Text
-            numberOfLines={1}
-            style={[styles.authorName, { color: theme.foreground }]}
-          >
-            {post.author.fullName}
-          </Text>
+          <ProfessionalName name={post.author.fullName} isProfessional={post.author.isProfessional} textStyle={[styles.authorName, { color: theme.foreground }]} />
           <Text
             numberOfLines={1}
             style={[styles.meta, { color: theme.mutedForeground }]}
@@ -133,7 +148,8 @@ export function PostCard({
             <Text style={[styles.typeText, { color: theme.primary }]}>Blog</Text>
           </View>
         ) : null}
-        <PostMenu postId={post.id} authorId={post.author.id} returnTo="/explore" />
+        <PostMenu postId={post.id} authorId={post.author.id} postType={post.type} title={post.blog?.title ?? body} returnTo="/explore" onDeleted={detail ? () => router.replace('/explore') : undefined} />
+        {!saveOnImage ? saveButton() : null}
       </View>
 
       <View style={styles.postContent}>
@@ -172,16 +188,19 @@ export function PostCard({
         </Pressable>
       ) : null}
 
-      {post.blog && detail && blogContent ? blogContent : post.blog ? (
+      {post.blog && detail && blogContent ? <>
+        {post.blog.coverImageUrl ? <View style={styles.coverFrame}>
+          <Image source={{ uri: post.blog.coverImageUrl }} style={styles.blogCover} contentFit="cover" />
+          {saveButton(true)}
+        </View> : null}
+        {blogContent}
+      </> : post.blog ? (
+        <View style={[styles.blogCard, { borderColor: theme.border, backgroundColor: theme.background }]}>
         <Pressable
           onPress={openDetail}
           disabled={detail}
           accessibilityRole={detail ? undefined : "link"}
           accessibilityLabel={detail ? undefined : `Xem chi tiết blog ${post.blog.title}`}
-          style={[
-            styles.blogCard,
-            { borderColor: theme.border, backgroundColor: theme.background },
-          ]}
         >
           {post.blog.coverImageUrl ? (
             <Image
@@ -213,6 +232,8 @@ export function PostCard({
             ) : null}
           </View>
         </Pressable>
+        {post.blog.coverImageUrl ? saveButton(true) : null}
+        </View>
       ) : null}
 
       {videos.length > 0 || imageCount > 0 ? (
@@ -221,10 +242,13 @@ export function PostCard({
             <FeedVideo key={media.id} media={media} visible={visible} />
           ))}
           {imageCount > 0 ? (
+            <View>
             <View accessible accessibilityLabel={`${imageCount} ảnh đính kèm chưa thể hiển thị`} style={[styles.imageUnavailable, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
               <SymbolView name={{ ios: "photo", android: "image", web: "image" }} size={28} tintColor={theme.primary} />
               <Text style={[styles.imageUnavailableText, { color: theme.foreground }]}>Không thể hiển thị ảnh đính kèm</Text>
               {imageCount > 1 ? <Text style={[styles.imageUnavailableCount, { color: theme.mutedForeground }]}>{imageCount} ảnh</Text> : null}
+            </View>
+            {!post.blog?.coverImageUrl ? saveButton(true) : null}
             </View>
           ) : null}
         </View>
@@ -268,23 +292,7 @@ export function PostCard({
           <SymbolView name={{ ios: "chart.bar", android: "bar_chart", web: "bar_chart" }} size={18} tintColor={theme.mutedForeground} />
           <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.viewCount)}</Text>
         </View>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            post.isBookmarked ? "Bỏ lưu bài viết" : "Lưu bài viết"
-          }
-          accessibilityState={{
-            selected: post.isBookmarked,
-            disabled: bookmark.isPending,
-          }}
-          disabled={bookmark.isPending}
-          onPress={() =>
-            requireLogin(() => bookmark.mutate(!post.isBookmarked))
-          }
-          style={styles.actionButton}
-        >
-          <SymbolView name={{ ios: post.isBookmarked ? "bookmark.fill" : "bookmark", android: "bookmark", web: "bookmark" }} size={20} tintColor={post.isBookmarked ? theme.primary : theme.mutedForeground} />
-        </Pressable>
+        <PostMenu variant="share" postId={post.id} authorId={post.author.id} postType={post.type} returnTo={detail ? `/posts/${post.id}` : '/explore'} />
       </View>
       {like.isError || bookmark.isError || repost.isError ? (
         <Text
@@ -308,6 +316,9 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.three,
   },
   authorRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
+  saveButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  saveOverlay: { position: "absolute", top: Spacing.two, right: Spacing.two, borderRadius: Radius.xl, elevation: 3, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } },
+  coverFrame: { position: "relative", borderRadius: Radius['2xl'], overflow: "hidden", marginTop: Spacing.three },
   avatar: {
     width: 44,
     height: 44,
@@ -353,7 +364,7 @@ const styles = StyleSheet.create({
   imageUnavailable: { width: "100%", aspectRatio: 16 / 10, borderRadius: Radius["2xl"], borderWidth: 1, alignItems: "center", justifyContent: "center", gap: Spacing.one },
   imageUnavailableText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   imageUnavailableCount: { fontFamily: Fonts.sans, fontSize: 12 },
-  actions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.one },
+  actions: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: Spacing.three, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: Spacing.one },
   statGroup: { minHeight: 40, flexDirection: "row", alignItems: "center", gap: Spacing.one },
   actionButton: {
     minWidth: 40,

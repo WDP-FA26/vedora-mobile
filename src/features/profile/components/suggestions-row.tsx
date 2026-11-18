@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
@@ -41,7 +42,7 @@ export function SuggestionsRow() {
                   <Text style={[styles.initial, { color: theme.primary }]}>{person.fullName.trim().charAt(0).toLocaleUpperCase('vi') || 'V'}</Text>
                 </View>
               )}
-              <Text numberOfLines={1} style={[styles.name, { color: theme.foreground }]}>{person.fullName}</Text>
+              <ProfessionalName name={person.fullName} isProfessional={person.isProfessional} textStyle={[styles.name, { color: theme.foreground }]} badgeSize={14} />
               <Text numberOfLines={1} style={[styles.reason, { color: theme.mutedForeground }]}>{REASON_TEXT[person.reason](person.mutualCount)}</Text>
             </Pressable>
             <Pressable accessibilityRole="button" onPress={() => suggestions.follow(person.id)} style={[styles.follow, { backgroundColor: theme.primary }]}>

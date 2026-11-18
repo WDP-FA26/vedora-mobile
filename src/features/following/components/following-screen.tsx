@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { router } from "expo-router";
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
@@ -17,6 +18,7 @@ import {
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { PostCard } from "@/features/feed/components/post-card";
+import { feedPostOf, usePostViewability } from '@/features/feed/hooks/use-post-views';
 import type { FeedPost } from "@/features/feed/types/feed.schema";
 import { SuggestionsRow } from "@/features/profile/components/suggestions-row";
 import { usePullToRefresh } from "@/hooks/use-pull-to-refresh";
@@ -31,6 +33,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
   const theme = useTheme();
   const feed = useFollowingFeed();
   const pull = usePullToRefresh(feed.refresh);
+  const views = usePostViewability(feedPostOf);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const onViewableItemsChanged = useCallback<NonNullable<FlatListProps<FeedPost>['onViewableItemsChanged']>>(
     ({ viewableItems }) => {
@@ -38,6 +41,10 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
     },
     [],
   );
+  const [viewabilityPairs] = useState(() => [
+    { viewabilityConfig, onViewableItemsChanged },
+    { viewabilityConfig: views.viewabilityConfig, onViewableItemsChanged: views.onViewableItemsChanged },
+  ]);
 
   return (
     <FlatList
@@ -54,8 +61,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
           visible={visibleIds.size === 0 || visibleIds.has(item.id)}
         />
       )}
-      onViewableItemsChanged={onViewableItemsChanged}
-      viewabilityConfig={viewabilityConfig}
+      viewabilityConfigCallbackPairs={viewabilityPairs}
       refreshing={Boolean(feed.accessToken) && pull.refreshing}
       onRefresh={feed.accessToken ? pull.onRefresh : undefined}
       ListHeaderComponent={
@@ -93,7 +99,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
                 accessibilityLabel="Danh sách người đang theo dõi"
               >
                 {feed.authors.map((author) => (
-                  <View key={author.id} style={styles.creator} accessible accessibilityLabel={`${author.fullName}, @${author.username}`}>
+                  <View key={author.id} style={styles.creator} accessible accessibilityLabel={`${author.fullName}, @${author.username}${author.isProfessional ? ', Chuyên gia đã xác minh' : ''}`}>
                     {author.avatarUrl ? (
                       <Image source={{ uri: author.avatarUrl }} style={[styles.creatorAvatar, { backgroundColor: theme.secondary }]} contentFit="cover" />
                     ) : (
@@ -103,9 +109,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
                         </Text>
                       </View>
                     )}
-                    <Text numberOfLines={1} style={[styles.creatorName, { color: theme.foreground }]}>
-                      {author.fullName}
-                    </Text>
+                    <ProfessionalName name={author.fullName} isProfessional={author.isProfessional} textStyle={[styles.creatorName, { color: theme.foreground }]} badgeSize={14} />
                   </View>
                 ))}
               </ScrollView>

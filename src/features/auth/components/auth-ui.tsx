@@ -1,4 +1,5 @@
-import type { PropsWithChildren } from 'react';
+import { useState, type PropsWithChildren } from 'react';
+import { SymbolView } from 'expo-symbols';
 import {
   ActivityIndicator,
   Image,
@@ -37,17 +38,38 @@ export function AuthScreen({ title, subtitle, children }: PropsWithChildren<{ ti
   );
 }
 
-export function AuthField({ label, error, ...props }: TextInputProps & { label: string; error?: string }) {
+export function AuthField({ label, error, secureTextEntry, ...props }: TextInputProps & { label: string; error?: string }) {
   const theme = useTheme();
+  const [passwordVisible, setPasswordVisible] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.foreground }]}>{label}</Text>
+      <View>
       <TextInput
         {...props}
+        secureTextEntry={secureTextEntry && !passwordVisible}
+        autoCapitalize={secureTextEntry ? 'none' : props.autoCapitalize}
+        autoCorrect={secureTextEntry ? false : props.autoCorrect}
         accessibilityLabel={label}
-        style={[styles.input, { color: theme.foreground, borderColor: error ? theme.destructive : theme.input, backgroundColor: theme.background }]}
+        style={[styles.input, secureTextEntry && styles.passwordInput, { color: theme.foreground, borderColor: error ? theme.destructive : theme.input, backgroundColor: theme.background }]}
         placeholderTextColor={theme.mutedForeground}
       />
+      {secureTextEntry ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${passwordVisible ? 'Ẩn' : 'Hiện'} ${label.toLocaleLowerCase('vi')}`}
+          accessibilityState={{ selected: passwordVisible, disabled: props.editable === false }}
+          disabled={props.editable === false}
+          onPress={() => setPasswordVisible((visible) => !visible)}
+          style={styles.passwordToggle}>
+          <SymbolView
+            name={passwordVisible ? { ios: 'eye.slash', android: 'visibility_off', web: 'visibility_off' } : { ios: 'eye', android: 'visibility', web: 'visibility' }}
+            size={21}
+            tintColor={theme.mutedForeground}
+          />
+        </Pressable>
+      ) : null}
+      </View>
       {error ? <Text style={[styles.error, { color: theme.destructive }]}>{error}</Text> : null}
     </View>
   );
@@ -103,6 +125,8 @@ const styles = StyleSheet.create({
   field: { gap: Spacing.one },
   label: { fontFamily: Fonts.sansSemibold, fontSize: 14 },
   input: { height: 48, borderWidth: 1, borderRadius: Radius.xl, paddingHorizontal: Spacing.three, fontFamily: Fonts.sans, fontSize: 16 },
+  passwordInput: { paddingRight: 56 },
+  passwordToggle: { position: 'absolute', right: 2, top: 2, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   error: { fontFamily: Fonts.sans, fontSize: 13 },
   button: { minHeight: 48, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: Spacing.two, paddingHorizontal: Spacing.three },
   buttonText: { fontFamily: Fonts.sansSemibold, fontSize: 16 },

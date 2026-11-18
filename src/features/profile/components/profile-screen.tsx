@@ -1,3 +1,4 @@
+import { ProfessionalBadge } from '@/shared/components/professional-name';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
@@ -9,8 +10,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useSignOut } from '@/features/auth/hooks/use-auth-actions';
 import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
+import { VerificationEntry } from '@/features/verification/components/verification-entry';
 import { blogsKeys } from '@/features/blogs/data/blogs.keys';
 import { PostCard } from '@/features/feed/components/post-card';
+import { useScrollPostViews } from '@/features/feed/hooks/use-post-views';
 import { useDietaryRestrictions } from '@/features/meal-plan/hooks/use-meal-plan';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
@@ -60,6 +63,7 @@ export function ProfileScreen() {
   const [contentTab, setContentTab] = useState<'posts' | 'blogs'>('posts');
   const posts = postsQuery.data?.items ?? [];
   const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
+  const views = useScrollPostViews(shownPosts, contentTab === 'posts');
   const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
   const liked = dietary.data?.liked ?? [];
   const queryClient = useQueryClient();
@@ -109,6 +113,9 @@ export function ProfileScreen() {
       {signOut.isError ? <Text accessibilityRole="alert" style={[styles.helper, styles.signOutError, { color: theme.destructive }]}>Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.</Text> : null}
 
       <ScrollView
+        onLayout={views.onLayout}
+        onScroll={views.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         refreshControl={token ? <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={theme.primary} colors={[theme.primary]} /> : undefined}>
@@ -130,7 +137,7 @@ export function ProfileScreen() {
               <ProfileAvatar profile={profile} size={96} style={styles.avatar} zoomable />
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.foreground }]}>{profile.fullName}</Text>
-                {profile.isProfessional ? <SymbolView name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={19} tintColor={theme.primary} /> : null}
+                <ProfessionalBadge isProfessional={profile.isProfessional} size={19} />
               </View>
               <Text style={[styles.handle, { color: theme.mutedForeground }]}>@{profile.username}</Text>
               {profile.isProfessional ? <View style={[styles.badge, { backgroundColor: theme.secondary }]}><Text style={[styles.badgeText, { color: theme.secondaryForeground }]}>Chuyên gia đã xác minh</Text></View> : null}
@@ -155,6 +162,8 @@ export function ProfileScreen() {
               <Text style={[styles.buttonText, { color: theme.primaryForeground }]}>Chỉnh sửa hồ sơ</Text>
             </Pressable>
           </View>
+
+          <VerificationEntry />
 
           <Pressable accessibilityRole="button" accessibilityLabel="Xem chi tiết hồ sơ ăn uống" onPress={() => router.push('/dietary-profile')} style={({ pressed }) => [styles.card, styles.dietary, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.85 : 1 }]}>
             <View style={styles.dietaryTop}>
@@ -226,7 +235,7 @@ export function ProfileScreen() {
               <Text style={[styles.helper, styles.centerText, { color: theme.mutedForeground }]}>Các bài video ăn uống của bạn sẽ hiện ở đây.</Text>
             </View>
           ) : null}
-          {shownPosts.map((post) => <PostCard key={post.id} post={post} visible />)}
+          {shownPosts.map((post) => <PostCard key={post.id} post={post} visible onLayout={views.onPostLayout(post)} />)}
           </>}
         </> : null}
       </ScrollView>

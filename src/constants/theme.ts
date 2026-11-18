@@ -1,5 +1,6 @@
 // Keep these values in sync with vedora-frontend/app/globals.css.
 export const BrandColors = {
+  verified: '#1685e5',
   forest: '#255d32',
   leaf: '#398f3b',
   sprout: '#75b65c',

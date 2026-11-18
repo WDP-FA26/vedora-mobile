@@ -1,16 +1,19 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
+import type { FeedPost } from '@/features/feed/types/feed.schema';
+import { SharePostPicker } from '@/features/messaging/components/share-post-picker';
 import { useMyProfile } from '@/features/profile/hooks/use-profile';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
-import { WEB_URL } from '@/shared/config/env';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useReportPost } from '../hooks/use-posts';
+import { useDeletePost } from '../hooks/use-delete-post';
 import {
   MAX_REPORT_DETAILS_LENGTH,
   REPORT_REASONS,
@@ -19,27 +22,56 @@ import {
   type ReportReason,
 } from '../types/posts.schema';
 
-type Step = 'menu' | 'report' | 'done';
+type Step = 'menu' | 'report' | 'done' | 'delete' | 'share';
 
-/** The "…" menu of a post: share for everyone, report for signed-in readers who are not the author. */
-export function PostMenu({ postId, authorId, returnTo }: { postId: string; authorId: string; returnTo: string }) {
+/** Readers can report; only the signed-in author can confirm deletion. */
+export function PostMenu({ postId, authorId, returnTo, postType, title, canShare = true, onDeleted, variant = 'menu' }: { postId: string; authorId: string; returnTo: string; postType: FeedPost['type']; title?: string; canShare?: boolean; onDeleted?: () => void; variant?: 'menu' | 'share' }) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const token = useSessionStore((state) => state.accessToken);
   const me = useMyProfile(token);
   const report = useReportPost(postId);
+  const deletion = useDeletePost(postId, postType);
+  const deleteLock = useRef(false);
+  const shareLock = useRef(false);
+  const shareAttempts = useRef<Record<string, string>>({});
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<Step>('menu');
   const [reason, setReason] = useState<ReportReason | null>(null);
   const [details, setDetails] = useState('');
   const [error, setError] = useState('');
-  const isOwn = me.data?.id === authorId;
+  const isOwn = !!token && !!me.data && me.data.id === authorId;
+  const itemName = postType === 'BLOG' ? 'Blog' : 'bài viết';
 
   function close() {
+    if (deleteLock.current || shareLock.current) return;
     setOpen(false);
     setStep('menu');
     setReason(null);
     setDetails('');
     setError('');
+  }
+
+  async function confirmDelete() {
+    if (!isOwn || deleteLock.current) return;
+    deleteLock.current = true;
+    setError('');
+    try {
+      await deletion.mutateAsync();
+      deleteLock.current = false;
+      close();
+      onDeleted?.();
+    } catch (caught) {
+      setError(caught instanceof ApiError && caught.status === 403
+        ? 'Bạn không có quyền xóa nội dung này.'
+        : caught instanceof ApiError && caught.status === 404
+          ? 'Nội dung không còn tồn tại hoặc bạn không có quyền xóa. Hãy đóng và làm mới danh sách.'
+          : caught instanceof ApiError && caught.status === 401
+            ? 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.'
+            : 'Chưa xóa được nội dung. Hãy kiểm tra kết nối và thử lại.');
+    } finally {
+      deleteLock.current = false;
+    }
   }
 
   function openReport() {
@@ -68,37 +100,60 @@ export function PostMenu({ postId, authorId, returnTo }: { postId: string; autho
     }
   }
 
-  async function share() {
-    close();
-    const url = `${WEB_URL}/posts/${postId}`;
-    try {
-      await Share.share({ message: url, url });
-    } catch {
-      // The user dismissed or the platform cannot share; nothing to recover.
-    }
+  function openShare() {
+    if (!canShare) return;
+    if (!token) { close(); router.push({ pathname: '/login', params: { returnTo } }); return; }
+    setStep('share');
+    setOpen(true);
   }
 
   return (
     <>
-      <Pressable accessibilityRole="button" accessibilityLabel="Thêm tùy chọn cho bài viết" onPress={() => setOpen(true)} hitSlop={8} style={styles.trigger}>
-        <SymbolView name={{ ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' }} size={20} tintColor={theme.mutedForeground} />
+      <Pressable accessibilityRole="button" accessibilityLabel={variant === 'share' ? 'Gửi bài viết qua tin nhắn' : 'Thêm tùy chọn cho bài viết'} onPress={variant === 'share' ? openShare : () => setOpen(true)} style={styles.trigger}>
+        <SymbolView name={variant === 'share' ? { ios: 'paperplane', android: 'share', web: 'share' } : { ios: 'ellipsis', android: 'more_horiz', web: 'more_horiz' }} size={20} tintColor={theme.mutedForeground} />
       </Pressable>
       <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
         <Pressable style={styles.backdrop} onPress={close}>
-          <Pressable style={[styles.sheet, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => undefined}>
+          <Pressable style={[styles.sheet, { backgroundColor: theme.card, borderColor: theme.border, paddingBottom: Math.max(Spacing.three, insets.bottom) }]} onPress={() => undefined}>
             {step === 'menu' ? (
               <>
-                <Pressable accessibilityRole="button" onPress={() => void share()} style={styles.option}>
-                  <SymbolView name={{ ios: 'square.and.arrow.up', android: 'share', web: 'share' }} size={20} tintColor={theme.foreground} />
-                  <Text style={[styles.optionText, { color: theme.foreground }]}>Chia sẻ bài viết</Text>
-                </Pressable>
-                {!isOwn ? (
+                {canShare ? <Pressable accessibilityRole="button" accessibilityLabel="Gửi bài viết qua tin nhắn" onPress={openShare} style={styles.option}>
+                  <SymbolView name={{ ios: 'paperplane', android: 'send', web: 'send' }} size={20} tintColor={theme.foreground} />
+                  <Text style={[styles.optionText, { color: theme.foreground }]}>Gửi qua tin nhắn</Text>
+                </Pressable> : null}
+                {variant === 'menu' && !isOwn ? (
                   <Pressable accessibilityRole="button" onPress={openReport} style={styles.option}>
                     <SymbolView name={{ ios: 'flag', android: 'flag', web: 'flag' }} size={20} tintColor={theme.destructive} />
                     <Text style={[styles.optionText, { color: theme.destructive }]}>Báo cáo bài viết</Text>
                   </Pressable>
                 ) : null}
+                {variant === 'menu' && isOwn ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Xóa ${itemName}`} onPress={() => { setError(''); setStep('delete'); }} style={styles.option}>
+                    <SymbolView name={{ ios: 'trash', android: 'delete', web: 'delete' }} size={20} tintColor={theme.destructive} />
+                    <Text style={[styles.optionText, { color: theme.destructive }]}>Xóa {itemName}</Text>
+                  </Pressable>
+                ) : null}
               </>
+            ) : null}
+            {step === 'share' && token ? (
+              me.data ? <SharePostPicker postId={postId} selfId={me.data.id} lockRef={shareLock} attemptsRef={shareAttempts} onSent={close} />
+                : <Pressable accessibilityRole="button" onPress={() => void me.refetch()} style={styles.option}><Text style={[styles.optionText, { color: theme.foreground }]}>{me.isError ? 'Không tải được hồ sơ · Thử lại' : 'Đang tải hồ sơ…'}</Text></Pressable>
+            ) : null}
+            {step === 'delete' && isOwn ? (
+              <ScrollView contentContainerStyle={styles.done}>
+                <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Xóa {itemName} này?</Text>
+                {title ? <Text numberOfLines={3} style={[styles.optionText, { color: theme.foreground }]}>{title}</Text> : null}
+                <Text style={[styles.optionText, { color: theme.mutedForeground }]}>Nội dung và các tương tác liên quan sẽ bị xóa. Bạn không thể hoàn tác thao tác này.</Text>
+                {error ? <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>{error}</Text> : null}
+                <View style={styles.actions}>
+                  <Pressable accessibilityRole="button" disabled={deletion.isPending} onPress={close} style={styles.confirmButton}>
+                    <Text style={[styles.action, { color: theme.mutedForeground }]}>Hủy</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`Xác nhận xóa ${itemName}`} accessibilityState={{ disabled: deletion.isPending, busy: deletion.isPending }} disabled={deletion.isPending} onPress={() => void confirmDelete()} style={styles.confirmButton}>
+                    <Text style={[styles.action, { color: theme.destructive, opacity: deletion.isPending ? 0.5 : 1 }]}>{deletion.isPending ? 'Đang xóa…' : 'Xóa vĩnh viễn'}</Text>
+                  </Pressable>
+                </View>
+              </ScrollView>
             ) : null}
             {step === 'report' ? (
               <ScrollView keyboardShouldPersistTaps="handled">
@@ -143,7 +198,7 @@ export function PostMenu({ postId, authorId, returnTo }: { postId: string; autho
 }
 
 const styles = StyleSheet.create({
-  trigger: { minWidth: 36, minHeight: 36, alignItems: 'center', justifyContent: 'center' },
+  trigger: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: { maxHeight: '80%', borderTopLeftRadius: Radius['2xl'], borderTopRightRadius: Radius['2xl'], borderWidth: 1, padding: Spacing.three, gap: Spacing.one },
   title: { fontFamily: Fonts.headingBold, fontSize: 17, marginBottom: Spacing.two },
@@ -153,5 +208,6 @@ const styles = StyleSheet.create({
   error: { fontFamily: Fonts.sans, fontSize: 13, marginTop: Spacing.two },
   actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: Spacing.four, marginTop: Spacing.three },
   action: { fontFamily: Fonts.sansBold, fontSize: 15 },
+  confirmButton: { minHeight: 44, minWidth: 64, alignItems: 'center', justifyContent: 'center' },
   done: { gap: Spacing.two, paddingBottom: Spacing.two },
 });

@@ -9,6 +9,7 @@ export const notificationSchema = z.object({
     id: z.string(),
     username: z.string(),
     fullName: z.string(),
+    isProfessional: z.boolean().default(false),
     avatarUrl: z.string().nullable().optional(),
   }).nullable(),
   /** Null for `FOLLOW` and for removed posts. */

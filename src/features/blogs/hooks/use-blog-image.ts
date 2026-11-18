@@ -3,7 +3,7 @@ import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
 
-import { uploadImageToStorage } from '@/features/profile/services/profile.service';
+import { uploadImageToStorage } from '@/shared/api/upload-image';
 
 import { requestBlogImageUpload } from '../services/blogs.service';
 

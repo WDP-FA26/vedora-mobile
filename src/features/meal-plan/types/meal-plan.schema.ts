@@ -8,6 +8,8 @@ export type MealSection = (typeof mealSections)[number];
 const daySchema = z.enum(weekdays);
 const sectionSchema = z.enum(mealSections);
 const recipeRefSchema = z.object({ id: z.string(), title: z.string() });
+export const calendarDateSchema = z.iso.date();
+export const weekStartSchema = calendarDateSchema.refine((date) => new Date(`${date}T00:00:00Z`).getUTCDay() === 1, 'Tuần phải bắt đầu vào thứ Hai.');
 
 const recipeSchema = recipeRefSchema.extend({
   /** HTTPS link to the dish's photo; null when the recipe has none. */
@@ -21,22 +23,35 @@ const recipeSchema = recipeRefSchema.extend({
   steps: z.array(z.string()),
 });
 
+const mealProblemSchema = z.object({
+  code: z.enum(['UNKNOWN_RECIPE', 'AVOIDED_INGREDIENT', 'DAY_CONFLICT', 'DAY_PASSED']),
+  day: daySchema,
+  recipes: z.array(z.string()),
+  recipeIds: z.array(z.string()).optional(),
+  ingredients: z.array(z.string()),
+  reason: z.string().nullable(),
+});
+
 export const mealPlanSchema = z.object({
+  weekStart: weekStartSchema,
+  currentWeekStart: weekStartSchema,
+  today: calendarDateSchema,
+  minWeekStart: weekStartSchema,
+  maxWeekStart: weekStartSchema,
+  editable: z.boolean(),
   days: z.array(z.object({
     day: daySchema,
+    date: calendarDateSchema,
+    editable: z.boolean(),
     sections: z.array(z.object({ section: sectionSchema, recipes: z.array(recipeSchema) })),
   })),
-  problems: z.array(z.object({
-    code: z.enum(['UNKNOWN_RECIPE', 'AVOIDED_INGREDIENT', 'DAY_CONFLICT']),
-    day: daySchema,
-    recipes: z.array(z.string()),
-    ingredients: z.array(z.string()),
-    reason: z.string().nullable(),
-  })),
+  problems: z.array(mealProblemSchema),
 });
 
 export const proposalSchema = z.object({
+  weekStart: weekStartSchema,
   ok: z.boolean(),
+  problems: z.array(mealProblemSchema).optional(),
   days: z.array(z.object({
     day: daySchema,
     sections: z.array(z.object({

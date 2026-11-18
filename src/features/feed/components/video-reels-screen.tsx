@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { useEvent, useEventListener } from 'expo';
 import { Image } from 'expo-image';
 import { router, useIsFocused } from 'expo-router';
@@ -15,9 +16,11 @@ import { showReactionBurst } from '@/shared/stores/reaction-burst-store';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useFeed, useFeedActions } from '../hooks/use-feed';
+import { usePostViewability } from '../hooks/use-post-views';
 import type { FeedPost } from '../types/feed.schema';
 
 type Reel = { post: FeedPost; media: FeedPost['media'][number]; playbackUrl: string };
+const reelPostOf = (reel: Reel) => reel.post;
 type IconName = SymbolViewProps['name'];
 type ViewableChange = Parameters<NonNullable<FlatListProps<Reel>['onViewableItemsChanged']>>[0];
 
@@ -48,6 +51,7 @@ export function VideoReelsScreen() {
   const insets = useSafeAreaInsets();
   const focused = useIsFocused();
   const feed = useFeed('posts');
+  const views = usePostViewability(reelPostOf);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = feed;
   const reels = useMemo(() => toReels(feed.data?.pages.flatMap((page) => page.items) ?? []), [feed.data]);
   const [height, setHeight] = useState(0);
@@ -61,6 +65,10 @@ export function VideoReelsScreen() {
     const first = viewableItems.find((token) => token.isViewable && token.item);
     if (first?.item) setActiveId(first.item.post.id);
   }, []);
+  const [viewabilityPairs] = useState(() => [
+    { viewabilityConfig: VIEWABILITY, onViewableItemsChanged },
+    { viewabilityConfig: views.viewabilityConfig, onViewableItemsChanged: views.onViewableItemsChanged },
+  ]);
 
   // Few videos in a page, or the viewer is close to the end: fetch more until the API runs out.
   useEffect(() => {
@@ -90,8 +98,7 @@ export function VideoReelsScreen() {
           decelerationRate="fast"
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({ length: height, offset: height * index, index })}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={VIEWABILITY}
+          viewabilityConfigCallbackPairs={viewabilityPairs}
           initialNumToRender={1}
           maxToRenderPerBatch={2}
           windowSize={3}
@@ -200,7 +207,7 @@ function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Re
         <View pointerEvents="box-none" style={styles.info}>
           <Pressable accessibilityRole="button" accessibilityLabel={`Xem hồ sơ ${post.author.fullName}`} onPress={() => router.push({ pathname: '/profile/[id]', params: { id: post.author.id } })} style={styles.author}>
             <ProfileAvatar profile={{ fullName: post.author.fullName, avatarUrl: post.author.avatarUrl ?? null }} size={36} style={styles.avatar} />
-            <Text numberOfLines={1} style={styles.authorName}>{post.author.fullName}</Text>
+            <ProfessionalName name={post.author.fullName} isProfessional={post.author.isProfessional} textStyle={styles.authorName} />
           </Pressable>
           {body ? (
             <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Thu gọn mô tả' : 'Xem thêm mô tả'} onPress={() => setExpanded((value) => !value)}>

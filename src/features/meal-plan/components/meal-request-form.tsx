@@ -8,6 +8,8 @@ import { useTheme } from '@/hooks/use-theme';
 
 import { mealSections, type DietaryRestrictions, type MealSection } from '../types/meal-plan.schema';
 import { sectionLabels } from '../utils/meal-plan';
+import { weekRange } from '../utils/meal-week';
+import { MealWeekSelector } from './meal-week-selector';
 
 type Ingredient = { id: number; name: string; amount: string; unit: string };
 type IngredientInput = Omit<Ingredient, 'id'>;
@@ -30,6 +32,9 @@ function amountError(item: IngredientInput) {
 }
 
 type FormProps = {
+  weekStart?: string;
+  weeks: string[];
+  onWeekChange: (week: string) => void;
   restrictions?: DietaryRestrictions;
   loading: boolean;
   failed: boolean;
@@ -45,7 +50,7 @@ type FormProps = {
 };
 
 /** Request form: essentials up front, extras collapsed, and a sticky footer with the send button. */
-export function MealRequestForm({ restrictions, loading, failed, busy, retry, onSubmit, onReview, onClose, seed }: FormProps) {
+export function MealRequestForm({ restrictions, loading, failed, busy, retry, onSubmit, onReview, onClose, seed, weekStart, weeks, onWeekChange }: FormProps) {
   const theme = useTheme();
   const [meals, setMeals] = useState<MealSection[]>(['BREAKFAST', 'LUNCH', 'DINNER']);
   const [people, setPeople] = useState<number | null>(null);
@@ -67,7 +72,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
   ];
   const profileReady = !loading && !failed && !!restrictions;
   const noMeals = meals.length === 0;
-  const canSubmit = profileReady && !noMeals && !busy;
+  const canSubmit = profileReady && !noMeals && !busy && !!weekStart;
 
   function toggleMeal(meal: MealSection) {
     setMeals((current) => (current.includes(meal) ? current.filter((item) => item !== meal) : [...current, meal]));
@@ -104,7 +109,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
     if (invalid) { setIngredientError(invalid); setPantryOpen(true); return null; }
     const all = [...ingredients, ...(hasPending ? [{ ...pending, name: clean(pending.name), id: nextId }] : [])];
     const prompt = [
-      'Hãy đề xuất bản nháp thực đơn 7 ngày lặp theo thứ trong tuần, từ Thứ Hai đến Chủ nhật.',
+      `Hãy đề xuất bản nháp thực đơn cho tuần bắt đầu ${weekStart} (${weekRange(weekStart!)}), từ Thứ Hai đến Chủ nhật. Chỉ lập các ngày còn được phép sửa của tuần này.`,
       `Các bữa cần lập mỗi ngày: ${mealSections.filter((meal) => meals.includes(meal)).map((meal) => sectionLabels[meal].toLowerCase()).join(', ')}.`,
       avoided.length ? `Thực phẩm cần tránh đã lưu: ${avoided.join(', ')}.` : '',
       people ? `Số người ăn: ${people === 6 ? 'từ 6 người trở lên' : people}.` : '',
@@ -140,6 +145,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
           <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Chọn vài thông tin, trợ lý sẽ đề xuất thực đơn để bạn xem trước khi lưu.</Text>
         </View>
 
+        <MealWeekSelector weeks={weeks} selected={weekStart} onChange={onWeekChange} disabled={busy} />
         <View style={[styles.avoidCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
           <View style={styles.avoidCopy}>
             <Text style={[styles.avoidTitle, { color: theme.secondaryForeground }]}>Thực phẩm cần tránh</Text>

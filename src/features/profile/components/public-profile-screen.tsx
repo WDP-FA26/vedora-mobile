@@ -1,3 +1,4 @@
+import { ProfessionalBadge } from '@/shared/components/professional-name';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -5,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { PostCard } from '@/features/feed/components/post-card';
+import { useScrollPostViews } from '@/features/feed/hooks/use-post-views';
 import { MessageButton } from '@/features/messaging/components/message-button';
 import { useTheme } from '@/hooks/use-theme';
 import { ZoomImage } from '@/shared/components/image-viewer';
@@ -23,6 +25,7 @@ export function PublicProfileScreen() {
   const profile = useProfile(id);
   const posts = useAuthorPosts(id);
   const items = (posts.data?.items ?? []).filter((post) => post.status === 'PUBLISHED');
+  const views = useScrollPostViews(items);
   const notFound = profile.error instanceof ApiError && profile.error.status === 404;
 
   if (me.data?.id === id) return <Redirect href="/me" />;
@@ -39,7 +42,7 @@ export function PublicProfileScreen() {
           {data ? <Text style={[styles.handle, { color: theme.mutedForeground }]}>@{data.username}</Text> : null}
         </View>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} onLayout={views.onLayout} onScroll={views.onScroll} scrollEventThrottle={16}>
         {profile.isPending ? <ActivityIndicator color={theme.primary} style={styles.loading} /> : null}
         {profile.isError ? (
           <View style={styles.state}>
@@ -72,7 +75,7 @@ export function PublicProfileScreen() {
               </View>
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.foreground }]}>{data.fullName}</Text>
-                {data.isProfessional ? <SymbolView name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={19} tintColor={theme.primary} /> : null}
+                <ProfessionalBadge isProfessional={data.isProfessional} size={19} />
               </View>
               <Text style={[styles.handle, { color: theme.mutedForeground }]}>@{data.username}</Text>
               {data.bio ? <Text style={[styles.bio, { color: theme.foreground }]}>{data.bio}</Text> : null}
@@ -97,7 +100,7 @@ export function PublicProfileScreen() {
             {!posts.isPending && !posts.isError && items.length === 0 ? (
               <Text style={[styles.empty, { color: theme.mutedForeground }]}>Chưa có bài viết công khai.</Text>
             ) : null}
-            {items.map((post) => <PostCard key={post.id} post={post} visible />)}
+            {items.map((post) => <PostCard key={post.id} post={post} visible onLayout={views.onPostLayout(post)} />)}
           </>
         ) : null}
       </ScrollView>

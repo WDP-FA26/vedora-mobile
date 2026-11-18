@@ -4,6 +4,8 @@ import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from '
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { PostMenu } from '@/features/posts/components/post-menu';
+import { useMyProfile } from '@/features/profile/hooks/use-profile';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
@@ -15,20 +17,26 @@ import { plainText } from '../utils/markdown';
 export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
+  const me = useMyProfile(token);
   const blogs = useMyBlogs();
   const pull = usePullToRefresh(blogs.refetch);
   const items = blogs.data?.pages.flatMap((page) => page.items) ?? [];
   const Container = embedded ? View : SafeAreaView;
   const renderBlog = (item: (typeof items)[number]) => (
-    <Pressable key={item.id} accessibilityRole="button" accessibilityLabel={`Chỉnh sửa ${item.blog.title}`} onPress={() => router.push({ pathname: '/blogs/[id]/edit', params: { id: item.id } })} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-      {item.blog.coverImageUrl ? <Image source={{ uri: item.blog.coverImageUrl }} style={styles.cover} contentFit="cover" /> : null}
-      <View style={styles.cardCopy}>
+    <View key={item.id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={styles.cardHeader}>
         <Text style={[styles.badge, { color: theme.primary }]}>{item.status === 'PUBLISHED' ? 'Đã đăng' : 'Bản nháp'}</Text>
-        <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{item.blog.title}</Text>
-        {item.blog.excerpt ? <Text numberOfLines={2} style={[styles.copy, { color: theme.mutedForeground }]}>{plainText(item.blog.excerpt)}</Text> : null}
-        <Text style={[styles.date, { color: theme.mutedForeground }]}>{new Date(item.createdAt).toLocaleDateString('vi-VN')} · Chạm để chỉnh sửa</Text>
+        {me.data ? <PostMenu postId={item.id} authorId={me.data.id} postType="BLOG" title={item.blog.title} canShare={item.status === 'PUBLISHED'} returnTo="/blogs" /> : null}
       </View>
-    </Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Chỉnh sửa ${item.blog.title}`} onPress={() => router.push({ pathname: '/blogs/[id]/edit', params: { id: item.id } })}>
+        {item.blog.coverImageUrl ? <Image source={{ uri: item.blog.coverImageUrl }} style={styles.cover} contentFit="cover" /> : null}
+        <View style={styles.cardCopy}>
+          <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{item.blog.title}</Text>
+          {item.blog.excerpt ? <Text numberOfLines={2} style={[styles.copy, { color: theme.mutedForeground }]}>{plainText(item.blog.excerpt)}</Text> : null}
+          <Text style={[styles.date, { color: theme.mutedForeground }]}>{new Date(item.createdAt).toLocaleDateString('vi-VN')} · Chạm để chỉnh sửa</Text>
+        </View>
+      </Pressable>
+    </View>
   );
   const empty = <View style={styles.state}>
     {blogs.isPending ? <ActivityIndicator color={theme.primary} /> : blogs.isError ? <>
@@ -89,6 +97,7 @@ const styles = StyleSheet.create({
   copy: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 22 },
   emptyTitle: { fontFamily: Fonts.headingBold, fontSize: 18, lineHeight: 25 },
   card: { borderWidth: 1, borderRadius: Radius['2xl'], overflow: 'hidden' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing.three, paddingVertical: Spacing.one },
   cover: { height: 150, width: '100%' },
   cardCopy: { padding: Spacing.three, gap: Spacing.two },
   badge: { fontFamily: Fonts.sansBold, fontSize: 13 },

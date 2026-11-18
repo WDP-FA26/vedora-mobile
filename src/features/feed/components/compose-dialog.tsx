@@ -1,28 +1,36 @@
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
-import { Modal, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image, useWindowDimensions, useColorScheme } from "react-native";
+import { ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View, Image, useWindowDimensions, useColorScheme } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SymbolView } from "expo-symbols";
 import { useVideoPlayer, VideoView } from "expo-video";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-import { MAX_POST_LENGTH, MAX_VIDEO_DURATION_SECONDS, type SelectedComposeVideo } from "../types/compose.schema";
+import { createClientMessageId } from "@/features/messaging/utils/messaging";
+import { ProfessionalName } from '@/shared/components/professional-name';
+import type { VideoDraftInput } from "../hooks/use-compose-actions";
+import { useDeleteDraft, usePostDrafts } from "../hooks/use-post-drafts";
+import { isVideoPublishActive, useVideoPublishStore } from "../stores/video-publish-store";
+import { MAX_POST_LENGTH, MAX_VIDEO_DURATION_SECONDS, type DraftMedia, type PostDraft, type SelectedComposeVideo } from "../types/compose.schema";
 import { composeVideoBody, filledDescription } from "../utils/compose-body";
 
-type Mode = "choose" | "video";
+type Mode = "choose" | "video" | "drafts";
 
 export type { SelectedComposeVideo } from "../types/compose.schema";
 
 export type ComposeDialogProps = {
   visible: boolean;
   authorName?: string | null;
+  authorProfessional?: boolean;
   initialMode?: Mode;
   onClose: () => void;
   onPickVideo: () => Promise<SelectedComposeVideo | null>;
   onRemoveVideo?: (video: SelectedComposeVideo) => void;
   /** Starts publishing in the background; the dialog closes right after. Throws a user-facing message when the draft is refused. */
-  onSubmitVideo: (draft: { title: string; description: string; video: SelectedComposeVideo }) => void;
+  onSubmitVideo: (draft: VideoDraftInput) => void;
+  /** Saves the form into its server draft in the background; throws a user-facing message when refused. */
+  onSaveDraft: (draft: VideoDraftInput) => void;
 };
 
 type GuideTemplate = { id: string; name: string; headings: readonly string[] };
@@ -56,6 +64,23 @@ function videoDuration(seconds: number | null | undefined): string | null {
   return `${Math.floor(rounded / 60)}:${String(rounded % 60).padStart(2, "0")}`;
 }
 
+function draftVideoText(media: DraftMedia | undefined): string {
+  if (!media) return "Chưa có video";
+  switch (media.status) {
+    case "READY": return "Video sẵn sàng";
+    case "PROCESSING": return "Video đang được xử lý";
+    case "WAITING_UPLOAD": return "Video chưa tải xong. Nếu không đăng được, hãy chọn lại video.";
+    case "FAILED": return "Video bị lỗi, hãy chọn video khác";
+  }
+}
+
+function formatSavedAt(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("vi-VN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(date);
+}
+
+/** Plays a picked file, or a draft's video from its playback URL. */
 function LocalVideoPreview({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri);
   return <VideoView player={player} style={styles.videoPreview} contentFit="contain" nativeControls fullscreenOptions={{ enable: true }} />;
@@ -64,11 +89,13 @@ function LocalVideoPreview({ uri }: { uri: string }) {
 export function ComposeDialog({
   visible,
   authorName,
+  authorProfessional,
   initialMode = "choose",
   onClose,
   onPickVideo,
   onRemoveVideo,
   onSubmitVideo,
+  onSaveDraft,
 }: ComposeDialogProps) {
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
@@ -88,24 +115,36 @@ export function ComposeDialog({
   const [pickingVideo, setPickingVideo] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ title?: string; description?: string; video?: string }>({});
+  // Every form writes to one server draft; a fresh ID until a saved draft is opened.
+  const [draftId, setDraftId] = useState(createClientMessageId);
+  const [editingDraft, setEditingDraft] = useState(false);
+  /** The video already in the opened draft; replaced by `video` when a new file is picked. */
+  const [serverVideo, setServerVideo] = useState<DraftMedia | null>(null);
+  const drafts = usePostDrafts(visible);
+  const removeDraft = useDeleteDraft();
+  const activeJob = useVideoPublishStore((state) => state.job);
+  const busyDraftId = isVideoPublishActive(activeJob) ? activeJob?.draftId : null;
 
   // Opening the video shortcut should select its form even if the dialog stays mounted.
   useEffect(() => {
-    if (visible && !title && !description && !video) setMode(initialMode);
-  }, [visible, initialMode, title, description, video]);
+    if (visible && !title && !description && !video && !serverVideo) setMode(initialMode);
+  }, [visible, initialMode, title, description, video, serverVideo]);
 
   const displayName = authorName?.trim() || "Thành viên Vedora";
-  const hasDraft = Boolean(title.trim() || description.trim() || video);
+  const hasDraft = Boolean(title.trim() || description.trim() || video || serverVideo);
   const body = composeVideoBody(title, description);
   const canPreview = Boolean(title.trim() || filledDescription(description) || video);
 
-  /** `handoff`: the video now belongs to the background publish, so the form must not release it. */
-  function resetAndClose(handoff = false) {
+  /** `handoff`: the video now belongs to the background job, so the form must not release it. */
+  function clearForm(handoff = false) {
     if (video && !handoff) onRemoveVideo?.(video);
     setMode("choose");
     setTitle("");
     setDescription("");
     setVideo(null);
+    setServerVideo(null);
+    setDraftId(createClientMessageId());
+    setEditingDraft(false);
     setTemplateOpen(false);
     setPendingTemplate(null);
     setUndoTemplate(null);
@@ -113,7 +152,54 @@ export function ComposeDialog({
     setConfirmDiscard(false);
     setSubmitError(null);
     setFieldErrors({});
+  }
+
+  function resetAndClose(handoff = false) {
+    clearForm(handoff);
     onClose();
+  }
+
+  function draftInput(): VideoDraftInput {
+    return { draftId, title, description, video, keepMediaId: video ? null : serverVideo?.id ?? null };
+  }
+
+  function saveAndClose() {
+    setSubmitError(null);
+    try {
+      onSaveDraft(draftInput());
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : "Chưa lưu được bản nháp. Bạn có thể thử lại.");
+      return;
+    }
+    resetAndClose(true);
+  }
+
+  function openDraft(draft: PostDraft) {
+    if (video) onRemoveVideo?.(video);
+    setTitle(draft.title);
+    setDescription(draft.description);
+    setVideo(null);
+    setServerVideo(draft.media[0] ?? null);
+    setDraftId(draft.id);
+    setEditingDraft(true);
+    setUndoTemplate(null);
+    setSubmitError(null);
+    setFieldErrors({});
+    setMode("video");
+  }
+
+  function confirmDeleteDraft(draft: PostDraft) {
+    Alert.alert("Xóa bản nháp?", `"${draft.title.trim() || "Bản nháp chưa có tiêu đề"}" và video của nó sẽ bị xóa, không khôi phục được.`, [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Xóa",
+        style: "destructive",
+        onPress: () => removeDraft.mutate(draft.id, {
+          onSuccess: () => { if (draft.id === draftId) clearForm(); setMode("drafts"); },
+          onError: () => Alert.alert("Chưa xóa được bản nháp", "Kiểm tra kết nối rồi thử lại."),
+        }),
+      },
+    ]);
   }
 
   function requestClose() {
@@ -134,6 +220,8 @@ export function ComposeDialog({
       if (picked) {
         if (video && video.uri !== picked.uri) onRemoveVideo?.(video);
         setVideo(picked);
+        // The new file replaces the draft's video when the draft is saved or published.
+        setServerVideo(null);
         setFieldErrors((previous) => ({ ...previous, video: undefined }));
       }
     } catch (error) {
@@ -170,18 +258,18 @@ export function ComposeDialog({
       if (!title.trim()) next.title = "Nhập tiêu đề video.";
       if (!filledDescription(description)) next.description = "Viết nội dung hướng dẫn. Các đề mục mẫu chưa được tính là nội dung.";
       if (body.length > MAX_POST_LENGTH) next.description = `Tiêu đề và mô tả cộng lại tối đa ${MAX_POST_LENGTH} ký tự.`;
-      if (!video) next.video = "Chọn video hướng dẫn.";
-      else if (typeof video.durationSeconds === "number" && video.durationSeconds > MAX_VIDEO_DURATION_SECONDS)
+      if (!video && !serverVideo) next.video = "Chọn video hướng dẫn.";
+      else if (!video && serverVideo?.status === "FAILED") next.video = "Video trong bản nháp bị lỗi. Hãy chọn video khác.";
+      else if (video && typeof video.durationSeconds === "number" && video.durationSeconds > MAX_VIDEO_DURATION_SECONDS)
         next.video = "Video tối đa 3 phút theo giới hạn hiện tại.";
       if (Object.keys(next).length) {
         setFieldErrors(next);
         setPreviewOpen(false);
         return;
       }
-      if (!video) return;
       setFieldErrors({});
       try {
-        onSubmitVideo({ title: title.trim(), description, video });
+        onSubmitVideo(draftInput());
       } catch (error) {
         setSubmitError(error instanceof Error ? error.message : "Chưa thể đăng video. Nội dung vẫn được giữ để bạn thử lại.");
         return;
@@ -190,7 +278,8 @@ export function ComposeDialog({
     }
   }
 
-  const dialogTitle = confirmDiscard ? "Bỏ bài viết đang soạn?" : previewOpen ? "Xem trước bài đăng" : mode === "video" ? "Tạo video hướng dẫn" : "Tạo nội dung";
+  const dialogTitle = confirmDiscard ? (editingDraft ? "Lưu thay đổi vào bản nháp?" : "Lưu bài viết thành bản nháp?") : previewOpen ? "Xem trước bài đăng" : mode === "drafts" ? "Bản nháp" : mode === "video" ? (editingDraft ? "Sửa bản nháp" : "Tạo video hướng dẫn") : "Tạo nội dung";
+  const draftItems = drafts.data ?? [];
 
   return (
     <Modal visible={visible} animationType={compact ? "slide" : "fade"} transparent onRequestClose={requestClose} statusBarTranslucent>
@@ -219,23 +308,31 @@ export function ComposeDialog({
 
           {confirmDiscard ? (
             <View style={styles.confirmPane}>
-              <Text style={[styles.confirmCopy, { color: theme.mutedForeground }]}>Nội dung bạn đang viết chưa được đăng. Nếu bỏ, phần đã nhập và video đã chọn sẽ mất.</Text>
-              <Pressable accessibilityRole="button" onPress={() => setConfirmDiscard(false)} style={[styles.primaryButton, { backgroundColor: theme.primary }]}>
-                <Text style={[styles.primaryButtonText, { color: theme.primaryForeground }]}>Tiếp tục chỉnh sửa</Text>
+              <Text style={[styles.confirmCopy, { color: theme.mutedForeground }]}>
+                {editingDraft
+                  ? "Lưu để giữ thay đổi trong bản nháp. Nếu bỏ, bản nháp giữ nội dung đã lưu lần trước."
+                  : "Lưu nháp để viết tiếp sau, cả trên thiết bị khác khi video đã tải xong. Nếu bỏ, phần đã nhập và video đã chọn sẽ mất."}
+              </Text>
+              {submitError ? <Text accessibilityRole="alert" style={[styles.submitError, { color: theme.destructive }]}>{submitError}</Text> : null}
+              <Pressable accessibilityRole="button" onPress={saveAndClose} style={[styles.primaryButton, { backgroundColor: theme.primary }]}>
+                <Text style={[styles.primaryButtonText, { color: theme.primaryForeground }]}>Lưu nháp</Text>
               </Pressable>
-              <Pressable accessibilityRole="button" onPress={() => resetAndClose()} style={[styles.secondaryButton, { borderColor: theme.border }]}>
-                <Text style={[styles.secondaryButtonText, { color: theme.destructive }]}>Bỏ bài viết</Text>
+              <Pressable accessibilityRole="button" onPress={() => { setConfirmDiscard(false); setSubmitError(null); }} style={[styles.secondaryButton, { borderColor: theme.border }]}>
+                <Text style={[styles.secondaryButtonText, { color: theme.foreground }]}>Tiếp tục chỉnh sửa</Text>
+              </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => resetAndClose()} style={styles.textButton}>
+                <Text style={[styles.secondaryButtonText, { color: theme.destructive }]}>{editingDraft ? "Bỏ thay đổi" : "Bỏ bài viết"}</Text>
               </Pressable>
             </View>
           ) : previewOpen ? (
             <ScrollView style={[styles.body, compact && styles.bodyCompact]} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
               <View style={styles.authorRow}>
                 <View style={[styles.avatar, { backgroundColor: theme.secondary }]}><Text style={[styles.avatarText, { color: theme.secondaryForeground }]}>{displayName.charAt(0).toUpperCase()}</Text></View>
-                <View><Text style={[styles.authorName, { color: theme.foreground }]}>{displayName}</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Công khai</Text></View>
+                <View><ProfessionalName name={displayName} isProfessional={authorProfessional} textStyle={[styles.authorName, { color: theme.foreground }]} /><Text style={[styles.caption, { color: theme.mutedForeground }]}>Công khai</Text></View>
               </View>
               <Text style={[styles.previewHeadline, { color: theme.foreground }]}>{title.trim() || "Tiêu đề video"}</Text>
               <Text style={[styles.previewText, { color: theme.foreground }]}>{filledDescription(description) || "Nội dung hướng dẫn của bạn sẽ hiện ở đây."}</Text>
-              {video ? <LocalVideoPreview key={video.uri} uri={video.uri} /> : null}
+              {video ? <LocalVideoPreview key={video.uri} uri={video.uri} /> : serverVideo?.status === "READY" && serverVideo.playbackUrl ? <LocalVideoPreview key={serverVideo.playbackUrl} uri={serverVideo.playbackUrl} /> : null}
               <Text style={[styles.caption, { color: theme.mutedForeground }]}>Bản xem trước này chỉ ở trên thiết bị, chưa đăng bài.</Text>
             </ScrollView>
           ) : mode === "choose" ? (
@@ -257,12 +354,55 @@ export function ComposeDialog({
                 <View style={[styles.choiceIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: "doc.text", android: "article", web: "article" }} size={25} tintColor={theme.primary} /></View>
                 <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Blog</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Viết bài dài, thêm ảnh và lưu nháp.</Text></View>
               </Pressable>
+              <Pressable accessibilityRole="button" onPress={() => { setMode("drafts"); setSubmitError(null); }} style={[styles.choice, { borderColor: theme.border, backgroundColor: theme.card }]}>
+                <View style={[styles.choiceIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: "tray.full", android: "drafts", web: "drafts" }} size={25} tintColor={theme.primary} /></View>
+                <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Bản nháp{draftItems.length ? ` (${draftItems.length})` : ""}</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Video hướng dẫn bạn đã lưu để đăng sau.</Text></View>
+              </Pressable>
+            </ScrollView>
+          ) : mode === "drafts" ? (
+            <ScrollView style={[styles.body, compact && styles.bodyCompact]} contentContainerStyle={styles.bodyContent}>
+              {drafts.isPending ? <ActivityIndicator color={theme.primary} style={styles.draftState} /> : drafts.isError ? (
+                <Pressable accessibilityRole="button" onPress={() => void drafts.refetch()} style={styles.draftState}>
+                  <Text style={[styles.caption, { color: theme.mutedForeground }]}>Chưa tải được bản nháp.</Text>
+                  <Text style={[styles.inlineActionText, { color: theme.primary }]}>Thử lại</Text>
+                </Pressable>
+              ) : draftItems.length === 0 ? (
+                <Text style={[styles.caption, styles.draftState, { color: theme.mutedForeground }]}>Chưa có bản nháp nào. Khi đóng form đang soạn, chọn “Lưu nháp” để giữ lại.</Text>
+              ) : draftItems.map((draft) => {
+                const busy = draft.id === busyDraftId;
+                return (
+                  <View key={draft.id} style={[styles.draftRow, { borderColor: theme.border, backgroundColor: theme.card }]}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Mở bản nháp ${draft.title.trim() || "chưa có tiêu đề"}`}
+                      accessibilityState={{ disabled: busy }}
+                      disabled={busy}
+                      onPress={() => openDraft(draft)}
+                      style={({ pressed }) => [styles.draftCopy, { opacity: pressed ? 0.6 : 1 }]}>
+                      <Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>{draft.title.trim() || "Bản nháp chưa có tiêu đề"}</Text>
+                      <Text numberOfLines={2} style={[styles.caption, { color: theme.mutedForeground }]}>
+                        {busy ? "Đang lưu hoặc đăng…" : draftVideoText(draft.media[0])}
+                      </Text>
+                      <Text style={[styles.counter, styles.draftTime, { color: theme.mutedForeground }]}>Lưu lúc {formatSavedAt(draft.updatedAt)}</Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Xóa bản nháp ${draft.title.trim() || "chưa có tiêu đề"}`}
+                      disabled={busy || removeDraft.isPending}
+                      onPress={() => confirmDeleteDraft(draft)}
+                      hitSlop={8}
+                      style={[styles.headerIcon, { opacity: busy ? 0.4 : 1 }]}>
+                      <SymbolView name={{ ios: "trash", android: "delete", web: "delete" }} size={18} tintColor={theme.mutedForeground} />
+                    </Pressable>
+                  </View>
+                );
+              })}
             </ScrollView>
           ) : mode === "video" ? (
             <ScrollView style={[styles.body, compact && styles.bodyCompact]} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
               <View style={styles.authorRow}>
                 <View style={[styles.avatar, { backgroundColor: theme.secondary }]}><Text style={[styles.avatarText, { color: theme.secondaryForeground }]}>{displayName.charAt(0).toUpperCase()}</Text></View>
-                <View style={styles.authorDetails}><Text style={[styles.authorName, { color: theme.foreground }]}>{displayName}</Text><View style={[styles.audienceChip, { borderColor: theme.border }]}><SymbolView name={{ ios: "globe", android: "public", web: "public" }} size={14} tintColor={theme.mutedForeground} /><Text style={[styles.audienceText, { color: theme.mutedForeground }]}>Công khai</Text></View></View>
+                <View style={styles.authorDetails}><ProfessionalName name={displayName} isProfessional={authorProfessional} textStyle={[styles.authorName, { color: theme.foreground }]} /><View style={[styles.audienceChip, { borderColor: theme.border }]}><SymbolView name={{ ios: "globe", android: "public", web: "public" }} size={14} tintColor={theme.mutedForeground} /><Text style={[styles.audienceText, { color: theme.mutedForeground }]}>Công khai</Text></View></View>
               </View>
               <View style={[styles.guideBanner, { backgroundColor: isDark ? theme.secondary : "#fff4de", borderColor: theme.border }]}>
                 <View style={styles.guideBannerCopy}>
@@ -286,7 +426,7 @@ export function ComposeDialog({
               <Text style={[styles.counter, { color: body.length > MAX_POST_LENGTH ? theme.destructive : theme.mutedForeground }]}>{body.length}/{MAX_POST_LENGTH} ký tự</Text>
               {fieldErrors.description ? <Text accessibilityRole="alert" style={[styles.errorText, { color: theme.destructive }]}>{fieldErrors.description}</Text> : null}
               <View style={styles.mediaHeading}><Text style={[styles.sectionTitle, { color: theme.foreground }]}>Video hướng dẫn</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Video tối đa 3 phút theo giới hạn hiện tại.</Text></View>
-              {video ? <View style={[styles.selectedVideo, { borderColor: theme.border, backgroundColor: theme.card }]}><LocalVideoPreview key={video.uri} uri={video.uri} /><View style={styles.videoMeta}><View style={styles.videoMetaText}><Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>{video.fileName || "Video đã chọn"}</Text>{videoDuration(video.durationSeconds) ? <Text style={[styles.caption, { color: theme.mutedForeground }]}>Thời lượng {videoDuration(video.durationSeconds)}</Text> : null}</View></View><View style={styles.inlineActions}><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { void selectVideo(); }}><Text style={[styles.inlineActionText, { color: theme.primary }]}>Thay video</Text></Pressable><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { onRemoveVideo?.(video); setVideo(null); }}><Text style={[styles.inlineActionText, { color: theme.destructive }]}>Xóa video</Text></Pressable></View></View> : <Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { void selectVideo(); }} style={[styles.uploadZone, { backgroundColor: theme.card, borderColor: theme.primary }]}><SymbolView name={{ ios: "video", android: "videocam", web: "videocam" }} size={30} tintColor={theme.primary} /><Text style={[styles.uploadTitle, { color: theme.foreground }]}>Thêm video hướng dẫn nấu ăn</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Chọn video từ thiết bị của bạn.</Text><View style={[styles.pickButton, { borderColor: theme.border }]}><Text style={[styles.pickButtonText, { color: theme.foreground }]}>{pickingVideo ? "Đang mở thư viện..." : "Chọn video"}</Text></View></Pressable>}
+              {!video && serverVideo ? <View style={[styles.selectedVideo, { borderColor: serverVideo.status === "FAILED" ? theme.destructive : theme.border, backgroundColor: theme.card }]}>{serverVideo.status === "READY" && serverVideo.playbackUrl ? <LocalVideoPreview key={serverVideo.playbackUrl} uri={serverVideo.playbackUrl} /> : serverVideo.posterUrl ? <Image source={{ uri: serverVideo.posterUrl }} style={styles.videoPreview} resizeMode="contain" accessible={false} /> : null}<View style={styles.videoMeta}><View style={styles.videoMetaText}><Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>Video trong bản nháp</Text><Text style={[styles.caption, { color: serverVideo.status === "FAILED" ? theme.destructive : theme.mutedForeground }]}>{draftVideoText(serverVideo)}{videoDuration(serverVideo.durationSec) ? ` · ${videoDuration(serverVideo.durationSec)}` : ""}</Text></View></View><View style={styles.inlineActions}><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { void selectVideo(); }}><Text style={[styles.inlineActionText, { color: theme.primary }]}>Thay video</Text></Pressable><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => setServerVideo(null)}><Text style={[styles.inlineActionText, { color: theme.destructive }]}>Xóa video</Text></Pressable></View></View> : video ? <View style={[styles.selectedVideo, { borderColor: theme.border, backgroundColor: theme.card }]}><LocalVideoPreview key={video.uri} uri={video.uri} /><View style={styles.videoMeta}><View style={styles.videoMetaText}><Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>{video.fileName || "Video đã chọn"}</Text>{videoDuration(video.durationSeconds) ? <Text style={[styles.caption, { color: theme.mutedForeground }]}>Thời lượng {videoDuration(video.durationSeconds)}</Text> : null}</View></View><View style={styles.inlineActions}><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { void selectVideo(); }}><Text style={[styles.inlineActionText, { color: theme.primary }]}>Thay video</Text></Pressable><Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { onRemoveVideo?.(video); setVideo(null); }}><Text style={[styles.inlineActionText, { color: theme.destructive }]}>Xóa video</Text></Pressable></View></View> : <Pressable accessibilityRole="button" disabled={pickingVideo} onPress={() => { void selectVideo(); }} style={[styles.uploadZone, { backgroundColor: theme.card, borderColor: theme.primary }]}><SymbolView name={{ ios: "video", android: "videocam", web: "videocam" }} size={30} tintColor={theme.primary} /><Text style={[styles.uploadTitle, { color: theme.foreground }]}>Thêm video hướng dẫn nấu ăn</Text><Text style={[styles.caption, { color: theme.mutedForeground }]}>Chọn video từ thiết bị của bạn.</Text><View style={[styles.pickButton, { borderColor: theme.border }]}><Text style={[styles.pickButtonText, { color: theme.foreground }]}>{pickingVideo ? "Đang mở thư viện..." : "Chọn video"}</Text></View></Pressable>}
               {fieldErrors.video ? <Text accessibilityRole="alert" style={[styles.errorText, { color: theme.destructive }]}>{fieldErrors.video}</Text> : null}
             </ScrollView>
           ) : null}
@@ -381,6 +521,11 @@ const styles = StyleSheet.create({
   primaryButtonText: { fontFamily: Fonts.sansBold, fontSize: 14 },
   secondaryButton: { width: "100%", minHeight: 45, borderRadius: 100, borderWidth: 1, alignItems: "center", justifyContent: "center" },
   secondaryButtonText: { fontFamily: Fonts.sansSemibold, fontSize: 14 },
+  textButton: { minHeight: 44, alignItems: "center", justifyContent: "center", paddingHorizontal: Spacing.three },
+  draftState: { padding: Spacing.five, alignItems: "center", gap: Spacing.two, textAlign: "center" },
+  draftRow: { flexDirection: "row", alignItems: "center", gap: Spacing.two, borderWidth: 1, borderRadius: Radius.xl, paddingLeft: Spacing.three, paddingRight: Spacing.one },
+  draftCopy: { flex: 1, minHeight: 64, paddingVertical: Spacing.two + Spacing.one, gap: 2 },
+  draftTime: { textAlign: "left" },
   previewHeadline: { fontFamily: Fonts.headingBold, fontSize: 17 },
   previewText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
 });

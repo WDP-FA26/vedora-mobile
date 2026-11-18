@@ -1,11 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { useEffect, useRef, type ComponentRef } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { BlogArticle } from '@/features/blogs/components/blog-article';
 import { PostCard } from '@/features/feed/components/post-card';
+import { useScrollPostViews } from '@/features/feed/hooks/use-post-views';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
 
@@ -15,9 +17,19 @@ import { CommentComposer, CommentList } from './comment-section';
 
 export function PostDetailScreen() {
   const theme = useTheme();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, comment } = useLocalSearchParams<{ id: string; comment?: string }>();
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const commentsY = useRef(0);
+  const scrolledTarget = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (comment && commentsY.current) {
+      scroll.current?.scrollTo({ y: commentsY.current, animated: true });
+      scrolledTarget.current = comment;
+    }
+  }, [comment]);
   const post = usePost(id);
-  const draft = useCommentDraft(id, post.data?.commentCount ?? 0);
+  const views = useScrollPostViews(post.data ? [post.data] : []);
+  const draft = useCommentDraft(id);
   const notFound = post.error instanceof ApiError && post.error.status === 404;
 
   return (
@@ -29,7 +41,7 @@ export function PostDetailScreen() {
         <Text style={[styles.title, { color: theme.foreground }]}>Bài viết</Text>
       </View>
       <KeyboardAvoidingView style={styles.screen} behavior="padding" enabled={Platform.OS !== 'web'}>
-      <ScrollView style={styles.screen} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={styles.content}>
+      <ScrollView ref={scroll} style={styles.screen} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={styles.content} onLayout={views.onLayout} onScroll={views.onScroll} scrollEventThrottle={16}>
         {post.isPending ? <ActivityIndicator color={theme.primary} style={styles.loading} /> : null}
         {post.isError ? (
           <View style={styles.state}>
@@ -45,11 +57,20 @@ export function PostDetailScreen() {
           <>
             <PostCard
               post={post.data}
+              onLayout={views.onPostLayout(post.data)}
               visible
               detail
               blogContent={post.data.blog ? <BlogArticle blogId={post.data.id} title={post.data.blog.title} /> : undefined}
             />
-            <CommentList postId={post.data.id} postAuthorId={post.data.author.id} commentCount={post.data.commentCount} draft={draft} />
+            <View onLayout={(event) => {
+              commentsY.current = event.nativeEvent.layout.y;
+              if (comment && scrolledTarget.current !== comment) {
+                scroll.current?.scrollTo({ y: commentsY.current, animated: true });
+                scrolledTarget.current = comment;
+              }
+            }}>
+              <CommentList targetId={comment} postId={post.data.id} postAuthorId={post.data.author.id} commentCount={post.data.commentCount} draft={draft} />
+            </View>
           </>
         ) : null}
       </ScrollView>

@@ -1,4 +1,4 @@
-import { feedPageSchema, feedPostSchema } from '@/features/feed/types/feed.schema';
+import { feedPageSchema, feedPostSchema, type FeedPost } from '@/features/feed/types/feed.schema';
 import { apiClient } from '@/shared/api/api-client';
 import { requestJson } from '@/shared/api/request-json';
 
@@ -8,12 +8,34 @@ export function getPost(postId: string, signal?: AbortSignal) {
   return requestJson(feedPostSchema, { method: 'GET', url: `/posts/${postId}`, signal });
 }
 
+export async function deletePost(postId: string, type: FeedPost['type']) {
+  await apiClient.delete(`/${type === 'BLOG' ? 'blogs' : 'posts'}/${postId}`);
+}
+
 export function getCommentPage({ postId, cursor, signal }: { postId: string; cursor: string | null; signal?: AbortSignal }) {
   return requestJson(commentPageSchema, {
     method: 'GET',
     url: `/posts/${postId}/comments`,
     params: cursor ? { cursor } : undefined,
     signal,
+  });
+}
+
+export function getComment(postId: string, commentId: string, signal?: AbortSignal) {
+  return requestJson(commentSchema, { method: 'GET', url: `/posts/${postId}/comments/${commentId}`, signal });
+}
+
+export function getReplyPage({ postId, rootId, cursor, signal }: { postId: string; rootId: string; cursor: string | null; signal?: AbortSignal }) {
+  return requestJson(commentPageSchema, {
+    method: 'GET', url: `/posts/${postId}/comments/${rootId}/replies`,
+    params: cursor ? { cursor } : undefined, signal,
+  });
+}
+
+export function createReply(postId: string, targetId: string, body: string) {
+  return requestJson(commentSchema, {
+    method: 'POST', url: `/posts/${postId}/comments/${targetId}/replies`,
+    data: commentFormSchema.parse({ body }),
   });
 }
 

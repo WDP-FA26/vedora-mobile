@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { router, useIsFocused } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -14,6 +15,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { useAcceptRequest, useContact, useConversation, useDeleteRequest, useMarkRead, useMessages, useSendMessage } from '../hooks/use-messaging';
 import { MAX_MESSAGE_LENGTH, type Message } from '../types/messaging.schema';
 import { createClientMessageId, formatMessageTime, mergeMessages, messagingErrorText } from '../utils/messaging';
+import { SharedPostCard } from './shared-post-card';
 
 /** Opens either an existing conversation (`conversationId`) or a person (`userId`), which creates nothing until the first send. */
 export function ChatScreen({ conversationId, userId }: { conversationId?: string; userId?: string }) {
@@ -173,7 +175,7 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
             // The list is inverted, so flip the empty state back upright.
             <View style={[styles.emptyThread, styles.flipped]}>
               <ProfileAvatar profile={peer} size={64} />
-              <Text style={[styles.centerTitle, { color: theme.foreground }]}>{peer.fullName}</Text>
+              <ProfessionalName name={peer.fullName} isProfessional={peer.isProfessional} textStyle={[styles.centerTitle, { color: theme.foreground }]} badgeSize={18} />
               <Text style={[styles.centerText, { color: theme.mutedForeground }]}>
                 {canSend ? 'Hãy gửi lời chào đầu tiên.' : 'Chưa có tin nhắn nào.'}
               </Text>
@@ -235,7 +237,7 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
   );
 }
 
-function ChatHeader({ peer }: { peer?: { id: string; fullName: string; username: string; avatarUrl: string | null } }) {
+function ChatHeader({ peer }: { peer?: { id: string; fullName: string; username: string; avatarUrl: string | null; isProfessional: boolean } }) {
   const theme = useTheme();
   return (
     <View style={[styles.header, { borderBottomColor: theme.border }]}>
@@ -254,7 +256,7 @@ function ChatHeader({ peer }: { peer?: { id: string; fullName: string; username:
           style={styles.peer}>
           <ProfileAvatar profile={peer} size={40} style={styles.headerAvatar} />
           <View style={styles.peerText}>
-            <Text numberOfLines={1} style={[styles.peerName, { color: theme.foreground }]}>{peer.fullName}</Text>
+            <ProfessionalName name={peer.fullName} isProfessional={peer.isProfessional} textStyle={[styles.peerName, { color: theme.foreground }]} />
             <Text numberOfLines={1} style={[styles.peerHandle, { color: theme.mutedForeground }]}>@{peer.username}</Text>
           </View>
         </Pressable>
@@ -276,7 +278,7 @@ function MessageBubble({ message, mine, seen }: { message: Message; mine: boolea
             ? { backgroundColor: theme.primary, borderBottomRightRadius: Radius.sm }
             : { backgroundColor: theme.card, borderBottomLeftRadius: Radius.sm },
         ]}>
-          <Text selectable style={[styles.bubbleText, { color: mine ? theme.primaryForeground : theme.foreground }]}>{message.body}</Text>
+          {message.sharedPostId ? <SharedPostCard message={message} /> : <Text selectable style={[styles.bubbleText, { color: mine ? theme.primaryForeground : theme.foreground }]}>{message.body}</Text>}
         </View>
         <Text style={[styles.meta, { color: theme.mutedForeground }]}>
           {formatMessageTime(message.createdAt)}{seen ? ' · Đã xem' : ''}

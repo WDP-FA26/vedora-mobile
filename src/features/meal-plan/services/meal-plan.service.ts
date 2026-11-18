@@ -8,26 +8,31 @@ import {
   mealPlanSchema,
   plannerThreadPageSchema,
   plannerThreadSchema,
+  weekStartSchema,
   type MealDayInput,
   type PlannerThread,
 } from '../types/meal-plan.schema';
 
-export function getMealPlan(signal?: AbortSignal) {
-  return requestJson(mealPlanSchema, { method: 'GET', url: '/meal-plan', signal });
+export function getMealPlan(weekStart?: string, signal?: AbortSignal) {
+  return requestJson(mealPlanSchema, { method: 'GET', url: '/meal-plan', params: weekStart ? { weekStart: weekStartSchema.parse(weekStart) } : undefined, signal });
 }
 
 export function getDietaryRestrictions(signal?: AbortSignal) {
   return requestJson(dietaryRestrictionsSchema, { method: 'GET', url: '/dietary/me', signal });
 }
 
-export function saveMealDays(days: MealDayInput[]) {
-  const payload = { days: mealDayInputSchema.array().parse(days) };
+export function saveMealDays(weekStart: string, days: MealDayInput[]) {
+  const payload = { weekStart: weekStartSchema.parse(weekStart), days: mealDayInputSchema.array().parse(days) };
   return requestJson(mealPlanSchema, { method: 'PUT', url: '/meal-plan/days', data: payload });
 }
 
 /** Streams an answer; the API saves the question and the answer into thread `threadId` (created on first use). */
-export function askMealPlanner(threadId: string, messages: { role: 'user' | 'assistant'; text: string }[], onText?: (text: string) => void) {
-  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { threadId, messages: messages.slice(-10) }, onText });
+export function askMealPlanner(weekStart: string, threadId: string, messages: { role: 'user' | 'assistant'; text: string }[], onText?: (text: string) => void) {
+  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { weekStart: weekStartSchema.parse(weekStart), threadId, messages: messages.slice(-10) }, onText });
+}
+
+export async function discardPlannerDraft(weekStart: string) {
+  await apiClient.delete('/meal-plan/draft', { params: { weekStart: weekStartSchema.parse(weekStart) } });
 }
 
 /** One page of saved conversations, most recently used first. */
