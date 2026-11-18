@@ -21,6 +21,8 @@ import { useSessionStore } from "@/shared/stores/session-store";
 
 import { FollowingScreen } from "@/features/following/components/following-screen";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { ProfileAvatar } from "@/features/profile/components/profile-avatar";
+import { useMyProfile } from "@/features/profile/hooks/use-profile";
 import { RecipesList } from "@/features/recipes/components/recipes-screen";
 import { useExploreTabBarScroll } from "@/features/navigation/hooks/use-explore-tab-bar-scroll";
 import { getShowcasePosts, type ShowcasePost } from "../data/showcase-posts";
@@ -44,6 +46,7 @@ export function FeedScreen() {
   const isDark = useColorScheme() === "dark";
   const accessToken = useSessionStore((state) => state.accessToken);
   const displayName = useSessionStore((state) => state.displayName);
+  const me = useMyProfile(accessToken);
   const compose = useComposeActions();
   const [filter, setFilter] = useState<FeedTab>("all");
   const [composerOpen, setComposerOpen] = useState(false);
@@ -145,9 +148,7 @@ export function FeedScreen() {
           <View>
             <View style={[styles.composer, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <View style={styles.composerTop}>
-                <View style={[styles.composerAvatar, { backgroundColor: theme.secondary }]}>
-                  <Text style={[styles.composerInitial, { color: theme.secondaryForeground }]}>{displayName?.trim().charAt(0).toUpperCase() || "V"}</Text>
-                </View>
+                <ProfileAvatar profile={me.data ?? { fullName: displayName ?? "", avatarUrl: null }} size={40} style={styles.composerAvatar} />
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Tạo nội dung"
@@ -327,8 +328,7 @@ const styles = StyleSheet.create({
     padding: Spacing.three,
   },
   composerTop: { flexDirection: "row", alignItems: "center", gap: Spacing.two },
-  composerAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
-  composerInitial: { fontFamily: Fonts.headingBold, fontSize: 16 },
+  composerAvatar: { borderWidth: 0 },
   composerPrompt: {
     flex: 1,
     minWidth: 0,
