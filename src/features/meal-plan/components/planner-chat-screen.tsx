@@ -32,6 +32,18 @@ export function PlannerChatScreen() {
         avatar={<SproutPet size={38} accessible={false} />}
         title="Trợ lý Vedora"
         subtitle="Hỏi về dinh dưỡng thực vật và lên thực đơn"
+        action={turns.length > 0 ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cuộc trò chuyện mới"
+            accessibilityHint="Cuộc trò chuyện hiện tại vẫn được lưu"
+            disabled={busy}
+            onPress={planner.startNewChat}
+            hitSlop={8}
+            style={({ pressed }) => [styles.newChat, { backgroundColor: theme.muted, opacity: busy ? 0.4 : pressed ? 0.7 : 1 }]}>
+            <SymbolView name={{ ios: 'square.and.pencil', android: 'edit_square', web: 'edit_square' }} size={18} tintColor={theme.foreground} />
+          </Pressable>
+        ) : undefined}
       />
       {planner.suggestion ? (
         <Pressable
@@ -154,6 +166,7 @@ function QuickChip({ label, onPress }: { label: string; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  newChat: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   banner: {
     minHeight: 44,
     flexDirection: 'row',
