@@ -4,6 +4,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
+import { ChatMarkdown } from './chat-markdown';
+
 const AVATAR_SIZE = 34;
 /** Left inset that lines extra content (suggestions, status) up with assistant bubbles. */
 export const CHAT_CONTENT_INSET = AVATAR_SIZE + Spacing.two;
@@ -45,10 +47,11 @@ export function ChatBubble({ role, text, streaming, avatar, authorLabel, footer 
                   borderTopLeftRadius: Radius.sm,
                 },
           ]}>
-          <Text style={[styles.text, { color: isUser ? theme.primaryForeground : theme.foreground }]}>
-            {text}
-            {streaming ? ' ▍' : ''}
-          </Text>
+          {isUser ? (
+            <Text style={[styles.text, { color: theme.primaryForeground }]}>{text}</Text>
+          ) : (
+            <ChatMarkdown text={text} color={theme.foreground} cursor={streaming} />
+          )}
         </View>
         {footer}
       </View>

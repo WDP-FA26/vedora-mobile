@@ -3,6 +3,7 @@ import { createContext, use, useMemo, useRef, useState, type ReactNode } from 'r
 import { Alert } from 'react-native';
 
 import { ApiError } from '@/shared/api/api-error';
+import { aiQuotaMessage } from '@/shared/api/ai-quota';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { askMealPlanner, getMealPlan } from '../services/meal-plan.service';
@@ -33,6 +34,8 @@ function proposalContext(proposal: Proposal, status?: ProposalStatus) {
 }
 
 function friendlyError(error: unknown, fallback: string) {
+  const quotaText = aiQuotaMessage(error);
+  if (quotaText) return quotaText;
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.';
     if (error.status === 429) return 'Bạn gửi hơi nhanh. Hãy đợi một chút rồi thử lại.';

@@ -2,8 +2,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View, type FlatListProps } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -22,7 +21,8 @@ function useDebounced<T>(value: T, delayMs: number) {
   return debounced;
 }
 
-export function RecipesScreen() {
+/** The recipe catalogue as the "Công thức" tab of the home feed; the feed supplies the header and the safe area. */
+export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['onScroll'] }) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
   const [text, setText] = useState('');
@@ -33,16 +33,18 @@ export function RecipesScreen() {
 
   function toggleSuitable() {
     if (!token) {
-      router.push({ pathname: '/login', params: { returnTo: '/recipes' } });
+      router.push({ pathname: '/login', params: { returnTo: '/explore' } });
       return;
     }
     setSuitableForMe((value) => !value);
   }
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
       <FlatList
         data={items}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
         keyExtractor={(item) => item.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.list}
@@ -137,7 +139,7 @@ export function RecipesScreen() {
         ) : undefined}
         renderItem={({ item }) => <RecipeCard recipe={item} />}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

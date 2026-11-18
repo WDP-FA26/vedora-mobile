@@ -10,11 +10,44 @@ import { ApiError } from '@/shared/api/api-error';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useBilling, useBillingActions } from '../hooks/use-billing';
-import type { Payment, Plan } from '../types/billing.schema';
-import { dateTime, money, paymentStatus, planName } from '../utils/billing-format';
+import type { Allowance, Catalog, Payment, Plan } from '../types/billing.schema';
+import { dateTime, money, paymentStatus, planName, purchasedName } from '../utils/billing-format';
 import { BillingBadge, BillingButton, BillingCard, BillingConfirm, BillingIcon, BillingLayout, BillingLoading, BillingNotice, BillingSectionTitle, BillingText } from './billing-ui';
 
-const purchaseTerms = 'Gói mới bắt đầu ngay khi hệ thống xác nhận thanh toán và thay thế gói cũ. Thời gian còn lại của gói cũ không được cộng dồn hay quy đổi thành tiền. Mỗi ngày tính 24 giờ.';
+const purchaseTerms = 'Gói mới bắt đầu ngay khi hệ thống xác nhận thanh toán và thay thế gói cũ. Thời gian và lượt AI còn lại của chu kỳ cũ không được cộng dồn hay quy đổi thành tiền. Mỗi ngày tính 24 giờ.';
+
+function Meter({ label, allowance }: { label: string; allowance: Allowance }) {
+  const theme = useTheme();
+  const ratio = allowance.limit > 0 ? Math.min(1, allowance.used / allowance.limit) : 1;
+  const empty = allowance.remaining === 0;
+  return <View style={styles.meter} accessible accessibilityLabel={`${label}: đã dùng ${allowance.used} trên ${allowance.limit}, còn ${allowance.remaining}`}>
+    <View style={styles.meterTop}>
+      <Text style={[styles.meterLabel, { color: theme.foreground }]}>{label}</Text>
+      <Text style={[styles.meterValue, { color: empty ? theme.destructive : theme.foreground }]}>{allowance.used}/{allowance.limit}</Text>
+    </View>
+    <View style={[styles.track, { backgroundColor: theme.muted }]}><View style={[styles.fill, { width: `${ratio * 100}%`, backgroundColor: empty ? theme.destructive : theme.primary }]} /></View>
+    <BillingText variant="caption">{empty ? 'Đã hết lượt. ' : `Còn ${allowance.remaining} lượt. `}{allowance.period === 'DAY' ? 'Đặt lại' : 'Chu kỳ kết thúc'} {dateTime(allowance.resetsAt)}</BillingText>
+  </View>;
+}
+
+function Benefits({ text, images }: { text: number; images: number }) {
+  const theme = useTheme();
+  const noImages = images === 0;
+  return <View style={styles.benefits}>
+    <View style={styles.benefit}>
+      <SymbolView name={{ ios: 'checkmark', android: 'check', web: 'check' }} size={14} tintColor={theme.primary} />
+      <BillingText>{text} lượt hỏi trợ lý AI</BillingText>
+    </View>
+    <View style={styles.benefit}>
+      <SymbolView name={noImages ? { ios: 'minus', android: 'remove', web: 'remove' } : { ios: 'checkmark', android: 'check', web: 'check' }} size={14} tintColor={noImages ? theme.mutedForeground : theme.primary} />
+      <BillingText>{noImages ? 'Không có tạo ảnh AI' : `${images} lượt tạo hoặc chỉnh ảnh AI`}</BillingText>
+    </View>
+  </View>;
+}
+
+function cycleNote(catalog: Catalog) {
+  return `Mỗi ngày ${catalog.freeLimits.textLimit} lượt hỏi, đặt lại lúc 0 giờ. Plus và Pro tính theo chu kỳ ${catalog.plans[0]?.durationDays ?? 30} ngày.`;
+}
 
 export function BillingScreen() {
   const token = useSessionStore((state) => state.accessToken);
@@ -92,16 +125,28 @@ function BillingContent({ token }: { token: string }) {
           <View style={[styles.pendingIcon, { backgroundColor: theme.muted }]}><SymbolView name={{ ios: 'clock', android: 'schedule', web: 'schedule' }} size={20} tintColor={theme.chart3} /></View>
           <View style={styles.flex}>
             <BillingBadge pending label="Đang chờ thanh toán" />
-            <BillingText heading style={styles.pendingTitle}>{planName(pending.planCode)} · {money(pending.amount)}</BillingText>
+            <BillingText heading style={styles.pendingTitle}>{purchasedName(pending)} · {money(pending.amount)}</BillingText>
           </View>
         </View>
         <BillingText variant="caption">Hãy tiếp tục hoặc hủy giao dịch này trước khi mua gói khác.</BillingText>
         <BillingButton label="Tiếp tục thanh toán" icon={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} onPress={() => router.push({ pathname: '/payment/[id]', params: { id: pending.id } })} />
       </View> : null}
+      <BillingCard style={styles.usage}>
+        <BillingSectionTitle title="Lượt dùng AI" caption="Dùng chung cho trợ lý thực đơn, hỏi dinh dưỡng và trợ lý viết blog." />
+        <Meter label="Lượt hỏi trợ lý" allowance={data.usage.text} />
+        <Meter label="Lượt tạo ảnh AI" allowance={data.usage.images} />
+      </BillingCard>
     </> : null}
     {catalog.data ? <View style={styles.section}>
       <BillingSectionTitle title="Các gói" caption="Trả một lần bằng chuyển khoản, không tự gia hạn." />
-      <BillingNotice title="Lưu ý">Pro và Premium hiện mới ghi nhận gói bạn đã mua, chưa kèm quyền lợi thêm.</BillingNotice>
+      <BillingCard style={styles.plan}>
+        <View style={styles.planTop}>
+          <BillingText heading style={styles.planName}>Miễn phí</BillingText>
+          {!data || data.membership.planCode === 'FREE' ? <BillingBadge label="Đang dùng" /> : null}
+        </View>
+        <BillingText variant="caption">{cycleNote(catalog.data)}</BillingText>
+        <Benefits text={catalog.data.freeLimits.textLimit} images={catalog.data.freeLimits.imageLimit} />
+      </BillingCard>
       {!catalog.data.paymentsEnabled ? <BillingNotice title="Tạm thời chưa mua được gói">Bạn vẫn xem được gói và lịch sử. Hãy quay lại sau.</BillingNotice> : null}
       <View style={styles.plans}>
         {catalog.data.plans.map((plan) => <BillingCard key={plan.code} style={styles.plan}>
@@ -110,13 +155,14 @@ function BillingContent({ token }: { token: string }) {
               <Image source={plan.code === 'PRO' ? require('@/assets/branding/avocado-sticker.png') : require('@/assets/branding/tomato-sticker.png')} contentFit="contain" style={styles.planSticker} accessible={false} />
             </View>
             <BillingText heading style={styles.planName}>{plan.name}</BillingText>
-            <BillingBadge neutral label={`${plan.durationDays} ngày`} />
+            {data?.membership.planCode === plan.code ? <BillingBadge label="Đang dùng" /> : <BillingBadge neutral label={`${plan.durationDays} ngày`} />}
           </View>
           <View style={styles.planPrice}><BillingText variant="price" style={styles.priceText}>{money(plan.priceVnd)}</BillingText><BillingText variant="caption">Trả một lần, không tự gia hạn</BillingText></View>
-          <BillingButton label={`Chọn ${plan.name}`} secondary disabled={busy || loading || unavailable || !!pending || !catalog.data.paymentsEnabled} onPress={() => { setError(''); setSelected(plan); }} />
+          <Benefits text={plan.textLimit} images={plan.imageLimit} />
+          <BillingButton label={data?.membership.planCode === plan.code ? `Mua lại ${plan.name}` : `Chọn ${plan.name}`} secondary disabled={busy || loading || unavailable || !!pending || !catalog.data.paymentsEnabled} onPress={() => { setError(''); setSelected(plan); }} />
         </BillingCard>)}
       </View>
-      <BillingText variant="caption">Gói mới thay thế gói cũ, thời gian còn lại không được cộng dồn. Hết hạn, tài khoản về gói Miễn phí.</BillingText>
+      <BillingText variant="caption">Mỗi lần mua đều thu đủ giá gói và bắt đầu chu kỳ mới, kể cả mua lại cùng gói hay đổi giữa Plus và Pro. Thời gian và lượt còn lại không được cộng dồn. Hết hạn, tài khoản về gói Miễn phí; bài viết, công thức và thực đơn cũ vẫn dùng được.</BillingText>
     </View> : null}
     {data ? <View style={styles.section}>
       <BillingSectionTitle title="Lịch sử thanh toán" caption="20 giao dịch gần nhất" />
@@ -132,9 +178,11 @@ function BillingContent({ token }: { token: string }) {
       {selected ? <BillingCard accent>
         <View style={styles.planTop}><BillingText heading style={styles.planName}>{selected.name}</BillingText><Image source={selected.code === 'PRO' ? require('@/assets/branding/avocado-sticker.png') : require('@/assets/branding/tomato-sticker.png')} contentFit="contain" style={styles.planSticker} accessible={false} /></View>
         <BillingText variant="price" style={styles.priceText}>{money(selected.priceVnd)}</BillingText><BillingText>{selected.durationDays} ngày · Trả một lần</BillingText>
+        <Benefits text={selected.textLimit} images={selected.imageLimit} />
       </BillingCard> : null}
+      {selected && data && data.membership.planCode !== 'FREE' && data.membership.expiresAt ? <BillingNotice title={`Bạn đang dùng ${planName(data.membership.planCode)}`}>Gói hiện tại còn hạn đến {dateTime(data.membership.expiresAt)}. Khi thanh toán xong, {selected.name} thay gói này ngay và thu đủ {money(selected.priceVnd)}; phần còn lại của gói cũ và lượt AI chưa dùng sẽ mất.</BillingNotice> : null}
       <BillingNotice title="Về thời hạn">{purchaseTerms}</BillingNotice>
-      <BillingText>Gói hiện chưa kèm quyền lợi thêm. Bước sau sẽ hiện mã QR và thông tin chuyển khoản.</BillingText>
+      <BillingText>Bước sau sẽ hiện mã QR và thông tin chuyển khoản. Gói chỉ đổi khi hệ thống xác nhận đã nhận tiền.</BillingText>
       <BillingButton label="Tiếp tục" busy={busy} onPress={() => void purchase()} />
       <BillingButton quiet label="Chọn gói khác" disabled={busy} onPress={() => setSelected(null)} />
     </BillingConfirm>
@@ -143,9 +191,9 @@ function BillingContent({ token }: { token: string }) {
 
 function PaymentRow({ payment, disabled, last }: { payment: Payment; disabled: boolean; last: boolean }) {
   const theme = useTheme();
-  return <Pressable accessibilityRole="button" accessibilityLabel={`${planName(payment.planCode)}, ${money(payment.amount)}, ${paymentStatus[payment.status]}, ${dateTime(payment.createdAt)}. Xem chi tiết`} disabled={disabled} onPress={() => router.push({ pathname: '/payment/[id]', params: { id: payment.id } })} style={({ pressed }) => [styles.historyRow, { borderColor: theme.border, opacity: disabled ? 0.5 : pressed ? 0.7 : 1 }, last && styles.historyRowLast]}>
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${purchasedName(payment)}, ${money(payment.amount)}, ${paymentStatus[payment.status]}, ${dateTime(payment.createdAt)}. Xem chi tiết`} disabled={disabled} onPress={() => router.push({ pathname: '/payment/[id]', params: { id: payment.id } })} style={({ pressed }) => [styles.historyRow, { borderColor: theme.border, opacity: disabled ? 0.5 : pressed ? 0.7 : 1 }, last && styles.historyRowLast]}>
     <View style={styles.historyLeft}>
-      <Text style={[styles.rowTitle, { color: theme.foreground }]}>{planName(payment.planCode)}</Text>
+      <Text style={[styles.rowTitle, { color: theme.foreground }]}>{purchasedName(payment)}</Text>
       <BillingText variant="caption">{dateTime(payment.createdAt)}</BillingText>
     </View>
     <View style={styles.historyRight}>
@@ -180,6 +228,15 @@ const styles = StyleSheet.create({
   pendingTop: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three },
   pendingIcon: { width: 44, height: 44, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center' },
   pendingTitle: { fontSize: 17, lineHeight: 24 },
+  usage: { gap: Spacing.three },
+  meter: { gap: Spacing.one + Spacing.half },
+  meterTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: Spacing.two },
+  meterLabel: { fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 22 },
+  meterValue: { fontFamily: Fonts.sansBold, fontSize: 15, lineHeight: 22 },
+  track: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  fill: { height: 8, borderRadius: 4 },
+  benefits: { gap: Spacing.one + Spacing.half },
+  benefit: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   section: { gap: Spacing.three },
   plans: { gap: Spacing.three },
   plan: { gap: Spacing.three },

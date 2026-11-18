@@ -81,7 +81,7 @@ async function uploadFromBrowser(
 ) {
   const file = video.file;
   if (!file) throw new Error('Không đọc được video đã chọn. Vui lòng chọn lại.');
-  const total = file.size;
+  const total = Number(file.size);
   const name = video.fileName || 'video';
 
   for (let start = 0; start < total; start += chunkSize) {
@@ -137,8 +137,11 @@ async function uploadFromDevice(
       headers: chunkHeaders(total > chunkSize, uploadId, start, end, total),
       sessionType: 'foreground',
       signal,
-      onProgress: ({ bytesSent, totalBytes }) => {
-        if (totalBytes <= 0) return;
+      onProgress: (progress) => {
+        // The native side can report these as BigInt on iOS even though the types say number.
+        const bytesSent = Number(progress.bytesSent);
+        const totalBytes = Number(progress.totalBytes);
+        if (!(totalBytes > 0)) return;
         const sent = start + Math.min(1, bytesSent / totalBytes) * (end - start);
         onProgress(Math.min(99, Math.round((sent / total) * 100)));
       },

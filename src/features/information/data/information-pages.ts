@@ -8,7 +8,7 @@ export const informationPages = [
       { title: 'Tài khoản của bạn', paragraphs: ['Cung cấp thông tin đăng ký chính xác, bảo vệ mật khẩu và không chia sẻ mã xác minh. Đăng xuất khi dùng thiết bị chung. Nếu nghi ngờ tài khoản bị truy cập trái phép, hãy đổi mật khẩu.'] },
       { title: 'Nội dung bạn chia sẻ', paragraphs: ['Chỉ đăng nội dung bạn tự tạo hoặc có quyền sử dụng. Ghi nguồn khi tham khảo, tôn trọng bản quyền hình ảnh, âm thanh và công thức. Không công khai thông tin riêng của người khác khi chưa được đồng ý.'] },
       { title: 'Gợi ý món ăn và trợ lý', paragraphs: ['Thông tin công thức và câu trả lời của trợ lý cần được bạn kiểm tra trước khi áp dụng. Luôn xem nguyên liệu, điều kiện bảo quản và cách chế biến, đặc biệt khi có dị ứng hoặc nhu cầu ăn uống riêng. Nội dung trên ứng dụng không thay thế tư vấn của chuyên gia y tế.'] },
-      { title: 'Gói dịch vụ và thanh toán', paragraphs: ['Xem giá, thời hạn và mô tả trên màn Gói của bạn trước khi thanh toán. Kiểm tra đúng số tiền, tài khoản và nội dung chuyển khoản; trạng thái chỉ hoàn tất khi hệ thống xác nhận.', 'Pro/Premium hiện ghi nhận gói đã mua, chưa có đặc quyền bổ sung. Gói mới thay thế thời hạn cũ, không cộng dồn; không tự gia hạn. Hủy giao dịch không đồng nghĩa hoàn tiền.'] },
+      { title: 'Gói dịch vụ và thanh toán', paragraphs: ['Xem giá, thời hạn và mô tả trên màn Gói của bạn trước khi thanh toán. Kiểm tra đúng số tiền, tài khoản và nội dung chuyển khoản; trạng thái chỉ hoàn tất khi hệ thống xác nhận.', 'Plus và Pro tăng số lượt hỏi trợ lý AI và lượt tạo ảnh trong mỗi chu kỳ 30 ngày. Mỗi lần mua bắt đầu chu kỳ mới và thay gói cũ ngay, không cộng dồn thời gian hay lượt còn lại; không tự gia hạn. Hủy giao dịch không đồng nghĩa hoàn tiền.'] },
     ],
   },
   {
