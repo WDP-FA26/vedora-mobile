@@ -182,7 +182,14 @@ export function MealPlanScreen() {
                               <PhotoImage source={require('@/assets/branding/tomato-sticker.png')} style={styles.recipeSticker} contentFit="contain" accessible={false} />
                             </View>
                           )}
-                          <Text style={[styles.recipeTitle, { color: theme.foreground }]}>{recipe.title}</Text>
+                          <Pressable
+                            accessibilityRole="link"
+                            accessibilityLabel={`Xem công thức ${recipe.title}`}
+                            onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: recipe.id } })}
+                            style={({ pressed }) => [styles.recipeLink, { opacity: pressed ? 0.6 : 1 }]}>
+                            <Text style={[styles.recipeTitle, { color: theme.foreground }]}>{recipe.title}</Text>
+                            <Text style={[styles.recipeHint, { color: theme.primary }]}>Xem công thức ›</Text>
+                          </Pressable>
                           {!draft ? (
                             <Pressable
                               accessibilityRole="button"
@@ -289,7 +296,9 @@ const styles = StyleSheet.create({
   recipeImage: { width: 56, height: 56, borderRadius: Radius.lg },
   recipeImageEmpty: { alignItems: 'center', justifyContent: 'center' },
   recipeSticker: { width: 32, height: 36 },
-  recipeTitle: { flex: 1, minWidth: 0, fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
+  recipeLink: { flex: 1, minWidth: 0, alignSelf: 'stretch', justifyContent: 'center', gap: 2 },
+  recipeTitle: { fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
+  recipeHint: { fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 16 },
   swap: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half, borderRadius: Radius['4xl'], paddingHorizontal: Spacing.two + Spacing.one },
   swapText: { fontFamily: Fonts.sansBold, fontSize: 12, lineHeight: 16 },
   emptyMeal: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, textAlign: 'center', fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },

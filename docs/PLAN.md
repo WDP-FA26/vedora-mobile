@@ -729,3 +729,9 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Tab Blog trong màn Hồ sơ có nút chữ "Tải lại danh sách" nằm ngay trên danh sách, trông lạc chỗ. Đã bỏ nút; thay vào đó cả màn Hồ sơ kéo xuống để tải lại (hồ sơ, sở thích ăn uống, bài viết và blog của tôi), vòng xoay chỉ hiện khi tự kéo. Blog vẫn tự cập nhật sau khi lưu/đăng bài như trước; nút "Thử lại" khi lỗi và "Xem thêm blog" giữ nguyên. Chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Tôi > tab Blog: không còn nút "Tải lại danh sách", danh sách blog hiện ngay dưới thanh tab. (2) Kéo màn Hồ sơ xuống: vòng xoay hiện rồi tắt, danh sách blog cập nhật. (3) Ở tab Bài viết kéo xuống: bài viết và thông tin hồ sơ cập nhật. (4) Viết hoặc sửa một blog rồi quay lại tab Blog: bài mới/đã sửa hiện mà không cần kéo. (5) Tắt mạng rồi mở tab Blog: hiện "Không tải được danh sách blog" và nút Thử lại. (6) Chưa đăng nhập: màn Hồ sơ không kéo để tải lại.
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Thực đơn của tôi: chạm vào món để xem công thức
+
+- Kết quả: Mỗi món trong thực đơn trước chỉ chạm được ảnh (phóng to) và nút Đổi món. Nay chạm vào tên món (có dòng "Xem công thức ›" bên dưới) mở trang công thức của món đó (`/recipes/[id]`, id món trong thực đơn chính là id công thức ở API). Chạm ảnh vẫn phóng to, nút Đổi món giữ nguyên; bản xem trước đề xuất cũng mở được công thức. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Mở tab Thực đơn của tôi, chọn một ngày có món: dưới tên mỗi món có "Xem công thức ›". (2) Chạm tên món: mở đúng trang công thức của món đó. (3) Bấm Quay lại: về thực đơn, vẫn ở ngày đang chọn. (4) Chạm ảnh món: ảnh phóng to như trước, không mở công thức. (5) Bấm Đổi món: vẫn nhờ trợ lý đổi món, không mở công thức. (6) Khi đang xem bản đề xuất (chưa lưu): chạm món vẫn mở công thức. (7) Tên món dài: xuống dòng gọn, không đè nút Đổi món.
+- Người thực hiện: Claude.
