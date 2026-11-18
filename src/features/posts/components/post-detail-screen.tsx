@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { BlogArticle } from '@/features/blogs/components/blog-article';
 import { PostCard } from '@/features/feed/components/post-card';
+import { useScrollPostViews } from '@/features/feed/hooks/use-post-views';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
 
@@ -27,6 +28,7 @@ export function PostDetailScreen() {
     }
   }, [comment]);
   const post = usePost(id);
+  const views = useScrollPostViews(post.data ? [post.data] : []);
   const draft = useCommentDraft(id);
   const notFound = post.error instanceof ApiError && post.error.status === 404;
 
@@ -39,7 +41,7 @@ export function PostDetailScreen() {
         <Text style={[styles.title, { color: theme.foreground }]}>Bài viết</Text>
       </View>
       <KeyboardAvoidingView style={styles.screen} behavior="padding" enabled={Platform.OS !== 'web'}>
-      <ScrollView ref={scroll} style={styles.screen} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={styles.content}>
+      <ScrollView ref={scroll} style={styles.screen} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" contentContainerStyle={styles.content} onLayout={views.onLayout} onScroll={views.onScroll} scrollEventThrottle={16}>
         {post.isPending ? <ActivityIndicator color={theme.primary} style={styles.loading} /> : null}
         {post.isError ? (
           <View style={styles.state}>
@@ -55,6 +57,7 @@ export function PostDetailScreen() {
           <>
             <PostCard
               post={post.data}
+              onLayout={views.onPostLayout(post.data)}
               visible
               detail
               blogContent={post.data.blog ? <BlogArticle blogId={post.data.id} title={post.data.blog.title} /> : undefined}

@@ -2,7 +2,7 @@ import { Image } from "expo-image";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View, useColorScheme } from "react-native";
+import { Pressable, StyleSheet, Text, View, useColorScheme, type LayoutChangeEvent } from "react-native";
 
 import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -55,6 +55,7 @@ export function PostCard({
   visible,
   detail = false,
   blogContent,
+  onLayout,
 }: {
   post: FeedPost;
   visible: boolean;
@@ -62,6 +63,7 @@ export function PostCard({
   detail?: boolean;
   /** Detail screen only: the full article shown in place of the blog summary card. */
   blogContent?: ReactNode;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }) {
   const theme = useTheme();
   const dark = useColorScheme() === "dark";
@@ -106,6 +108,7 @@ export function PostCard({
 
   return (
     <View
+      onLayout={onLayout}
       style={[
         styles.post,
         { backgroundColor: theme.card, borderBottomColor: theme.border },

@@ -16,9 +16,11 @@ import { showReactionBurst } from '@/shared/stores/reaction-burst-store';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useFeed, useFeedActions } from '../hooks/use-feed';
+import { usePostViewability } from '../hooks/use-post-views';
 import type { FeedPost } from '../types/feed.schema';
 
 type Reel = { post: FeedPost; media: FeedPost['media'][number]; playbackUrl: string };
+const reelPostOf = (reel: Reel) => reel.post;
 type IconName = SymbolViewProps['name'];
 type ViewableChange = Parameters<NonNullable<FlatListProps<Reel>['onViewableItemsChanged']>>[0];
 
@@ -49,6 +51,7 @@ export function VideoReelsScreen() {
   const insets = useSafeAreaInsets();
   const focused = useIsFocused();
   const feed = useFeed('posts');
+  const views = usePostViewability(reelPostOf);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = feed;
   const reels = useMemo(() => toReels(feed.data?.pages.flatMap((page) => page.items) ?? []), [feed.data]);
   const [height, setHeight] = useState(0);
@@ -62,6 +65,10 @@ export function VideoReelsScreen() {
     const first = viewableItems.find((token) => token.isViewable && token.item);
     if (first?.item) setActiveId(first.item.post.id);
   }, []);
+  const [viewabilityPairs] = useState(() => [
+    { viewabilityConfig: VIEWABILITY, onViewableItemsChanged },
+    { viewabilityConfig: views.viewabilityConfig, onViewableItemsChanged: views.onViewableItemsChanged },
+  ]);
 
   // Few videos in a page, or the viewer is close to the end: fetch more until the API runs out.
   useEffect(() => {
@@ -91,8 +98,7 @@ export function VideoReelsScreen() {
           decelerationRate="fast"
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({ length: height, offset: height * index, index })}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={VIEWABILITY}
+          viewabilityConfigCallbackPairs={viewabilityPairs}
           initialNumToRender={1}
           maxToRenderPerBatch={2}
           windowSize={3}
