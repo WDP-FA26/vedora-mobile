@@ -4,12 +4,14 @@ import { router, useIsFocused } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View, type FlatListProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { ProfileAvatar } from '@/features/profile/components/profile-avatar';
+import { HEART_COLOR } from '@/shared/components/reaction-burst';
+import { showReactionBurst } from '@/shared/stores/reaction-burst-store';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useFeed, useFeedActions } from '../hooks/use-feed';
@@ -27,6 +29,8 @@ const PREFETCH_AHEAD = 3;
 const WARM_DISTANCE = 1;
 /** Seconds buffered ahead; caps data spent on neighbours the viewer may skip. */
 const BUFFER_AHEAD_SEC = 10;
+/** Two taps closer than this like the video; a single tap waits this long before pausing. */
+const DOUBLE_TAP_MS = 250;
 
 const formatCount = (value: number) => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 
@@ -158,6 +162,26 @@ function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Re
     else router.push({ pathname: '/login', params: { returnTo: '/explore' } });
   }
 
+  const lastTap = useRef(0);
+  const pendingTap = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(pendingTap.current), []);
+
+  // Double tap likes (never unlikes, like Instagram); a single tap still pauses, just after the double-tap window.
+  function onTap() {
+    const now = Date.now();
+    if (now - lastTap.current < DOUBLE_TAP_MS) {
+      clearTimeout(pendingTap.current);
+      lastTap.current = 0;
+      requireLogin(() => {
+        if (post.isLiked || like.isPending) showReactionBurst('like');
+        else like.mutate(true);
+      });
+      return;
+    }
+    lastTap.current = now;
+    pendingTap.current = setTimeout(() => setPaused((value) => !value), DOUBLE_TAP_MS);
+  }
+
   return (
     <View style={{ height }}>
       {!started ? <Image source={media.posterUrl ? { uri: media.posterUrl } : undefined} style={StyleSheet.absoluteFill} contentFit={fit} /> : null}
@@ -166,7 +190,8 @@ function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Re
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={paused ? 'Phát video' : 'Tạm dừng video'}
-        onPress={() => setPaused((value) => !value)}
+        accessibilityHint="Chạm hai lần liên tiếp để thích"
+        onPress={onTap}
         style={StyleSheet.absoluteFill}>
         {paused ? <View style={styles.pauseBadge}><SymbolView name={{ ios: 'play.fill', android: 'play_arrow', web: 'play_arrow' }} size={34} tintColor={WHITE} /></View> : null}
       </Pressable>
@@ -186,8 +211,9 @@ function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Re
 
         <View style={styles.actions}>
           <ReelAction
-            label={post.isLiked ? 'Bỏ thả mầm' : 'Thả mầm'}
-            icon={{ ios: post.isLiked ? 'leaf.fill' : 'leaf', android: 'eco', web: 'eco' }}
+            label={post.isLiked ? 'Bỏ thích' : 'Thích'}
+            icon={{ ios: post.isLiked ? 'heart.fill' : 'heart', android: 'favorite', web: 'favorite' }}
+            activeColor={HEART_COLOR}
             count={post.likeCount}
             active={post.isLiked}
             disabled={like.isPending}
@@ -220,8 +246,8 @@ function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Re
   );
 }
 
-function ReelAction({ label, icon, count, active, disabled, onPress }: {
-  label: string; icon: IconName; count?: number; active?: boolean; disabled?: boolean; onPress: () => void;
+function ReelAction({ label, icon, count, active, activeColor = '#75b65c', disabled, onPress }: {
+  label: string; icon: IconName; count?: number; active?: boolean; activeColor?: string; disabled?: boolean; onPress: () => void;
 }) {
   return (
     <Pressable
@@ -232,7 +258,7 @@ function ReelAction({ label, icon, count, active, disabled, onPress }: {
       onPress={onPress}
       style={({ pressed }) => [styles.action, { opacity: pressed ? 0.7 : 1 }]}>
       <View style={[styles.actionIcon, active && styles.actionIconActive]}>
-        <SymbolView name={icon} size={24} tintColor={active ? '#75b65c' : WHITE} />
+        <SymbolView name={icon} size={24} tintColor={active ? activeColor : WHITE} />
       </View>
       {count !== undefined ? <Text style={styles.actionCount}>{formatCount(count)}</Text> : null}
     </Pressable>

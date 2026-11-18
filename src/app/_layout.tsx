@@ -11,6 +11,7 @@ import { VedoraThemeProvider } from '@/components/vedora-theme-provider';
 import { Colors } from '@/constants/theme';
 import { useMessagingStream } from '@/features/messaging/hooks/use-messaging-stream';
 import { useNotificationStream } from '@/features/notifications/hooks/use-notification-stream';
+import { ReactionBurstHost } from '@/shared/components/reaction-burst';
 import { AppQueryProvider } from '@/shared/query/app-query-provider';
 import { hydrateSession } from '@/shared/api/api-client';
 import { useSessionStore } from '@/shared/stores/session-store';
@@ -84,6 +85,7 @@ export default function RootLayout() {
             <Stack.Screen name="reset-password" />
             <Stack.Screen name="dietary-profile" />
           </Stack>
+          <ReactionBurstHost />
         </ThemeProvider>
       </VedoraThemeProvider>
     </AppQueryProvider>
