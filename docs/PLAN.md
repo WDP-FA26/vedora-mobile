@@ -711,3 +711,9 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Khi trợ lý đang tạo hoặc chỉnh ảnh, dưới dòng "Đang tạo ảnh…"/"Đang chỉnh ảnh…" có một khung xám đúng tỉ lệ ảnh sắp ra (vuông, 16:9…), biểu tượng ảnh ở giữa và một vệt sáng chạy chéo qua liên tục; ảnh xong thì khung được thay bằng ảnh thật ở cùng chỗ. Theme tối vệt sáng dịu hơn; bật "Giảm chuyển động" thì khung đứng yên. Hook dùng chung `hooks/use-reduce-motion.ts` (hiệu ứng tim cũng dùng). Chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Mở bài blog, mở Trợ lý, nhờ "tạo ảnh bìa 16:9 cho bài": hiện "Đang tạo ảnh…" và khung chữ nhật ngang có vệt sáng chạy qua. (2) Nhờ tạo ảnh vuông: khung vuông. (3) Ảnh xong: khung biến mất, ảnh hiện đúng chỗ, không nhảy bố cục nhiều. (4) Nhờ chỉnh ảnh vừa tạo: cũng có khung với "Đang chỉnh ảnh…". (5) Hết lượt tạo ảnh hoặc lỗi: khung biến mất, hiện thông báo như cũ. (6) Theme tối: vệt sáng nhẹ, không chói. (7) Bật Giảm chuyển động: khung đứng yên.
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Trợ lý viết blog: ô nhập không còn bị đẩy lên khi mở bàn phím
+
+- Kết quả: Khi bàn phím mở, khoảng đệm cho thanh điều hướng/thanh home phía dưới vẫn được cộng thêm trên Android nên ô nhập nằm cao hơn mép bàn phím một đoạn. Nay khoảng đệm dưới chỉ áp dụng khi bàn phím đóng (giống màn chat tin nhắn). Trên iOS, chiều cao bàn phím tính từ mép trên bàn phím đến đáy màn hình để không còn khoảng trống khi bàn phím đổi kích thước hoặc đóng. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Android: mở bài blog, mở Trợ lý, chạm ô nhập: ô nhập nằm sát ngay trên bàn phím, không có khoảng trống. (2) Đóng bàn phím: ô nhập về đáy, không bị thanh điều hướng che. (3) iPhone có thanh home: như trên; bật/tắt thanh gợi ý từ của bàn phím, đổi bàn phím emoji: ô nhập luôn sát bàn phím. (4) Đóng bàn phím bằng cách kéo danh sách tin nhắn: không còn khoảng trống ở dưới. (5) Gõ tin nhiều dòng: ô nhập cao lên, vẫn sát bàn phím.
+- Người thực hiện: Claude.

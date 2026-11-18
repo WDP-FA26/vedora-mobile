@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Keyboard, Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Easing, Keyboard, Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -20,19 +20,27 @@ import { applyEditorTool, describeEditorTool, type ApplyResult } from '../utils/
 type Assistant = ReturnType<typeof useBlogAssistant>;
 
 /**
- * Keyboard height for iOS, where the sheet reaches the bottom of the screen and the keyboard covers it.
- * KeyboardAvoidingView measures against the window rather than the sheet, so it lifts the input by the wrong
- * amount inside a page sheet. Android resizes the dialog itself, so nothing is added there.
+ * Keyboard state for the sheet. On iOS the sheet reaches the bottom of the screen and the keyboard covers it, so
+ * `height` is the space to leave (KeyboardAvoidingView measures against the window, not the page sheet, and lifts the
+ * input by the wrong amount). Android resizes the dialog itself, so only `open` is tracked there.
  */
-function useKeyboardHeight() {
-  const [height, setHeight] = useState(0);
+function useKeyboard() {
+  const [state, setState] = useState({ open: false, height: 0 });
   useEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    const show = Keyboard.addListener('keyboardWillChangeFrame', (event) => setHeight(Math.max(0, event.endCoordinates.height)));
-    const hide = Keyboard.addListener('keyboardWillHide', () => setHeight(0));
+    if (Platform.OS === 'ios') {
+      // Measured from the keyboard's top edge: on hide the frame keeps its height but moves off screen.
+      const change = Keyboard.addListener('keyboardWillChangeFrame', (event) => {
+        const height = Math.max(0, Dimensions.get('screen').height - event.endCoordinates.screenY);
+        setState({ open: height > 0, height });
+      });
+      const hide = Keyboard.addListener('keyboardWillHide', () => setState({ open: false, height: 0 }));
+      return () => { change.remove(); hide.remove(); };
+    }
+    const show = Keyboard.addListener('keyboardDidShow', () => setState({ open: true, height: 0 }));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setState({ open: false, height: 0 }));
     return () => { show.remove(); hide.remove(); };
   }, []);
-  return height;
+  return state;
 }
 type Part = AssistantMessage['parts'][number];
 export type EditorApply = Extract<ApplyResult, { ok: true }>;
@@ -65,7 +73,7 @@ export function BlogAssistantSheet({ visible, onClose, assistant, title, content
   const theme = useTheme();
   const scroll = useRef<ScrollViewInstance>(null);
   const [draft, setDraft] = useState('');
-  const keyboardHeight = useKeyboardHeight();
+  const keyboard = useKeyboard();
   const hasSelection = range.end > range.start;
   const { messages, busy, error, quota, proposals } = assistant;
   const left = quota ? Math.max(0, quota.messages.limit - quota.messages.used) : null;
@@ -106,8 +114,9 @@ export function BlogAssistantSheet({ visible, onClose, assistant, title, content
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'fullScreen'} onRequestClose={onClose}>
-      <SafeAreaView edges={Platform.OS === 'ios' ? (keyboardHeight > 0 ? [] : ['bottom']) : ['top', 'bottom']} style={[styles.sheet, { backgroundColor: theme.background }]}>
-        <View style={[styles.body, { paddingBottom: keyboardHeight }]}>
+      {/* The keyboard covers the home indicator / navigation bar, so the bottom inset is dropped while it is open. */}
+      <SafeAreaView edges={[...(Platform.OS === 'ios' ? [] : ['top' as const]), ...(keyboard.open ? [] : ['bottom' as const])]} style={[styles.sheet, { backgroundColor: theme.background }]}>
+        <View style={[styles.body, { paddingBottom: keyboard.height }]}>
         <View style={[styles.header, { borderBottomColor: theme.border }]}>
           <View style={[styles.mark, { backgroundColor: theme.secondary }]}>
             <SymbolView name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={20} tintColor={theme.primary} />
