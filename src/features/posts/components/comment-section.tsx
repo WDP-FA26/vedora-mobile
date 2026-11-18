@@ -10,7 +10,7 @@ import { useMyProfile } from '@/features/profile/hooks/use-profile';
 import { useTheme } from '@/hooks/use-theme';
 import { ChatComposer } from '@/shared/components/chat/chat-composer';
 
-import type { CommentDraft } from '../hooks/use-comment-draft';
+import { COMMENT_REJECTED_MESSAGE, type CommentDraft } from '../hooks/use-comment-draft';
 import { useComments } from '../hooks/use-posts';
 import { MAX_COMMENT_LENGTH, type Comment } from '../types/posts.schema';
 
@@ -182,7 +182,16 @@ export function CommentComposer({ draft }: { draft: CommentDraft }) {
           </Pressable>
         </View>
       ) : null}
-      {draft.error ? <Text accessibilityRole="alert" style={[styles.errorText, styles.composerError, { color: theme.destructive }]}>{draft.error}</Text> : null}
+      {draft.error ? (
+        <Text accessibilityRole="alert" style={[styles.errorText, styles.composerError, { color: theme.destructive }]}>
+          {draft.error}
+          {draft.error === COMMENT_REJECTED_MESSAGE ? (
+            <Text accessibilityRole="link" onPress={() => router.push({ pathname: '/about/[slug]', params: { slug: 'community' } })} style={[styles.action, { color: theme.primary }]}>
+              {' '}Xem Tiêu chuẩn cộng đồng
+            </Text>
+          ) : null}
+        </Text>
+      ) : null}
       <ChatComposer
         value={draft.draft}
         onChangeText={draft.changeDraft}

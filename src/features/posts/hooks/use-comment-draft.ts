@@ -1,10 +1,14 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 
+import { ApiError } from '@/shared/api/api-error';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { commentFormSchema, type Comment } from '../types/posts.schema';
 import { useCommentActions } from './use-posts';
+
+/** Shown when moderation turns a comment away; the composer adds a link to the guidelines after it. */
+export const COMMENT_REJECTED_MESSAGE = 'Bình luận của bạn không được đăng vì vi phạm Tiêu chuẩn cộng đồng. Hãy sửa lại nội dung rồi gửi lại.';
 
 /** Draft shared by the comment list (which starts an edit) and the composer pinned under it. */
 export function useCommentDraft(postId: string, commentCount: number) {
@@ -47,8 +51,10 @@ export function useCommentDraft(postId: string, commentCount: number) {
       else await actions.add.mutateAsync(parsed.data.body);
       setDraft('');
       setEditingId(null);
-    } catch {
-      setError('Chưa gửi được bình luận. Nội dung vẫn được giữ để bạn thử lại.');
+    } catch (caught) {
+      setError(caught instanceof ApiError && caught.code === 'CONTENT_REJECTED'
+        ? COMMENT_REJECTED_MESSAGE
+        : 'Chưa gửi được bình luận. Nội dung vẫn được giữ để bạn thử lại.');
     }
   }
 

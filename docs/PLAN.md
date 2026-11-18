@@ -749,3 +749,21 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: (1) Bấm phát video trong bài viết trước đây gỡ ảnh bìa ngay nên khung hình đen chớp lên rồi mới có hình. Nay ảnh bìa giữ nguyên, phủ lớp tối và vòng xoay lớn cho đến khi khung hình đầu tiên hiện (`onFirstFrameRender` của expo-video) thì mới biến mất. (2) Video ở feed chỉ dừng khi cuộn khỏi màn hình, nên mở tab Video (hoặc màn khác) thì tiếng feed vẫn chạy chồng lên. Nay video feed tự dừng khi rời màn hình (`useIsFocused`). Chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Trang chủ: bấm ▶ trên một video: ảnh bìa vẫn hiện kèm vòng xoay, không chớp đen; khi có hình thì video phát, vòng xoay biến mất. (2) Mạng chậm: vòng xoay hiện lâu hơn nhưng không chớp. (3) Đang phát video ở feed, bấm tab "Video": chỉ nghe tiếng video ở màn Video, video feed đã dừng. (4) Đóng màn Video quay về feed: video feed vẫn dừng, bấm phát tiếp được. (5) Đang phát video, mở một bài viết hoặc hồ sơ: tiếng video feed tắt. (6) Bấm phát rồi cuộn đi ngay trước khi có hình, cuộn lại: video tiếp tục tải và phát. (7) Video lỗi: vẫn hiện "Không phát được video. Chạm để thử lại."
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Kịch bản demo mobile cho buổi bảo vệ
+
+- Kết quả: Thêm `docs/DEMO_SCRIPT.md`: kịch bản ~13 phút cho 2 người (Vy, Hương) theo hành trình người dùng, phân phần theo người đã làm, checklist chuẩn bị, lời thoại, phương án dự phòng và câu hỏi Q&A. Không đổi code.
+- Bước kiểm tra UI: (1) Tối trước buổi bảo vệ, chạy thử toàn bộ kịch bản trên 2 máy theo đúng thứ tự mục 1–9. (2) Bấm giờ từng mục, cắt bớt nếu vượt 13 phút. (3) Thử riêng mục 6 (nhắn tin 2 máy) và mục 8 (thanh toán thử) với API thật.
+- Người thực hiện: Claude, theo yêu cầu của Vy Ngo Chi.
+
+## 2026-11-18 — Cẩm nang trả lời hội đồng
+
+- Kết quả: Thêm `docs/DEFENSE_GUIDE.md` giải thích bằng lời thường công nghệ (Expo, Expo Router, Axios, Zod, TanStack Query, Zustand, SSE…) và từng luồng chính (đăng nhập + refresh token, Google OAuth/PKCE, upload video lên Cloudinary, nhắn tin realtime, AI stream, AI lên thực đơn, trợ lý blog, thanh toán SePay), kèm câu hỏi khó, thuật ngữ và bản đồ file. Đối chiếu với code hiện tại; không đổi code.
+- Bước kiểm tra UI: (1) Đọc mục 4 song song với app đang chạy, làm theo từng luồng trên máy để thấy đúng các bước được mô tả. (2) Hai người hỏi chéo nhau bằng mục 6.
+- Người thực hiện: Claude, theo yêu cầu của Vy Ngo Chi.
+
+## 2026-11-18 — Thông báo khi bình luận bị chặn vì vi phạm Tiêu chuẩn cộng đồng
+
+- Kết quả: Khi API kiểm duyệt từ chối bình luận (mã `CONTENT_REJECTED`), trước app chỉ hiện lỗi chung "Chưa gửi được bình luận…" nên người dùng tưởng lỗi mạng và gửi lại mãi. Nay hiện theo cách các app mạng xã hội hay làm: "Bình luận của bạn không được đăng vì vi phạm Tiêu chuẩn cộng đồng. Hãy sửa lại nội dung rồi gửi lại." kèm liên kết "Xem Tiêu chuẩn cộng đồng" mở trang Tiêu chuẩn cộng đồng. Nội dung vẫn giữ trong ô nhập để sửa. Áp dụng cả khi viết mới lẫn khi sửa bình luận. Lỗi khác vẫn giữ thông báo cũ. Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Mở một bài viết, gửi bình luận có lời xúc phạm (ví dụ chửi người khác): dưới ô nhập hiện thông báo vi phạm Tiêu chuẩn cộng đồng màu đỏ, bình luận không xuất hiện trong danh sách, nội dung vẫn còn trong ô nhập. (2) Chạm "Xem Tiêu chuẩn cộng đồng": mở trang Tiêu chuẩn cộng đồng; Quay lại về bài viết, nội dung vẫn còn. (3) Sửa chữ trong ô nhập: thông báo biến mất. (4) Gửi bình luận bình thường: đăng được như cũ. (5) Sửa một bình luận cũ thành lời xúc phạm rồi lưu: hiện cùng thông báo, bình luận cũ giữ nguyên. (6) Tắt mạng rồi gửi: vẫn hiện "Chưa gửi được bình luận. Nội dung vẫn được giữ để bạn thử lại." (7) Theme tối, chữ lớn: thông báo và liên kết đọc rõ.
+- Người thực hiện: Claude.
