@@ -64,12 +64,34 @@ mock.module('react/jsx-runtime', { namedExports: { jsx, jsxs: jsx } });
 
 const schema = await import('../src/features/meal-plan/types/meal-plan.schema.ts');
 const { addCalendarDays, planningWeeks, isPlanningWeekend } = await import('../src/features/meal-plan/utils/meal-week.ts');
-const { changedDayInputs, displayDays } = await import('../src/features/meal-plan/utils/meal-plan.ts');
+const { changedDayInputs, displayDays, avoidedIngredientsForRecipe } = await import('../src/features/meal-plan/utils/meal-plan.ts');
 const { plannerProposals, latestProposalIds } = await import('../src/features/meal-plan/utils/planner-proposals.ts');
 const service = await import('../src/features/meal-plan/services/meal-plan.service.ts');
 const hooks = await import('../src/features/meal-plan/hooks/use-meal-plan.ts');
 const currentWeek = '2026-11-16', nextWeek = '2026-11-23';
 const meal = { id: 'dish', title: 'Soup', servings: 1, prepMinutes: 5, cookMinutes: 10, ingredients: [], steps: [] };
+test('avoided warnings preserve backend IDs and match the right day and dish, not a duplicate title', () => {
+  const warning = { code: 'AVOIDED_INGREDIENT', day: 'SUN', recipeIds: ['dish'], recipes: ['Soup'], ingredients: ['Peanut'], reason: null };
+  const parsed = schema.mealPlanSchema.parse({ ...plan(), problems: [warning] });
+  assert.deepEqual(parsed.problems[0].recipeIds, ['dish']);
+  assert.deepEqual(avoidedIngredientsForRecipe(parsed.problems, 'SUN', meal), ['Peanut']);
+  assert.deepEqual(avoidedIngredientsForRecipe(parsed.problems, 'MON', meal), []);
+  assert.deepEqual(avoidedIngredientsForRecipe(parsed.problems, 'SUN', { ...meal, id: 'another' }), []);
+  assert.deepEqual(avoidedIngredientsForRecipe([{ ...warning, code: 'DAY_CONFLICT' }], 'SUN', meal), []);
+  assert.deepEqual(avoidedIngredientsForRecipe([], 'SUN', meal), []);
+  assert.deepEqual(avoidedIngredientsForRecipe([warning, warning], 'SUN', meal), ['Peanut']);
+  const { recipeIds, ...legacy } = warning;
+  assert.deepEqual(avoidedIngredientsForRecipe([legacy], 'SUN', meal), ['Peanut']);
+  assert.deepEqual(avoidedIngredientsForRecipe([{ ...warning, recipeIds: [] }], 'SUN', meal), []);
+});
+
+test('draft warning data survives parsing and older proposals remain compatible', () => {
+  const warning = { code: 'AVOIDED_INGREDIENT', day: 'MON', recipeIds: ['dish'], recipes: ['Soup'], ingredients: ['Milk'], reason: null };
+  const draft = schema.proposalSchema.parse({ ...proposal(), problems: [warning] });
+  assert.deepEqual(draft.problems, [warning]);
+  assert.deepEqual(avoidedIngredientsForRecipe(draft.problems, 'MON', meal), ['Milk']);
+  assert.equal(schema.proposalSchema.parse(proposal()).problems, undefined);
+});
 function plan(week = currentWeek) {
   return { weekStart: week, currentWeekStart: currentWeek, today: '2026-11-22', minWeekStart: currentWeek, maxWeekStart: '2026-12-14', editable: true,
     days: schema.weekdays.map((day, index) => ({ day, date: addCalendarDays(week, index), editable: addCalendarDays(week, index) >= '2026-11-22',
