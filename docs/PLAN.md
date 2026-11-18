@@ -705,3 +705,9 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Cửa sổ "Chia sẻ món chay theo cách của bạn" không còn thẻ "Công thức — Biên tập công thức đầy đủ" (đang khóa với nhãn "Sắp có"); chỉ còn Video hướng dẫn và Blog. Xem công thức vẫn như cũ.
 - Bước kiểm tra UI: (1) Trang chủ, bấm "Chia sẻ cách nấu món chay của bạn": cửa sổ chỉ có hai lựa chọn Video hướng dẫn và Blog, không còn thẻ Công thức hay nhãn "Sắp có". (2) Bấm Video hướng dẫn: vào màn đăng video. (3) Bấm Blog: mở trình viết blog. (4) Mục Công thức ở trang chủ vẫn xem được công thức.
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Trợ lý viết blog: khung ảnh skeleton sáng khi đang tạo ảnh
+
+- Kết quả: Khi trợ lý đang tạo hoặc chỉnh ảnh, dưới dòng "Đang tạo ảnh…"/"Đang chỉnh ảnh…" có một khung xám đúng tỉ lệ ảnh sắp ra (vuông, 16:9…), biểu tượng ảnh ở giữa và một vệt sáng chạy chéo qua liên tục; ảnh xong thì khung được thay bằng ảnh thật ở cùng chỗ. Theme tối vệt sáng dịu hơn; bật "Giảm chuyển động" thì khung đứng yên. Hook dùng chung `hooks/use-reduce-motion.ts` (hiệu ứng tim cũng dùng). Chưa thử trên máy thật.
+- Bước kiểm tra UI: (1) Mở bài blog, mở Trợ lý, nhờ "tạo ảnh bìa 16:9 cho bài": hiện "Đang tạo ảnh…" và khung chữ nhật ngang có vệt sáng chạy qua. (2) Nhờ tạo ảnh vuông: khung vuông. (3) Ảnh xong: khung biến mất, ảnh hiện đúng chỗ, không nhảy bố cục nhiều. (4) Nhờ chỉnh ảnh vừa tạo: cũng có khung với "Đang chỉnh ảnh…". (5) Hết lượt tạo ảnh hoặc lỗi: khung biến mất, hiện thông báo như cũ. (6) Theme tối: vệt sáng nhẹ, không chói. (7) Bật Giảm chuyển động: khung đứng yên.
+- Người thực hiện: Claude.
