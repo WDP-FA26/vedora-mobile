@@ -699,3 +699,9 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả: Ô tròn cạnh ô tạo bài ở trang chủ trước chỉ hiện chữ cái đầu tên. Nay dùng `ProfileAvatar` với hồ sơ của mình (`useMyProfile`) nên hiện ảnh đại diện; chưa có ảnh thì vẫn là chữ cái đầu, khách chưa đăng nhập hiện "V". Chưa thử trên máy thật.
 - Bước kiểm tra UI: (1) Đăng nhập tài khoản có ảnh đại diện, mở trang chủ: ô tròn cạnh "Chia sẻ cách nấu món chay của bạn" hiện ảnh. (2) Tôi > Sửa hồ sơ, đổi ảnh, quay lại trang chủ: ảnh mới. (3) Tài khoản chưa có ảnh: hiện chữ cái đầu tên. (4) Đăng xuất: hiện "V". (5) Theme tối.
 - Người thực hiện: Claude.
+
+## 2026-11-18 — Bỏ lựa chọn "Công thức" (biên tập công thức) khi tạo bài trên mobile
+
+- Kết quả: Cửa sổ "Chia sẻ món chay theo cách của bạn" không còn thẻ "Công thức — Biên tập công thức đầy đủ" (đang khóa với nhãn "Sắp có"); chỉ còn Video hướng dẫn và Blog. Xem công thức vẫn như cũ.
+- Bước kiểm tra UI: (1) Trang chủ, bấm "Chia sẻ cách nấu món chay của bạn": cửa sổ chỉ có hai lựa chọn Video hướng dẫn và Blog, không còn thẻ Công thức hay nhãn "Sắp có". (2) Bấm Video hướng dẫn: vào màn đăng video. (3) Bấm Blog: mở trình viết blog. (4) Mục Công thức ở trang chủ vẫn xem được công thức.
+- Người thực hiện: Claude.
