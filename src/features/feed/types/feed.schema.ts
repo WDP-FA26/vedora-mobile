@@ -41,6 +41,7 @@ export const feedPostSchema = z.object({
     id: z.uuid(),
     username: z.string(),
     fullName: z.string(),
+    isProfessional: z.boolean().default(false),
     avatarUrl: z.string().nullable().optional(),
   }),
   media: z.array(mediaSchema),

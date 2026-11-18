@@ -1,3 +1,4 @@
+import { ProfessionalBadge } from '@/shared/components/professional-name';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
@@ -131,7 +132,7 @@ export function ProfileScreen() {
               <ProfileAvatar profile={profile} size={96} style={styles.avatar} zoomable />
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.foreground }]}>{profile.fullName}</Text>
-                {profile.isProfessional ? <SymbolView accessibilityLabel="Chuyên gia đã xác minh" name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={19} tintColor={BrandColors.verified} /> : null}
+                <ProfessionalBadge isProfessional={profile.isProfessional} size={19} />
               </View>
               <Text style={[styles.handle, { color: theme.mutedForeground }]}>@{profile.username}</Text>
               {profile.isProfessional ? <View style={[styles.badge, { backgroundColor: theme.secondary }]}><Text style={[styles.badgeText, { color: theme.secondaryForeground }]}>Chuyên gia đã xác minh</Text></View> : null}

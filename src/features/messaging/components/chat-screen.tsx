@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { router, useIsFocused } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -174,7 +175,7 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
             // The list is inverted, so flip the empty state back upright.
             <View style={[styles.emptyThread, styles.flipped]}>
               <ProfileAvatar profile={peer} size={64} />
-              <Text style={[styles.centerTitle, { color: theme.foreground }]}>{peer.fullName}</Text>
+              <ProfessionalName name={peer.fullName} isProfessional={peer.isProfessional} textStyle={[styles.centerTitle, { color: theme.foreground }]} badgeSize={18} />
               <Text style={[styles.centerText, { color: theme.mutedForeground }]}>
                 {canSend ? 'Hãy gửi lời chào đầu tiên.' : 'Chưa có tin nhắn nào.'}
               </Text>
@@ -236,7 +237,7 @@ export function ChatScreen({ conversationId, userId }: { conversationId?: string
   );
 }
 
-function ChatHeader({ peer }: { peer?: { id: string; fullName: string; username: string; avatarUrl: string | null } }) {
+function ChatHeader({ peer }: { peer?: { id: string; fullName: string; username: string; avatarUrl: string | null; isProfessional: boolean } }) {
   const theme = useTheme();
   return (
     <View style={[styles.header, { borderBottomColor: theme.border }]}>
@@ -255,7 +256,7 @@ function ChatHeader({ peer }: { peer?: { id: string; fullName: string; username:
           style={styles.peer}>
           <ProfileAvatar profile={peer} size={40} style={styles.headerAvatar} />
           <View style={styles.peerText}>
-            <Text numberOfLines={1} style={[styles.peerName, { color: theme.foreground }]}>{peer.fullName}</Text>
+            <ProfessionalName name={peer.fullName} isProfessional={peer.isProfessional} textStyle={[styles.peerName, { color: theme.foreground }]} />
             <Text numberOfLines={1} style={[styles.peerHandle, { color: theme.mutedForeground }]}>@{peer.username}</Text>
           </View>
         </Pressable>

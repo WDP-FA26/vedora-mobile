@@ -1,9 +1,10 @@
+import { ProfessionalBadge } from '@/shared/components/professional-name';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { PostCard } from '@/features/feed/components/post-card';
 import { MessageButton } from '@/features/messaging/components/message-button';
 import { useTheme } from '@/hooks/use-theme';
@@ -72,7 +73,7 @@ export function PublicProfileScreen() {
               </View>
               <View style={styles.nameRow}>
                 <Text style={[styles.name, { color: theme.foreground }]}>{data.fullName}</Text>
-                {data.isProfessional ? <SymbolView accessibilityLabel="Chuyên gia đã xác minh" name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={19} tintColor={BrandColors.verified} /> : null}
+                <ProfessionalBadge isProfessional={data.isProfessional} size={19} />
               </View>
               <Text style={[styles.handle, { color: theme.mutedForeground }]}>@{data.username}</Text>
               {data.bio ? <Text style={[styles.bio, { color: theme.foreground }]}>{data.bio}</Text> : null}

@@ -60,6 +60,7 @@ mock.module('expo-router', { namedExports: { router: { push: (target) => navigat
 mock.module('expo-image', { namedExports: { Image: 'Image' } });
 mock.module(local('constants/theme.ts'), { namedExports: { Fonts: {}, Radius: {}, Spacing: {} } });
 mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({}) } });
+mock.module(local('shared/components/professional-name.tsx'), { namedExports: { ProfessionalName: 'ProfessionalName' } });
 
 const { messageSchema } = await import('../src/features/messaging/types/messaging.schema.ts');
 const { sharePost } = await import('../src/features/messaging/services/messaging.service.ts');

@@ -9,6 +9,7 @@ const followedAuthorSchema = z.object({
   id: z.string(),
   username: z.string(),
   fullName: z.string(),
+  isProfessional: z.boolean().default(false),
   avatarUrl: z.string().nullable(),
 });
 

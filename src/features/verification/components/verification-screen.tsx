@@ -146,7 +146,7 @@ function VerificationContent() {
           <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.card }]}>
             <SymbolView name={{ ios: 'checkmark.seal.fill', android: 'verified', web: 'verified' }} size={38} tintColor={data.isProfessional ? BrandColors.verified : theme.mutedForeground} />
             <Text style={[styles.heading, { color: theme.foreground }]}>{verificationLabel(data)}</Text>
-            <Text style={[styles.body, { color: theme.mutedForeground }]}>{data.isProfessional ? 'Tích xanh xác minh được hiển thị cạnh tên bạn trên hồ sơ.' : request?.status === 'PENDING' ? 'Yêu cầu đã gửi thành công. Kết quả sẽ được cập nhật tại đây; bạn có thể kéo xuống để kiểm tra lại.' : 'Dành cho đầu bếp, chuyên gia dinh dưỡng và nhà sáng tạo công thức. Huy hiệu giúp mọi người nhận biết người làm nghề, không mở thêm tính năng.'}</Text>
+            <Text style={[styles.body, { color: theme.mutedForeground }]}>{data.isProfessional ? 'Tích xanh xác minh được hiển thị cạnh tên bạn trên hồ sơ, bài viết, bình luận và tin nhắn.' : request?.status === 'PENDING' ? 'Yêu cầu đã gửi thành công. Kết quả sẽ được cập nhật tại đây; bạn có thể kéo xuống để kiểm tra lại.' : 'Dành cho đầu bếp, chuyên gia dinh dưỡng và nhà sáng tạo công thức. Huy hiệu giúp mọi người nhận biết người làm nghề, không mở thêm tính năng.'}</Text>
             {request ? <>
               <Text style={[styles.caption, { color: theme.mutedForeground }]}>Đã gửi: {dateTime(request.createdAt)} · {request.proofCount} ảnh minh chứng</Text>
               <Text style={[styles.body, { color: theme.foreground }]}>{request.statement}</Text>

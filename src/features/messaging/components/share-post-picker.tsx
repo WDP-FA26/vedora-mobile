@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { router } from 'expo-router';
 import { useState, type RefObject } from 'react';
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -65,7 +66,7 @@ export function SharePostPicker({ postId, selfId, lockRef, attemptsRef, onSent }
           <View style={[styles.row, { borderBottomColor: theme.border }]}>
             <ProfileAvatar profile={item.peer} size={40} />
             <View style={styles.name}>
-              <Text numberOfLines={1} style={[styles.label, { color: theme.foreground }]}>{item.peer.fullName}</Text>
+              <ProfessionalName name={item.peer.fullName} isProfessional={item.peer.isProfessional} textStyle={[styles.label, { color: theme.foreground }]} />
               <Text numberOfLines={1} style={[styles.helper, { color: theme.mutedForeground }]}>{item.canSend ? `@${item.peer.username}` : 'Chưa có quyền gửi tin nhắn'}</Text>
             </View>
             <Pressable accessibilityRole="button" accessibilityLabel={`Gửi bài viết cho ${item.peer.fullName}`} accessibilityState={{ disabled: !!pending || !item.canSend, busy: pending === item.peer.id }}

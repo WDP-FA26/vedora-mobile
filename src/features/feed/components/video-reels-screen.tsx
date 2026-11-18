@@ -1,3 +1,4 @@
+import { ProfessionalName } from '@/shared/components/professional-name';
 import { useEvent, useEventListener } from 'expo';
 import { Image } from 'expo-image';
 import { router, useIsFocused } from 'expo-router';
@@ -200,7 +201,7 @@ function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Re
         <View pointerEvents="box-none" style={styles.info}>
           <Pressable accessibilityRole="button" accessibilityLabel={`Xem hồ sơ ${post.author.fullName}`} onPress={() => router.push({ pathname: '/profile/[id]', params: { id: post.author.id } })} style={styles.author}>
             <ProfileAvatar profile={{ fullName: post.author.fullName, avatarUrl: post.author.avatarUrl ?? null }} size={36} style={styles.avatar} />
-            <Text numberOfLines={1} style={styles.authorName}>{post.author.fullName}</Text>
+            <ProfessionalName name={post.author.fullName} isProfessional={post.author.isProfessional} textStyle={styles.authorName} />
           </Pressable>
           {body ? (
             <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Thu gọn mô tả' : 'Xem thêm mô tả'} onPress={() => setExpanded((value) => !value)}>

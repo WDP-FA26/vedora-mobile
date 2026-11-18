@@ -1,3 +1,4 @@
+import { ProfessionalBadge } from '@/shared/components/professional-name';
 import { SymbolView } from "expo-symbols";
 import type { ComponentProps } from "react";
 import { StyleSheet, Text, View, useColorScheme } from "react-native";
@@ -53,11 +54,7 @@ export function ShowcasePostCard({ post }: { post: ShowcasePost }) {
             <Text numberOfLines={1} style={[styles.authorName, { color: theme.foreground }]}>
               {post.author.name}
             </Text>
-            {post.author.verified ? (
-              <View accessible accessibilityLabel="Tài khoản đã xác minh" style={styles.verified}>
-                <Text style={styles.verifiedCheck}>✓</Text>
-              </View>
-            ) : null}
+            <ProfessionalBadge isProfessional={post.author.verified} size={15} />
           </View>
           <Text numberOfLines={1} style={[styles.meta, { color: theme.mutedForeground }]}>
             @{post.author.handle} · {formatDate(post.publishedAt)}
@@ -207,8 +204,6 @@ const styles = StyleSheet.create({
   content: { flex: 1, minWidth: 0 },
   authorLine: { flexDirection: "row", alignItems: "center", gap: 5 },
   authorName: { flexShrink: 1, fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 20 },
-  verified: { width: 15, height: 15, borderRadius: 8, backgroundColor: "#255d32", alignItems: "center", justifyContent: "center" },
-  verifiedCheck: { color: "#ffffff", fontSize: 10, lineHeight: 14, fontFamily: Fonts.sansBold },
   meta: { fontFamily: Fonts.sans, fontSize: 11, lineHeight: 16 },
   body: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21, marginTop: Spacing.two },
   media: { width: "100%", overflow: "hidden", alignItems: "center", justifyContent: "center" },

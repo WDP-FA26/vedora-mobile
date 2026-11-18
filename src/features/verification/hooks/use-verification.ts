@@ -4,7 +4,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
 
-import { profileKeys } from '@/features/profile/data/profile.keys';
 import { uploadImageToStorage } from '@/shared/api/upload-image';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -24,7 +23,10 @@ export function useMyVerification() {
   const professional = query.data?.isProfessional;
   useEffect(() => {
     if (professional === undefined) return;
-    void queryClient.invalidateQueries({ queryKey: profileKeys.all });
+    // Refresh every cached surface that embeds a public author after approval or revocation.
+    void queryClient.invalidateQueries({ predicate: (query) =>
+      ['profile', 'feed', 'post', 'following', 'messaging', 'notifications', 'post-search', 'bookmarks'].includes(String(query.queryKey[0])),
+    });
   }, [professional, queryClient]);
   return query;
 }

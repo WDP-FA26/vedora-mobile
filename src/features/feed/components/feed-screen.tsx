@@ -269,6 +269,7 @@ export function FeedScreen() {
       <ComposeDialog
         visible={composerOpen}
         authorName={displayName}
+        authorProfessional={me.data?.isProfessional}
         onClose={() => setComposerOpen(false)}
         onPickVideo={compose.pickVideo}
         onRemoveVideo={compose.removeVideo}
