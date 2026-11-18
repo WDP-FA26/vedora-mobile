@@ -21,6 +21,8 @@ export function notificationText(item: AppNotification): string {
   switch (item.type) {
     case "LIKE":
       return "đã tim bài viết của bạn";
+    case "COMMENT_REPLY":
+      return "đã trả lời bình luận của bạn";
     case "COMMENT":
       return "đã bình luận bài viết của bạn";
     case "REPOST":

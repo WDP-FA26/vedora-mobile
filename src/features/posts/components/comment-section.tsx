@@ -11,7 +11,8 @@ import { useTheme } from '@/hooks/use-theme';
 import { ChatComposer } from '@/shared/components/chat/chat-composer';
 
 import { COMMENT_REJECTED_MESSAGE, type CommentDraft } from '../hooks/use-comment-draft';
-import { useComments } from '../hooks/use-posts';
+import { useComment, useComments, useReplies } from '../hooks/use-posts';
+import { includeComment } from '../utils/comment-thread';
 import { MAX_COMMENT_LENGTH, type Comment } from '../types/posts.schema';
 
 /** "Vừa xong", "5 phút", "3 giờ", "2 ngày", then the date. */
@@ -30,23 +31,30 @@ function wasEdited(comment: Comment) {
   return new Date(comment.updatedAt).getTime() - new Date(comment.createdAt).getTime() > 1000;
 }
 
-function confirmDelete(onConfirm: () => void) {
+function confirmDelete(comment: Comment, onConfirm: () => void) {
+  const message = !comment.parentId && comment.replyCount > 0
+    ? 'Xóa bình luận và tất cả phản hồi bên dưới? Thao tác không thể hoàn tác.'
+    : 'Bình luận sẽ bị xóa vĩnh viễn.';
   if (Platform.OS === 'web') {
-    if (window.confirm('Xóa bình luận này?')) onConfirm();
+    if (window.confirm(message)) onConfirm();
     return;
   }
-  Alert.alert('Xóa bình luận?', 'Bình luận sẽ bị xóa vĩnh viễn.', [
+  Alert.alert('Xóa bình luận?', message, [
     { text: 'Hủy', style: 'cancel' },
     { text: 'Xóa', style: 'destructive', onPress: onConfirm },
   ]);
 }
 
 /** Only the comment author may edit; the comment author or the post author may delete (`DELETE /posts/:id/comments/:commentId`). */
-export function CommentList({ postId, postAuthorId, commentCount, draft }: { postId: string; postAuthorId: string; commentCount: number; draft: CommentDraft }) {
+export function CommentList({ postId, postAuthorId, commentCount, draft, targetId }: { postId: string; postAuthorId: string; commentCount: number; draft: CommentDraft; targetId?: string }) {
   const theme = useTheme();
   const me = useMyProfile(draft.token);
   const comments = useComments(postId);
-  const items: Comment[] = comments.data?.pages.flatMap((page) => page.items) ?? [];
+  const [expanded, setExpanded] = useState<string[]>([]);
+  const target = useComment(postId, targetId);
+  const rootId = target.data ? target.data.parentId ?? target.data.id : undefined;
+  const root = useComment(postId, target.data?.parentId ?? undefined);
+  const items = includeComment(comments.data?.pages.flatMap((page) => page.items) ?? [], target.data?.parentId ? root.data : target.data);
   const { remove } = draft.actions;
   const empty = !comments.isPending && !comments.isError && items.length === 0;
 
@@ -59,11 +67,17 @@ export function CommentList({ postId, postAuthorId, commentCount, draft }: { pos
         </View>
       </View>
 
+      {targetId && (target.isError || root.isError) ? (
+        <View style={styles.notice}>
+          <Text style={[styles.noticeText, { color: theme.mutedForeground }]}>Chưa tìm thấy bình luận được nhắc đến. Bình luận có thể đã bị xóa hoặc kết nối bị gián đoạn.</Text>
+          <Pressable accessibilityRole="button" onPress={() => { void target.refetch(); if (target.data?.parentId) void root.refetch(); }}><Text style={[styles.action, { color: theme.primary }]}>Thử lại</Text></Pressable>
+        </View>
+      ) : null}
       {comments.isPending ? <ActivityIndicator color={theme.primary} style={styles.loading} /> : null}
       {comments.isError ? (
         <View style={[styles.notice, { backgroundColor: theme.muted }]}>
           <Text style={[styles.noticeText, { color: theme.destructive }]}>Không tải được bình luận.</Text>
-          <Pressable accessibilityRole="button" onPress={() => void comments.refetch()} hitSlop={8}>
+          <Pressable accessibilityRole="button" onPress={() => void comments.restart()} hitSlop={8}>
             <Text style={[styles.noticeAction, { color: theme.primary }]}>Thử lại</Text>
           </Pressable>
         </View>
@@ -79,55 +93,19 @@ export function CommentList({ postId, postAuthorId, commentCount, draft }: { pos
       ) : null}
 
       <View style={styles.list}>
-        {items.map((comment) => {
-          const mine = !!me.data && me.data.id === comment.author.id;
-          const isPostAuthor = comment.author.id === postAuthorId;
-          const canDelete = mine || (!!me.data && me.data.id === postAuthorId);
-          const edited = wasEdited(comment);
-          return (
-            <View key={comment.id} style={styles.comment}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`Xem hồ sơ ${comment.author.fullName}`}
-                onPress={() => router.push({ pathname: '/profile/[id]', params: { id: comment.author.id } })}>
-                <ProfileAvatar profile={{ fullName: comment.author.fullName, avatarUrl: comment.author.avatarUrl ?? null }} size={38} style={styles.avatar} />
-              </Pressable>
-              <View style={styles.commentBody}>
-                <View style={[styles.bubble, { backgroundColor: theme.muted }]}>
-                  <View style={styles.nameRow}>
-                    <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/profile/[id]', params: { id: comment.author.id } })} style={styles.nameButton}>
-                      <Text numberOfLines={1} style={[styles.author, { color: theme.foreground }]}>{comment.author.fullName}</Text>
-                    </Pressable>
-                    {isPostAuthor ? (
-                      <View style={[styles.badge, { backgroundColor: theme.secondary }]}>
-                        <Text style={[styles.badgeText, { color: theme.secondaryForeground }]}>Tác giả</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <Text selectable style={[styles.body, { color: theme.foreground }]}>{comment.body}</Text>
-                </View>
-                <View style={styles.metaRow}>
-                  <Text style={[styles.meta, { color: theme.mutedForeground }]}>{relativeTime(comment.createdAt)}{edited ? ' · Đã sửa' : ''}</Text>
-                  {mine ? (
-                    <Pressable accessibilityRole="button" accessibilityLabel="Sửa bình luận" hitSlop={8} onPress={() => draft.startEdit(comment)}>
-                      <Text style={[styles.action, { color: theme.mutedForeground }]}>Sửa</Text>
-                    </Pressable>
-                  ) : null}
-                  {canDelete ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      accessibilityLabel={mine ? 'Xóa bình luận' : `Xóa bình luận của ${comment.author.fullName}`}
-                      disabled={remove.isPending}
-                      hitSlop={8}
-                      onPress={() => confirmDelete(() => remove.mutate(comment.id))}>
-                      <Text style={[styles.action, { color: theme.destructive, opacity: remove.isPending ? 0.5 : 1 }]}>Xóa</Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-          );
-        })}
+        {items.map((comment) => (
+          <CommentThread key={comment.id} comment={comment} postId={postId} postAuthorId={postAuthorId} meId={me.data?.id} draft={draft}
+            expanded={expanded.includes(comment.id) || rootId === comment.id}
+            onToggle={() => {
+              if (rootId === comment.id) router.setParams({ comment: undefined });
+              setExpanded((ids) => ids.includes(comment.id) || rootId === comment.id ? ids.filter((id) => id !== comment.id) : [...ids, comment.id]);
+            }}
+            onReply={(target) => {
+              setExpanded((ids) => ids.includes(comment.id) ? ids : [...ids, comment.id]);
+              draft.startReply(target);
+            }}
+            highlightedId={targetId} pinnedReply={target.data?.parentId === comment.id ? target.data : undefined} />
+        ))}
       </View>
       {remove.isError ? <Text accessibilityRole="alert" style={[styles.errorText, { color: theme.destructive }]}>Không xóa được bình luận. Vui lòng thử lại.</Text> : null}
 
@@ -139,6 +117,103 @@ export function CommentList({ postId, postAuthorId, commentCount, draft }: { pos
           style={({ pressed }) => [styles.more, { backgroundColor: theme.secondary, opacity: comments.isFetchingNextPage ? 0.6 : pressed ? 0.8 : 1 }]}>
           <Text style={[styles.moreText, { color: theme.secondaryForeground }]}>{comments.isFetchingNextPage ? 'Đang tải…' : 'Xem thêm bình luận'}</Text>
         </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function CommentRow({ comment, postAuthorId, meId, draft, onReply, highlighted }: {
+  comment: Comment; postAuthorId: string; meId?: string; draft: CommentDraft;
+  onReply: (comment: Comment) => void; highlighted?: boolean;
+}) {
+  const theme = useTheme();
+  const mine = meId === comment.author.id;
+  const isPostAuthor = comment.author.id === postAuthorId;
+  const canDelete = mine || meId === postAuthorId;
+  const edited = wasEdited(comment);
+  const { remove } = draft.actions;
+  return (
+    <View style={[styles.comment, highlighted && { borderLeftWidth: 3, borderLeftColor: theme.primary, paddingLeft: Spacing.two }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`Xem hồ sơ ${comment.author.fullName}`}
+        onPress={() => router.push({ pathname: '/profile/[id]', params: { id: comment.author.id } })}>
+        <ProfileAvatar profile={{ fullName: comment.author.fullName, avatarUrl: comment.author.avatarUrl ?? null }} size={38} style={styles.avatar} />
+      </Pressable>
+      <View style={styles.commentBody}>
+        <View style={[styles.bubble, { backgroundColor: theme.muted }]}>
+          <View style={styles.nameRow}>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/profile/[id]', params: { id: comment.author.id } })} style={styles.nameButton}>
+              <Text numberOfLines={1} style={[styles.author, { color: theme.foreground }]}>{comment.author.fullName}</Text>
+            </Pressable>
+            {isPostAuthor ? (
+              <View style={[styles.badge, { backgroundColor: theme.secondary }]}>
+                <Text style={[styles.badgeText, { color: theme.secondaryForeground }]}>Tác giả</Text>
+              </View>
+            ) : null}
+          </View>
+          <Text selectable style={[styles.body, { color: theme.foreground }]}>
+            {comment.replyToAuthor ? <Text style={{ fontFamily: Fonts.sansBold, color: theme.primary }}>@{comment.replyToAuthor.fullName} </Text> : null}
+            {comment.body}
+          </Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={[styles.meta, { color: theme.mutedForeground }]}>{relativeTime(comment.createdAt)}{edited ? ' · Đã sửa' : ''}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Trả lời ${comment.author.fullName}`} disabled={draft.pending} hitSlop={8} onPress={() => onReply(comment)}>
+            <Text style={[styles.action, { color: theme.primary }]}>Trả lời</Text>
+          </Pressable>
+          {mine ? (
+            <Pressable accessibilityRole="button" accessibilityLabel="Sửa bình luận" hitSlop={8} disabled={draft.pending} onPress={() => draft.startEdit(comment)}>
+              <Text style={[styles.action, { color: theme.mutedForeground }]}>Sửa</Text>
+            </Pressable>
+          ) : null}
+          {canDelete ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={mine ? 'Xóa bình luận' : `Xóa bình luận của ${comment.author.fullName}`}
+              disabled={remove.isPending || draft.pending}
+              hitSlop={8}
+              onPress={() => confirmDelete(comment, () => remove.mutate(comment.id, { onSuccess: () => {
+                if (draft.editingId === comment.id || draft.editingRootId === comment.id || draft.replyingTo?.id === comment.id || draft.replyingTo?.parentId === comment.id) draft.cancelEdit();
+              } }))}>
+              <Text style={[styles.action, { color: theme.destructive, opacity: remove.isPending ? 0.5 : 1 }]}>Xóa</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function CommentThread({ comment, postId, postAuthorId, meId, draft, expanded, onToggle, onReply, highlightedId, pinnedReply }: {
+  comment: Comment; postId: string; postAuthorId: string; meId?: string; draft: CommentDraft;
+  expanded: boolean; onToggle: () => void; onReply: (comment: Comment) => void;
+  highlightedId?: string; pinnedReply?: Comment;
+}) {
+  const theme = useTheme();
+  const replies = useReplies(postId, comment.id, expanded);
+  const items = includeComment(replies.data?.pages.flatMap((page) => page.items) ?? [], pinnedReply);
+  return (
+    <View style={{ gap: Spacing.two }}>
+      <CommentRow comment={comment} postAuthorId={postAuthorId} meId={meId} draft={draft} onReply={onReply} highlighted={highlightedId === comment.id} />
+      {comment.replyCount > 0 || expanded ? (
+        <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={onToggle} style={{ marginLeft: 49, minHeight: 36, justifyContent: 'center' }}>
+          <Text style={[styles.action, { color: theme.primary }]}>{expanded ? 'Ẩn phản hồi' : `Xem ${comment.replyCount} phản hồi`}</Text>
+        </Pressable>
+      ) : null}
+      {expanded ? (
+        <View style={{ marginLeft: Spacing.four, paddingLeft: Spacing.two, borderLeftWidth: 1, borderLeftColor: theme.border, gap: Spacing.three }}>
+          {replies.isPending ? <ActivityIndicator color={theme.primary} /> : null}
+          {items.map((reply) => <CommentRow key={reply.id} comment={reply} postAuthorId={postAuthorId} meId={meId} draft={draft} onReply={onReply} highlighted={highlightedId === reply.id} />)}
+          {replies.isError ? (
+            <Pressable accessibilityRole="button" onPress={() => void replies.restart()}><Text style={[styles.noticeText, { color: theme.destructive }]}>Không tải được phản hồi. Nhấn để thử lại.</Text></Pressable>
+          ) : null}
+          {replies.hasNextPage ? (
+            <Pressable accessibilityRole="button" disabled={replies.isFetchingNextPage} onPress={() => void replies.fetchNextPage()} style={styles.more}>
+              <Text style={[styles.action, { color: theme.primary }]}>{replies.isFetchingNextPage ? 'Đang tải…' : 'Xem thêm phản hồi'}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );
@@ -173,11 +248,11 @@ export function CommentComposer({ draft }: { draft: CommentDraft }) {
 
   return (
     <View style={inset}>
-      {draft.editingId ? (
+      {draft.editingId || draft.replyingTo ? (
         <View style={[styles.editing, { backgroundColor: theme.secondary }]}>
           <SymbolView name={{ ios: 'pencil', android: 'edit', web: 'edit' }} size={14} tintColor={theme.primary} />
-          <Text style={[styles.editingText, { color: theme.secondaryForeground }]}>Đang sửa bình luận</Text>
-          <Pressable accessibilityRole="button" onPress={draft.cancelEdit} hitSlop={8}>
+          <Text style={[styles.editingText, { color: theme.secondaryForeground }]}>{draft.editingId ? 'Đang sửa bình luận' : `Đang trả lời ${draft.replyingTo?.author.fullName}`}</Text>
+          <Pressable accessibilityRole="button" disabled={draft.pending} onPress={draft.cancelEdit} hitSlop={8}>
             <Text style={[styles.action, { color: theme.primary }]}>Hủy</Text>
           </Pressable>
         </View>
@@ -196,9 +271,11 @@ export function CommentComposer({ draft }: { draft: CommentDraft }) {
         value={draft.draft}
         onChangeText={draft.changeDraft}
         onSubmit={() => void draft.submit()}
-        placeholder="Viết bình luận…"
+        placeholder={draft.replyingTo ? 'Viết phản hồi…' : 'Viết bình luận…'}
         inputLabel="Viết bình luận"
         sendLabel={draft.editingId ? 'Lưu bình luận' : 'Gửi bình luận'}
+        inputRef={draft.inputRef}
+        inputDisabled={draft.pending}
         sendDisabled={draft.pending}
         maxLength={MAX_COMMENT_LENGTH}
       />
@@ -231,7 +308,7 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 99, paddingHorizontal: Spacing.two, paddingVertical: 1 },
   badgeText: { fontFamily: Fonts.sansBold, fontSize: 10, lineHeight: 15 },
   body: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
-  metaRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.two },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.two },
   meta: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 18 },
   action: { fontFamily: Fonts.sansBold, fontSize: 12, lineHeight: 18 },
   errorText: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
