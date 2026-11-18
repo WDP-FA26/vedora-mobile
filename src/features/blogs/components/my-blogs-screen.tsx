@@ -11,6 +11,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { useMyBlogs } from '../hooks/use-my-blogs';
 import { plainText } from '../utils/markdown';
 
+/** `embedded` renders a plain list inside the profile, whose pull-to-refresh also reloads these blogs. */
 export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
@@ -55,9 +56,6 @@ export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
           <Text style={[styles.buttonText, { color: theme.primary }]}>Đăng nhập</Text>
         </Pressable>
       </View> : embedded ? <View style={styles.list}>
-        <Pressable accessibilityRole="button" disabled={blogs.isFetching} onPress={() => void blogs.refetch()} style={styles.back}>
-          <Text style={[styles.buttonText, { color: theme.primary }]}>{blogs.isRefetching ? 'Đang tải…' : 'Tải lại danh sách'}</Text>
-        </Pressable>
         {items.length ? items.map(renderBlog) : empty}
         {blogs.hasNextPage ? <Pressable accessibilityRole="button" disabled={blogs.isFetching} onPress={() => void blogs.fetchNextPage()} style={styles.back}>
           <Text style={[styles.buttonText, { color: blogs.isFetchNextPageError ? theme.destructive : theme.primary }]}>{blogs.isFetchingNextPage ? 'Đang tải…' : blogs.isFetchNextPageError ? 'Tải thêm thất bại. Thử lại' : 'Xem thêm blog'}</Text>
