@@ -13,6 +13,7 @@ import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
 import { VerificationEntry } from '@/features/verification/components/verification-entry';
 import { blogsKeys } from '@/features/blogs/data/blogs.keys';
 import { PostCard } from '@/features/feed/components/post-card';
+import { useScrollPostViews } from '@/features/feed/hooks/use-post-views';
 import { useDietaryRestrictions } from '@/features/meal-plan/hooks/use-meal-plan';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
@@ -62,6 +63,7 @@ export function ProfileScreen() {
   const [contentTab, setContentTab] = useState<'posts' | 'blogs'>('posts');
   const posts = postsQuery.data?.items ?? [];
   const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
+  const views = useScrollPostViews(shownPosts, contentTab === 'posts');
   const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
   const liked = dietary.data?.liked ?? [];
   const queryClient = useQueryClient();
@@ -111,6 +113,9 @@ export function ProfileScreen() {
       {signOut.isError ? <Text accessibilityRole="alert" style={[styles.helper, styles.signOutError, { color: theme.destructive }]}>Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.</Text> : null}
 
       <ScrollView
+        onLayout={views.onLayout}
+        onScroll={views.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         refreshControl={token ? <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={theme.primary} colors={[theme.primary]} /> : undefined}>
@@ -230,7 +235,7 @@ export function ProfileScreen() {
               <Text style={[styles.helper, styles.centerText, { color: theme.mutedForeground }]}>Các bài video ăn uống của bạn sẽ hiện ở đây.</Text>
             </View>
           ) : null}
-          {shownPosts.map((post) => <PostCard key={post.id} post={post} visible />)}
+          {shownPosts.map((post) => <PostCard key={post.id} post={post} visible onLayout={views.onPostLayout(post)} />)}
           </>}
         </> : null}
       </ScrollView>

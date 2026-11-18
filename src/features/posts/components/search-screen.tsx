@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { PostCard } from '@/features/feed/components/post-card';
+import { feedPostOf, usePostViewability } from '@/features/feed/hooks/use-post-views';
 import { RecipeCard } from '@/features/recipes/components/recipe-card';
 import { useRecipes } from '@/features/recipes/hooks/use-recipes';
 import { MAX_RECIPE_QUERY_LENGTH } from '@/features/recipes/types/recipe.schema';
@@ -88,9 +89,11 @@ export function SearchScreen() {
 function PostResults({ q }: { q: string }) {
   const theme = useTheme();
   const search = usePostSearch(q);
+  const views = usePostViewability(feedPostOf, !!q, q);
   const posts = search.data?.pages.flatMap((page) => page.items).filter((post) => post.status === 'PUBLISHED') ?? [];
   return (
     <FlatList
+      {...views}
       data={posts}
       keyExtractor={(post) => post.id}
       keyboardShouldPersistTaps="handled"
