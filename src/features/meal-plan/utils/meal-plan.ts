@@ -16,6 +16,13 @@ export const sectionLabels: Record<MealSection, string> = {
   BREAKFAST: 'Sáng', LUNCH: 'Trưa', DINNER: 'Tối', OTHER: 'Khác',
 };
 
+/** Match server warnings by ID; titles support older responses without recipeIds. */
+export function avoidedIngredientsForRecipe(problems: MealPlan['problems'], day: Weekday, recipe: { id: string; title: string }) {
+  return [...new Set(problems.filter((problem) => problem.code === 'AVOIDED_INGREDIENT' && problem.day === day &&
+    (problem.recipeIds ? problem.recipeIds.includes(recipe.id) : problem.recipes.includes(recipe.title)))
+    .flatMap((problem) => problem.ingredients))];
+}
+
 export function proposalHasChanges(proposal: MealPlanProposal) {
   return proposal.days.some(({ sections }) => sections.some(({ recipes, previous }) =>
     !sameIds(recipes.map(({ id }) => id), previous.map(({ id }) => id))));
