@@ -4,6 +4,7 @@ import {
   contactSchema,
   conversationPageSchema,
   conversationSchema,
+  deleteRequestResultSchema,
   messagePageSchema,
   readResultSchema,
   sendResultSchema,
@@ -53,6 +54,20 @@ export function sendMessage({ conversationId, userId, clientMessageId, body }: {
 }) {
   const url = conversationId ? `/messaging/conversations/${conversationId}/messages` : `/messaging/users/${userId}/messages`;
   return requestJson(sendResultSchema, { method: 'POST', url, data: { clientMessageId, body } });
+}
+
+/** Receiver accepts a message request: both sides move to `friends` and can reply, without a follow. */
+export function acceptMessageRequest(id: string) {
+  return requestJson(conversationSchema, { method: 'POST', url: `/messaging/conversations/${id}/accept` });
+}
+
+/** Hides the request and its history on the receiver's side only, up to the newest message they have seen. */
+export function deleteMessageRequest({ id, throughMessageId }: { id: string; throughMessageId: string }) {
+  return requestJson(deleteRequestResultSchema, {
+    method: 'DELETE',
+    url: `/messaging/conversations/${id}/request`,
+    data: { throughMessageId },
+  });
 }
 
 export function markConversationRead(id: string, messageId: string) {

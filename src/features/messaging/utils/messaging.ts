@@ -29,13 +29,16 @@ export function formatMessageTime(value: string, now = new Date()) {
   return date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
 }
 
-export function messagingErrorText(error: unknown): string {
+/** `fallback` replaces the send-specific message for other actions (accepting or deleting a request). */
+export function messagingErrorText(error: unknown, fallback = 'Chưa gửi được tin nhắn. Nội dung vẫn còn để bạn thử lại.'): string {
   const status = typeof error === 'object' && error !== null && 'status' in error ? Number((error as { status: unknown }).status) : 0;
   const code = typeof error === 'object' && error !== null && 'code' in error ? String((error as { code: unknown }).code) : '';
-  if (code === 'MESSAGE_FOLLOW_REQUIRED') return 'Bạn cần theo dõi người này trước khi nhắn tin.';
+  if (code === 'MESSAGE_FOLLOW_REQUIRED') return 'Bạn cần theo dõi người này, hoặc chấp nhận lời mời của họ, trước khi nhắn tin.';
+  if (code === 'MESSAGE_REQUEST_RECEIVER_REQUIRED') return 'Chỉ người nhận mới chấp nhận hoặc xóa được lời mời này.';
+  if (code === 'MESSAGE_REQUEST_NOT_PENDING') return 'Lời mời này đã được xử lý. Trạng thái đang được tải lại.';
   if (code === 'MESSAGE_ID_CONFLICT') return 'Tin nhắn này đã được gửi với nội dung khác. Hãy nhập lại rồi gửi.';
   if (status === 401) return 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.';
   if (status === 404) return 'Không tìm thấy người nhận hoặc cuộc trò chuyện.';
   if (status === 409) return 'Chưa gửi được do trùng lặp thao tác. Nội dung vẫn còn, hãy thử lại.';
-  return 'Chưa gửi được tin nhắn. Nội dung vẫn còn để bạn thử lại.';
+  return fallback;
 }

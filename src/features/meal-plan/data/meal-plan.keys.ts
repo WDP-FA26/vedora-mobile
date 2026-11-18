@@ -3,4 +3,5 @@ export const mealPlanKeys = {
   dietary: ['dietary', 'me'] as const,
   // Own root so invalidating the plan ('meal-plan') never refetches the chat.
   plannerThread: ['meal-plan-chat', 'latest'] as const,
+  plannerThreads: ['meal-plan-chat', 'list'] as const,
 };

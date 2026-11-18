@@ -169,6 +169,9 @@ export function plainText(markdown: string): string {
     .replace(/(^|[\s(])[*_]+(?=\S)/g, '$1')
     .replace(/(\S)[*_]+(?=[\s).,;:!?]|$)/g, '$1')
     .replace(/`+/g, '')
+    // A `*` bullet left mid-line when the source's line breaks were already collapsed (chat previews);
+    // `+` and `-` stay because "đậu + gạo" and "A - B" are ordinary text.
+    .replace(/(^|\s)\*(?=\s|$)/g, '$1')
     .replace(/\s+/g, ' ')
     .trim();
 }

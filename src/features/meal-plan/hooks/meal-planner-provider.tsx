@@ -7,7 +7,7 @@ import { ApiError } from '@/shared/api/api-error';
 import { aiQuotaMessage } from '@/shared/api/ai-quota';
 import { useSessionStore } from '@/shared/stores/session-store';
 
-import { askMealPlanner, getMealPlan, savePlannerStatuses } from '../services/meal-plan.service';
+import { askMealPlanner, getMealPlan, getPlannerThread, savePlannerStatuses } from '../services/meal-plan.service';
 import { proposalSchema, type MealPlanProposal, type PlannerThread, type Weekday, type MealSection } from '../types/meal-plan.schema';
 import { changedDayInputs, dayLabels, displayDays, sectionLabels } from '../utils/meal-plan';
 import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan, useSaveMealDays } from './use-meal-plan';
@@ -92,16 +92,30 @@ function useMealPlannerState() {
   const activeDay = days.find(({ day }) => day === selectedDay) ?? days[0];
   const latestProposalId = turns.flatMap((turn) => turn.proposal ? [turn.proposal.id] : []).at(-1) ?? null;
 
+  /** Shows a saved conversation as the current chat. */
+  function showThread(thread: PlannerThread) {
+    setThreadId(thread.id);
+    setTurns(restoreTurns(thread.messages));
+    // A staged draft lived only in memory, so its proposal is offered again.
+    setStatuses(Object.fromEntries(Object.entries(thread.proposalStatuses).filter(([, status]) => status !== 'staged')));
+    setSuggestion(null);
+    setChatError('');
+  }
+
   // Reopen the last saved conversation once, unless the user has already started chatting.
   if (!restored && latestThread.data !== undefined) {
     setRestored(true);
-    const thread = latestThread.data;
-    if (thread && turns.length === 0) {
-      setThreadId(thread.id);
-      setTurns(restoreTurns(thread.messages));
-      // A staged draft lived only in memory, so its proposal is offered again.
-      setStatuses(Object.fromEntries(Object.entries(thread.proposalStatuses).filter(([, status]) => status !== 'staged')));
-    }
+    if (latestThread.data && turns.length === 0) showThread(latestThread.data);
+  }
+
+  /** Loads a conversation picked from the history sheet; throws so the sheet can say it failed. */
+  async function openThread(id: string) {
+    if (sending.current) return;
+    if (id === threadId) return;
+    const thread = await getPlannerThread(id);
+    setRestored(true);
+    setFormOpen(false);
+    showThread(thread);
   }
 
   /** Sets proposal statuses here and in the saved thread. */
@@ -224,7 +238,7 @@ function useMealPlannerState() {
   return {
     token, plan, dietary, save, turns, composer, setComposer, busy, chatError, setChatError, saveError, suggestion, draft, statuses,
     selectedDay, setSelectedDay, formOpen, setFormOpen, formKey, preset, days, activeDay, latestProposalId,
-    startForm, requestReplacement, sendMessage, previewProposal, saveDraft, discardDraft, startNewChat,
+    threadId, startForm, requestReplacement, sendMessage, previewProposal, saveDraft, discardDraft, startNewChat, openThread,
   };
 }
 

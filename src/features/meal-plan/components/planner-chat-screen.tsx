@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,6 +13,7 @@ import { ChatComposer } from '@/shared/components/chat/chat-composer';
 
 import { useMealPlanner } from '../hooks/meal-planner-provider';
 import { MealRequestForm } from './meal-request-form';
+import { PlannerHistorySheet } from './planner-history-sheet';
 
 const QUICK_STARTS = [['Lên thực đơn 7 ngày', 'week'], ['Mỗi bữa nấu trong 30 phút', 'quick'], ['Tận dụng nguyên liệu đang có', 'pantry']] as const;
 const WELCOME =
@@ -24,6 +25,7 @@ export function PlannerChatScreen() {
   const planner = useMealPlanner();
   const { turns, composer, busy, chatError, statuses, latestProposalId, formOpen } = planner;
   const scroll = useRef<ScrollViewInstance>(null);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const avatar = <SproutPet size={26} accessible={false} />;
 
   return (
@@ -32,19 +34,32 @@ export function PlannerChatScreen() {
         avatar={<SproutPet size={38} accessible={false} />}
         title="Trợ lý Vedora"
         subtitle="Hỏi về dinh dưỡng thực vật và lên thực đơn"
-        action={turns.length > 0 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Cuộc trò chuyện mới"
-            accessibilityHint="Cuộc trò chuyện hiện tại vẫn được lưu"
-            disabled={busy}
-            onPress={planner.startNewChat}
-            hitSlop={8}
-            style={({ pressed }) => [styles.newChat, { backgroundColor: theme.muted, opacity: busy ? 0.4 : pressed ? 0.7 : 1 }]}>
-            <SymbolView name={{ ios: 'square.and.pencil', android: 'edit_square', web: 'edit_square' }} size={18} tintColor={theme.foreground} />
-          </Pressable>
-        ) : undefined}
+        action={
+          <View style={styles.headerActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Lịch sử trò chuyện"
+              onPress={() => setHistoryOpen(true)}
+              hitSlop={8}
+              style={({ pressed }) => [styles.newChat, { backgroundColor: theme.muted, opacity: pressed ? 0.7 : 1 }]}>
+              <SymbolView name={{ ios: 'clock.arrow.circlepath', android: 'history', web: 'history' }} size={18} tintColor={theme.foreground} />
+            </Pressable>
+            {turns.length > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Cuộc trò chuyện mới"
+                accessibilityHint="Cuộc trò chuyện hiện tại vẫn được lưu"
+                disabled={busy}
+                onPress={planner.startNewChat}
+                hitSlop={8}
+                style={({ pressed }) => [styles.newChat, { backgroundColor: theme.muted, opacity: busy ? 0.4 : pressed ? 0.7 : 1 }]}>
+                <SymbolView name={{ ios: 'square.and.pencil', android: 'edit_square', web: 'edit_square' }} size={18} tintColor={theme.foreground} />
+              </Pressable>
+            ) : null}
+          </View>
+        }
       />
+      <PlannerHistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} />
       {planner.suggestion ? (
         <Pressable
           accessibilityRole="button"
@@ -166,6 +181,7 @@ function QuickChip({ label, onPress }: { label: string; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  headerActions: { flexDirection: 'row', gap: Spacing.two },
   newChat: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   banner: {
     minHeight: 44,

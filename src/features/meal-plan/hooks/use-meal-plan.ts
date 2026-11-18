@@ -1,8 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { mealPlanKeys } from '../data/meal-plan.keys';
-import { getDietaryRestrictions, getLatestPlannerThread, getMealPlan, saveMealDays } from '../services/meal-plan.service';
+import { deletePlannerThread, getDietaryRestrictions, getLatestPlannerThread, getMealPlan, getPlannerThreads, saveMealDays } from '../services/meal-plan.service';
 import type { MealDayInput } from '../types/meal-plan.schema';
 
 export function useMealPlan(session: string | null) {
@@ -28,6 +28,26 @@ export function useLatestPlannerThread(session: string | null) {
     queryFn: ({ signal }) => getLatestPlannerThread(signal),
     enabled: !!session,
     staleTime: Infinity,
+  });
+}
+
+/** Saved conversations for the history sheet; loads (and refreshes) only while the sheet is open. */
+export function usePlannerThreads(session: string | null, open: boolean) {
+  return useInfiniteQuery({
+    queryKey: mealPlanKeys.plannerThreads,
+    queryFn: ({ pageParam, signal }) => getPlannerThreads({ page: pageParam, signal }),
+    initialPageParam: 1,
+    getNextPageParam: (last) => (last.meta.hasNextPage ? last.meta.page + 1 : undefined),
+    enabled: !!session && open,
+    staleTime: 0,
+  });
+}
+
+export function useDeletePlannerThread() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deletePlannerThread,
+    onSettled: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.plannerThreads }),
   });
 }
 
