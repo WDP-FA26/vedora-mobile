@@ -24,7 +24,7 @@ export function RecipeDetailScreen() {
   return (
     <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={() => (router.canGoBack() ? router.back() : router.replace('/recipes'))} hitSlop={10} style={styles.back}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))} hitSlop={10} style={styles.back}>
           <SymbolView name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }} size={22} tintColor={theme.foreground} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: theme.foreground }]}>Công thức</Text>

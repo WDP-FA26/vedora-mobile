@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError } from '@/shared/api/api-error';
+import { aiQuotaMessage, isAiQuotaError } from '@/shared/api/ai-quota';
+import { billingKeys } from '@/features/billing/data/billing.keys';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { blogsKeys } from '../data/blogs.keys';
@@ -26,8 +28,9 @@ export type EditorContext = {
 export type EditorProposal = { callId: string; tool: EditorToolName; input: unknown };
 
 export function assistantErrorText(error: unknown): string {
+  const quotaText = aiQuotaMessage(error);
+  if (quotaText) return quotaText;
   if (error instanceof ApiError) {
-    if (error.status === 429 && error.code === 'AI_QUOTA_EXCEEDED') return 'Bạn đã dùng hết lượt hôm nay. Lượt mới có từ 0 giờ ngày mai.';
     if (error.status === 429) return 'Bạn gửi hơi nhanh. Hãy thử lại sau ít phút.';
     if (error.status === 503) return 'Trợ lý đang tạm nghỉ. Hãy thử lại sau.';
     if (error.status === 401) return 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.';
@@ -65,6 +68,7 @@ export function useBlogAssistant({ blogId, getEditor }: { blogId: string | null;
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [quotaExceeded, setQuotaExceeded] = useState(false);
   const controller = useRef<AbortController | null>(null);
   const selectionAtSend = useRef<{ start: number; end: number; text: string } | null>(null);
   const sendBlogId = useRef(!!blogId);
@@ -88,6 +92,7 @@ export function useBlogAssistant({ blogId, getEditor }: { blogId: string | null;
     controller.current = current;
     setBusy(true);
     setError('');
+    setQuotaExceeded(false);
     const assistantId = createClientId();
     const editor = getEditorRef.current();
     const selection = selectionAtSend.current;
@@ -118,11 +123,13 @@ export function useBlogAssistant({ blogId, getEditor }: { blogId: string | null;
       if (controller.current !== current) return;
       commit(base);
       setError(assistantErrorText(caught));
+      setQuotaExceeded(isAiQuotaError(caught));
     } finally {
       if (controller.current === current) {
         controller.current = null;
         setBusy(false);
         void queryClient.invalidateQueries({ queryKey: blogsKeys.aiQuota });
+        void queryClient.invalidateQueries({ queryKey: billingKeys.overview });
       }
     }
   }, [blogId, commit, queryClient]);
@@ -163,6 +170,7 @@ export function useBlogAssistant({ blogId, getEditor }: { blogId: string | null;
     commit([]);
     setBusy(false);
     setError('');
+    setQuotaExceeded(false);
   }, [blogId, commit]);
 
   const last = messages.at(-1);
@@ -170,6 +178,7 @@ export function useBlogAssistant({ blogId, getEditor }: { blogId: string | null;
     messages,
     busy,
     error,
+    quotaExceeded,
     quota: quota.data,
     proposals: proposalsOf(last),
     /** The range that was selected when the last message was sent, for `replaceSelection`. */

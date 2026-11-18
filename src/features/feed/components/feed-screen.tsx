@@ -20,14 +20,15 @@ import { ApiError } from "@/shared/api/api-error";
 import { useSessionStore } from "@/shared/stores/session-store";
 
 import { FollowingScreen } from "@/features/following/components/following-screen";
-import { MessageBell } from "@/features/messaging/components/message-bell";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
+import { RecipesList } from "@/features/recipes/components/recipes-screen";
 import { useExploreTabBarScroll } from "@/features/navigation/hooks/use-explore-tab-bar-scroll";
 import { getShowcasePosts, type ShowcasePost } from "../data/showcase-posts";
 import { useComposeActions } from "../hooks/use-compose-actions";
 import { useFeed } from "../hooks/use-feed";
 import type { FeedFilter, FeedPost } from "../types/feed.schema";
 import { ComposeDialog } from "./compose-dialog";
+import { FeedTabs, type FeedTab } from "./feed-tabs";
 import { VideoPublishBanner } from "./video-publish-banner";
 import { PostCard } from "./post-card";
 import { ShowcasePostCard } from "./showcase-post-card";
@@ -36,11 +37,6 @@ type FeedItem =
   | { key: string; kind: "live"; post: FeedPost }
   | { key: string; kind: "showcase"; post: ShowcasePost };
 
-const filters: { value: FeedFilter | "following"; label: string }[] = [
-  { value: "all", label: "Dành cho bạn" },
-  { value: "following", label: "Theo dõi" },
-  { value: "blogs", label: "Blog" },
-];
 const viewabilityConfig = { itemVisiblePercentThreshold: 50 };
 
 export function FeedScreen() {
@@ -49,7 +45,7 @@ export function FeedScreen() {
   const accessToken = useSessionStore((state) => state.accessToken);
   const displayName = useSessionStore((state) => state.displayName);
   const compose = useComposeActions();
-  const [filter, setFilter] = useState<FeedFilter | "following">("all");
+  const [filter, setFilter] = useState<FeedTab>("all");
   const [composerOpen, setComposerOpen] = useState(false);
   const [visibleIds, setVisibleIds] = useState<Set<string>>(() => new Set());
   const { onScroll: onHomeScroll, reset: resetHomeScroll } = useExploreTabBarScroll();
@@ -59,8 +55,9 @@ export function FeedScreen() {
     },
     [],
   );
-  const apiFilter = filter === "following" ? "all" : filter;
-  const feed = useFeed(apiFilter, filter !== "following");
+  const apiFilter: FeedFilter = filter === "blogs" ? "blogs" : "all";
+  const listed = filter === "all" || filter === "blogs";
+  const feed = useFeed(apiFilter, listed);
   const staleCursor = feed.isFetchNextPageError && feed.error instanceof ApiError && feed.error.status === 400;
   const posts =
     feed.data?.pages.flatMap((page) =>
@@ -101,47 +98,22 @@ export function FeedScreen() {
             <Pressable accessibilityRole="button" accessibilityLabel="Tìm bài viết" onPress={() => router.push("/search")} style={styles.searchButton}>
               <SymbolView name={{ ios: "magnifyingglass", android: "search", web: "search" }} size={22} tintColor={theme.foreground} />
             </Pressable>
-            <MessageBell />
             <NotificationBell />
           </View>
         </View>
-        <View style={styles.filters} accessibilityRole="tablist">
-          {filters.map((item) => (
-            <Pressable
-              key={item.value}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: filter === item.value }}
-              onPress={() => {
-                resetHomeScroll();
-                setFilter(item.value);
-              }}
-              style={[styles.filter, { borderBottomColor: filter === item.value ? theme.primary : "transparent" }]}
-            >
-              <Text
-                numberOfLines={1}
-                style={[styles.filterText, { color: filter === item.value ? theme.primary : theme.mutedForeground }]}
-              >
-                {item.label}
-              </Text>
-            </Pressable>
-          ))}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Xem video dạng lướt"
-            onPress={() => router.push("/videos")}
-            style={[styles.filter, { borderBottomColor: "transparent" }]}
-          >
-            <View style={styles.videoLabel}>
-              <SymbolView name={{ ios: "play.circle.fill", android: "play_circle", web: "play_circle" }} size={17} tintColor={theme.primary} />
-              <Text numberOfLines={1} style={[styles.filterText, { color: theme.primary }]}>Video</Text>
-            </View>
-          </Pressable>
-        </View>
+        <FeedTabs
+          value={filter}
+          onSelect={(tab) => {
+            resetHomeScroll();
+            setFilter(tab);
+          }}
+          onVideo={() => router.push("/videos")}
+        />
       </View>
 
       <VideoPublishBanner onRetry={compose.retryVideoPublish} onDismiss={compose.dismissVideoPublish} />
 
-      {filter === "following" ? <FollowingScreen onScroll={onHomeScroll} /> : <FlatList
+      {filter === "following" ? <FollowingScreen onScroll={onHomeScroll} /> : filter === "recipes" ? <RecipesList onScroll={onHomeScroll} /> : <FlatList
         key={filter}
         style={styles.timeline}
         onScroll={onHomeScroll}

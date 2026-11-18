@@ -10,6 +10,8 @@ const sectionSchema = z.enum(mealSections);
 const recipeRefSchema = z.object({ id: z.string(), title: z.string() });
 
 const recipeSchema = recipeRefSchema.extend({
+  /** HTTPS link to the dish's photo; null when the recipe has none. */
+  imageUrl: z.string().nullable().optional(),
   servings: z.number(),
   prepMinutes: z.number().nullable(),
   cookMinutes: z.number().nullable(),

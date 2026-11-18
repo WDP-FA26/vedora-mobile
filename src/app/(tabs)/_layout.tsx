@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MealPlannerProvider } from '@/features/meal-plan/hooks/meal-planner-provider';
 import { useTabBarVisibilityStore } from '@/features/navigation/stores/tab-bar-visibility-store';
 import { SproutPet } from '@/features/nutrition-chat/components/sprout-pet';
+import { useMessagingUnread } from '@/features/messaging/hooks/use-messaging';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -30,6 +31,7 @@ export default function MainTabsLayout() {
   }, [pathname, setVisible]);
 
   const token = useSessionStore((state) => state.accessToken);
+  const unread = useMessagingUnread().data ?? 0;
 
   return (
     // Keyed by session so a new sign-in never sees the previous user's chat or draft.
@@ -64,12 +66,12 @@ export default function MainTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="recipes"
+        name="meal-plan"
         options={{
-          title: 'Công thức',
-          tabBarAccessibilityLabel: 'Công thức',
-          tabBarIcon: ({ color, focused }) => (
-            <TabIcon name={{ ios: focused ? 'book.closed.fill' : 'book.closed', android: 'menu_book', web: 'menu_book' }} color={color} />
+          title: 'Thực đơn của tôi',
+          tabBarAccessibilityLabel: 'Thực đơn của tôi',
+          tabBarIcon: ({ color }) => (
+            <TabIcon name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }} color={color} />
           ),
         }}
       />
@@ -86,12 +88,14 @@ export default function MainTabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="meal-plan"
+        name="messages"
         options={{
-          title: 'Thực đơn của tôi',
-          tabBarAccessibilityLabel: 'Thực đơn của tôi',
-          tabBarIcon: ({ color }) => (
-            <TabIcon name={{ ios: 'calendar', android: 'calendar_month', web: 'calendar_month' }} color={color} />
+          title: 'Tin nhắn',
+          tabBarAccessibilityLabel: unread > 0 ? `Tin nhắn, ${unread} chưa đọc` : 'Tin nhắn',
+          tabBarBadge: token && unread > 0 ? (unread > 99 ? '99+' : unread) : undefined,
+          tabBarBadgeStyle: { backgroundColor: theme.destructive, color: '#fff', fontSize: 10 },
+          tabBarIcon: ({ color, focused }) => (
+            <TabIcon name={{ ios: focused ? 'bubble.left.and.bubble.right.fill' : 'bubble.left.and.bubble.right', android: 'chat', web: 'chat' }} color={color} />
           ),
         }}
       />

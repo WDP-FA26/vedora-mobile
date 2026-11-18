@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, Modal, Platform, Pressable, ScrollView, type ScrollViewInstance, StyleSheet, Text, View } from 'react-native';
@@ -7,6 +8,7 @@ import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ZoomImage } from '@/shared/components/image-viewer';
 import { ChatBubble, ChatStatus } from '@/shared/components/chat/chat-bubble';
+import { ChatMarkdown } from '@/shared/components/chat/chat-markdown';
 import { ChatComposer } from '@/shared/components/chat/chat-composer';
 
 import type { EditorProposal, useBlogAssistant } from '../hooks/use-blog-assistant';
@@ -67,7 +69,12 @@ export function BlogAssistantSheet({ visible, onClose, assistant, title, content
   const left = quota ? Math.max(0, quota.messages.limit - quota.messages.used) : null;
   const waiting = proposals.length > 0;
   const last = messages.at(-1);
-  const starting = busy && last?.role === 'assistant' && last.parts.length === 0;
+  // The indicator stays up for the whole turn: before the first word, while the answer is written, and in the gaps
+  // after a tool finishes while the model keeps going. A running server tool shows its own line, and a waiting
+  // proposal asks the user instead.
+  const lastPart = last?.role === 'assistant' ? last.parts.at(-1) : undefined;
+  const toolRunning = !!lastPart && lastPart.type !== 'text' && lastPart.state === 'input-available' && !isEditorTool(lastPart.type.replace(/^tool-/, ''));
+  const status = busy && !waiting && !toolRunning ? (lastPart?.type === 'text' && lastPart.text.trim() ? 'Đang viết…' : 'Trợ lý đang soạn…') : null;
 
   const prompts = hasSelection
     ? ['Viết lại đoạn đã chọn cho mượt hơn', 'Rút gọn đoạn đã chọn', 'Sửa lỗi chính tả đoạn đã chọn']
@@ -106,7 +113,7 @@ export function BlogAssistantSheet({ visible, onClose, assistant, title, content
           <View style={styles.headerCopy}>
             <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Trợ lý viết blog</Text>
             <Text style={[styles.subtitle, { color: left === 0 ? theme.destructive : theme.mutedForeground }]}>
-              {left === null ? 'Gợi ý và chỉnh sửa bài viết của bạn' : left === 0 ? 'Đã hết lượt hôm nay' : `Còn ${left} lượt hôm nay`}
+              {left === null ? 'Gợi ý và chỉnh sửa bài viết của bạn' : left === 0 ? 'Đã hết lượt của gói hiện tại' : `Còn ${left} lượt hỏi`}
             </Text>
           </View>
           {messages.length > 0 ? (
@@ -143,12 +150,15 @@ export function BlogAssistantSheet({ visible, onClose, assistant, title, content
             </View>
           ))}
 
-          {starting ? <ChatStatus>Trợ lý đang soạn…</ChatStatus> : null}
-          {busy && !starting && last?.role === 'assistant' && proposals.length === 0 && last.parts.at(-1)?.type === 'text' ? <ChatStatus>Đang viết…</ChatStatus> : null}
+          {status ? <ChatStatus>{status}</ChatStatus> : null}
           {error ? (
             <View style={[styles.errorCard, { backgroundColor: theme.muted }]}>
               <Text accessibilityRole="alert" style={[styles.errorText, { color: theme.destructive }]}>{error}</Text>
-              {assistant.canRetry ? (
+              {assistant.quotaExceeded ? (
+                <Pressable accessibilityRole="button" onPress={() => { onClose(); router.push('/billing'); }} hitSlop={8}>
+                  <Text style={[styles.retry, { color: theme.primary }]}>Xem gói</Text>
+                </Pressable>
+              ) : assistant.canRetry ? (
                 <Pressable accessibilityRole="button" onPress={assistant.retry} hitSlop={8}>
                   <Text style={[styles.retry, { color: theme.primary }]}>Thử lại</Text>
                 </Pressable>
@@ -228,25 +238,44 @@ function PartView({ part, onAccept, onReject, disabled }: { part: Part; onAccept
       </View>
     );
   }
+  if (output?.error === 'IMAGE_QUOTA_EXCEEDED') return <Text style={[styles.outcome, { color: theme.mutedForeground }]}>Đã hết lượt tạo ảnh của gói hiện tại. Xem Gói của bạn để biết khi nào có lượt mới.</Text>;
   if (output?.error) return <Text style={[styles.outcome, { color: theme.mutedForeground }]}>Không tạo được ảnh lần này.</Text>;
   return null;
+}
+
+/** One side of a proposed change. Long text is cut at first, with a toggle to read all of it before accepting. */
+function DiffBlock({ label, text, tone, markdown }: { label: string; text: string; tone: 'old' | 'new'; markdown: boolean }) {
+  const theme = useTheme();
+  const [expanded, setExpanded] = useState(false);
+  const long = text.length > 600;
+  const shown = long && !expanded ? preview(text, 600) : text;
+  return (
+    <View style={[styles.diff, { backgroundColor: tone === 'new' ? theme.secondary : theme.muted }]}>
+      <Text style={[styles.diffLabel, { color: theme.mutedForeground }]}>{label}</Text>
+      {markdown
+        ? <ChatMarkdown text={shown} color={theme.foreground} />
+        : <Text style={[styles.diffText, { color: theme.foreground }]}>{shown}</Text>}
+      {long ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={expanded ? 'Thu gọn nội dung' : 'Xem toàn bộ nội dung'} onPress={() => setExpanded(!expanded)} hitSlop={8} style={styles.more}>
+          <Text style={[styles.moreText, { color: theme.primary }]}>{expanded ? 'Thu gọn' : 'Xem thêm'}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
 }
 
 function ProposalBody({ tool, input }: { tool: EditorToolName; input: unknown }) {
   const theme = useTheme();
   const data = (input ?? {}) as Record<string, string | undefined>;
-  const block = (label: string, text: string | undefined, tone: 'old' | 'new') => (text ? (
-    <View style={[styles.diff, { backgroundColor: tone === 'new' ? theme.secondary : theme.muted }]}>
-      <Text style={[styles.diffLabel, { color: theme.mutedForeground }]}>{label}</Text>
-      <Text style={[styles.diffText, { color: theme.foreground }]}>{preview(text, 600)}</Text>
-    </View>
+  const block = (label: string, text: string | undefined, tone: 'old' | 'new', markdown = true) => (text ? (
+    <DiffBlock key={label} label={label} text={text} tone={tone} markdown={markdown} />
   ) : null);
 
   switch (tool) {
     case 'replaceSelection': return block('Nội dung mới', data.markdown, 'new');
     case 'replaceText': return <>{block('Đoạn cũ', data.find, 'old')}{block('Đoạn mới', data.replace, 'new')}</>;
     case 'insertMarkdown': return block(data.position === 'end' ? 'Thêm vào cuối bài' : data.position === 'after' ? 'Thêm sau đoạn đã nêu' : 'Thêm tại vị trí con trỏ', data.markdown, 'new');
-    case 'setTitle': return block('Tiêu đề mới', data.title, 'new');
+    case 'setTitle': return block('Tiêu đề mới', data.title, 'new', false);
     case 'insertImage': return data.url ? <ZoomImage source={{ uri: data.url }} style={[styles.generated, styles.proposalImage, { backgroundColor: theme.muted }]} contentFit="contain" accessibilityLabel={data.alt || 'Ảnh đề xuất'} /> : null;
   }
 }
@@ -271,6 +300,8 @@ const styles = StyleSheet.create({
   proposalTitle: { flex: 1, fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 20 },
   diff: { borderRadius: Radius.xl, padding: Spacing.two + Spacing.one, gap: 2 },
   diffLabel: { fontFamily: Fonts.sansBold, fontSize: 11, lineHeight: 15, letterSpacing: 0.6 },
+  more: { alignSelf: 'flex-start', paddingVertical: Spacing.one },
+  moreText: { fontFamily: Fonts.sansBold, fontSize: 13, lineHeight: 18 },
   diffText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
   proposalActions: { flexDirection: 'row', gap: Spacing.two },
   proposalButton: { flex: 1, minHeight: 42, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center' },

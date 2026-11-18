@@ -11,7 +11,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useBillingActions, usePayment } from '../hooks/use-billing';
 import { paymentIdSchema } from '../types/billing.schema';
-import { dateTime, money, planName } from '../utils/billing-format';
+import { dateTime, money, purchasedName } from '../utils/billing-format';
 import { BillingBadge, BillingButton, BillingCard, BillingConfirm, BillingDetail, BillingIcon, BillingLayout, BillingLoading, BillingNotice, BillingStep, BillingText } from './billing-ui';
 
 export function PaymentScreen() {
@@ -74,22 +74,22 @@ function PaymentContent({ id }: { id: string }) {
         {data.status !== 'PENDING' ? <BillingText heading style={styles.centerText}>{data.status === 'SUCCEEDED' ? 'Thanh toán thành công' : 'Giao dịch đã hủy'}</BillingText> : null}
         <BillingText variant="price" style={styles.amount}>{money(data.amount)}</BillingText>
         <View style={[styles.planPill, { backgroundColor: theme.card }]}>
-          <Text style={[styles.planPillText, { color: theme.foreground }]}>Gói {planName(data.planCode)} · {data.durationDays} ngày</Text>
+          <Text style={[styles.planPillText, { color: theme.foreground }]}>Gói {purchasedName(data)} · {data.durationDays} ngày</Text>
         </View>
       </View>
       {data.status === 'SUCCEEDED' ? <>
-        <BillingCard accent><BillingText heading>Đã ghi nhận gói {planName(data.planCode)}</BillingText>
+        <BillingCard accent><BillingText heading>Đã ghi nhận gói {purchasedName(data)}</BillingText>
           {data.capturedAt ? <BillingText>Đã kích hoạt từ {dateTime(data.capturedAt)} (UTC+7).</BillingText> : null}
           <BillingText>Xem thời hạn và lịch sử ở màn Gói của bạn.</BillingText>
         </BillingCard>
-        <BillingNotice>Pro và Premium hiện mới ghi nhận gói bạn đã mua, chưa kèm quyền lợi thêm.</BillingNotice>
+        {data.textLimit !== undefined && data.imageLimit !== undefined ? <BillingNotice title="Hạn mức của chu kỳ mới">{data.textLimit} lượt hỏi trợ lý AI và {data.imageLimit} lượt tạo hoặc chỉnh ảnh, tính từ lúc thanh toán được xác nhận. Lượt chưa dùng của chu kỳ trước không được giữ lại.</BillingNotice> : null}
       </> : data.status === 'CANCELLED' ? <BillingNotice title="Đừng dùng lại mã QR này">Nếu bạn đã chuyển tiền trước khi hủy, hãy giữ mã giao dịch ngân hàng và liên hệ quản trị viên để đối soát. Vedora không tự hoàn tiền.</BillingNotice> : <>
         <BillingCard>
           <BillingStep number={1} title="Chuyển khoản" />
           {data.qr ? <>
             <BillingText variant="caption">Quét mã bằng ứng dụng ngân hàng, hoặc lưu ảnh QR về máy.</BillingText>
             <View style={styles.qrFrame}>
-              <ZoomImage source={{ uri: data.qr.imageUrl }} style={styles.qr} contentFit="contain" accessibilityLabel={`QR chuyển khoản ${money(data.amount)} cho gói ${planName(data.planCode)}`} onError={() => setQrError(true)} onLoad={() => setQrError(false)} />
+              <ZoomImage source={{ uri: data.qr.imageUrl }} style={styles.qr} contentFit="contain" accessibilityLabel={`QR chuyển khoản ${money(data.amount)} cho gói ${purchasedName(data)}`} onError={() => setQrError(true)} onLoad={() => setQrError(false)} />
             </View>
             {qrError ? <BillingNotice error>Không tải được QR. Bạn có thể chuyển khoản bằng thông tin bên dưới.</BillingNotice> : null}
             <Link href={data.qr.downloadUrl} target="_blank" asChild><Pressable accessibilityRole="link" style={({ pressed }) => [styles.qrLink, { backgroundColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>

@@ -1,3 +1,4 @@
+import { Image as PhotoImage } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import type { ReactNode } from 'react';
@@ -6,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+import { ZoomImage } from '@/shared/components/image-viewer';
 import { AssistantHeader } from '@/shared/components/chat/assistant-header';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -173,6 +175,13 @@ export function MealPlanScreen() {
                     {recipes.length ? (
                       recipes.map((recipe) => (
                         <View key={recipe.id} style={[styles.recipeCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
+                          {photoOf(recipe) ? (
+                            <ZoomImage source={{ uri: photoOf(recipe) ?? undefined }} style={styles.recipeImage} contentFit="cover" accessibilityLabel={`Ảnh món ${recipe.title}`} />
+                          ) : (
+                            <View style={[styles.recipeImage, styles.recipeImageEmpty, { backgroundColor: theme.secondary }]}>
+                              <PhotoImage source={require('@/assets/branding/tomato-sticker.png')} style={styles.recipeSticker} contentFit="contain" accessible={false} />
+                            </View>
+                          )}
                           <Text style={[styles.recipeTitle, { color: theme.foreground }]}>{recipe.title}</Text>
                           {!draft ? (
                             <Pressable
@@ -276,7 +285,10 @@ const styles = StyleSheet.create({
   badgeText: { fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 16 },
   mealBlock: { gap: Spacing.two },
   mealLabel: { fontFamily: Fonts.sansBold, fontSize: 11, lineHeight: 16, letterSpacing: 1.1 },
-  recipeCard: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two + Spacing.one, borderWidth: 1, borderRadius: Radius.xl, paddingVertical: Spacing.two, paddingLeft: Spacing.three, paddingRight: Spacing.two },
+  recipeCard: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two + Spacing.one, borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.two },
+  recipeImage: { width: 56, height: 56, borderRadius: Radius.lg },
+  recipeImageEmpty: { alignItems: 'center', justifyContent: 'center' },
+  recipeSticker: { width: 32, height: 36 },
   recipeTitle: { flex: 1, minWidth: 0, fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
   swap: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half, borderRadius: Radius['4xl'], paddingHorizontal: Spacing.two + Spacing.one },
   swapText: { fontFamily: Fonts.sansBold, fontSize: 12, lineHeight: 16 },
@@ -294,3 +306,9 @@ const styles = StyleSheet.create({
   guestText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21, textAlign: 'center' },
   guestActions: { alignSelf: 'stretch', gap: Spacing.two },
 });
+
+/** Saved recipes carry a photo; the unsaved preview only has id and title. */
+function photoOf(recipe: object): string | null {
+  const url = (recipe as { imageUrl?: string | null }).imageUrl;
+  return typeof url === 'string' && url ? url : null;
+}

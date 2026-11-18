@@ -1,5 +1,4 @@
 import { router } from 'expo-router';
-import { SymbolView } from 'expo-symbols';
 import { useMemo } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,13 +29,6 @@ export function InboxScreen() {
   return (
     <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Quay lại"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace('/explore'))}
-          style={[styles.back, { backgroundColor: theme.muted }]}>
-          <SymbolView name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }} size={20} tintColor={theme.foreground} />
-        </Pressable>
         <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Tin nhắn</Text>
       </View>
       {token ? <InboxList /> : (
@@ -162,7 +154,6 @@ function ConversationRow({ conversation }: { conversation: Conversation }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, borderBottomWidth: StyleSheet.hairlineWidth },
-  back: { width: 40, height: 40, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontFamily: Fonts.headingBold, fontSize: 20, lineHeight: 28 },
   list: { width: '100%', maxWidth: 680, alignSelf: 'center', paddingVertical: Spacing.two },
   emptyList: { flexGrow: 1 },

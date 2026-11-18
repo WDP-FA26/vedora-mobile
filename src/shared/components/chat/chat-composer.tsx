@@ -41,14 +41,28 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const theme = useTheme();
   const blocked = !!inputDisabled || !!sendDisabled || !value.trim();
-  // iOS keeps a multiline input at its old height after the text is cleared in code (e.g. after sending),
-  // so the height follows the measured content and snaps back to one line whenever the box is empty.
-  const [contentHeight, setContentHeight] = useState(INPUT_MIN_HEIGHT);
-  const inputHeight = value ? Math.min(Math.max(contentHeight, INPUT_MIN_HEIGHT), INPUT_MAX_HEIGHT) : INPUT_MIN_HEIGHT;
+  // The input's own content size depends on the height it is given, so using it to set that height can make the
+  // box grow and shrink in a loop. A hidden copy of the text, laid out at the same width, is measured instead:
+  // its height never depends on the input, and an empty box snaps back to one line (iOS keeps the old height
+  // otherwise after the text is cleared in code, e.g. after sending).
+  const [measured, setMeasured] = useState(INPUT_MIN_HEIGHT);
+  const inputHeight = value ? Math.min(Math.max(measured, INPUT_MIN_HEIGHT), INPUT_MAX_HEIGHT) : INPUT_MIN_HEIGHT;
 
   return (
     <View style={[styles.wrap, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
       <View style={[styles.box, { backgroundColor: theme.muted, borderColor: theme.border }]}>
+        <View style={styles.field}>
+        <Text
+          accessible={false}
+          importantForAccessibility="no-hide-descendants"
+          pointerEvents="none"
+          onLayout={(event) => {
+            const height = Math.ceil(event.nativeEvent.layout.height);
+            setMeasured((current) => (current === height ? current : height));
+          }}
+          style={[styles.input, styles.ghost]}>
+          {value.endsWith('\n') ? `${value} ` : value || ' '}
+        </Text>
         <TextInput
           accessibilityLabel={inputLabel}
           editable={!inputDisabled}
@@ -56,13 +70,13 @@ export function ChatComposer({
           multiline
           onChangeText={onChangeText}
           onFocus={onFocus}
-          onContentSizeChange={(event) => setContentHeight(Math.ceil(event.nativeEvent.contentSize.height))}
           scrollEnabled={inputHeight >= INPUT_MAX_HEIGHT}
           placeholder={placeholder}
           placeholderTextColor={theme.mutedForeground}
           style={[styles.input, { color: theme.foreground, height: inputHeight }]}
           value={value}
         />
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={sendLabel}
@@ -102,8 +116,9 @@ const styles = StyleSheet.create({
     padding: Spacing.one,
     paddingLeft: Spacing.three,
   },
+  field: { flex: 1, minWidth: 0 },
+  ghost: { position: 'absolute', left: 0, right: 0, top: 0, opacity: 0 },
   input: {
-    flex: 1,
     minWidth: 0,
     paddingTop: 10,
     paddingBottom: 10,

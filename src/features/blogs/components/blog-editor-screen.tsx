@@ -183,7 +183,9 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
             placeholderTextColor={theme.mutedForeground}
             style={[styles.titleInput, { color: theme.foreground, borderBottomColor: theme.border }]}
             multiline
-            numberOfLines={1}
+            // The title grows with its text instead of being capped at a fixed number of lines.
+            scrollEnabled={false}
+            submitBehavior="blurAndSubmit"
           />
           <Text style={[styles.counter, { color: title.length > MAX_BLOG_TITLE_LENGTH - 20 ? theme.destructive : theme.mutedForeground }]}>{title.length}/{MAX_BLOG_TITLE_LENGTH}</Text>
 
