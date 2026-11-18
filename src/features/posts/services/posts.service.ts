@@ -1,4 +1,4 @@
-import { feedPageSchema, feedPostSchema } from '@/features/feed/types/feed.schema';
+import { feedPageSchema, feedPostSchema, type FeedPost } from '@/features/feed/types/feed.schema';
 import { apiClient } from '@/shared/api/api-client';
 import { requestJson } from '@/shared/api/request-json';
 
@@ -6,6 +6,10 @@ import { MAX_SEARCH_QUERY_LENGTH, commentFormSchema, commentPageSchema, commentS
 
 export function getPost(postId: string, signal?: AbortSignal) {
   return requestJson(feedPostSchema, { method: 'GET', url: `/posts/${postId}`, signal });
+}
+
+export async function deletePost(postId: string, type: FeedPost['type']) {
+  await apiClient.delete(`/${type === 'BLOG' ? 'blogs' : 'posts'}/${postId}`);
 }
 
 export function getCommentPage({ postId, cursor, signal }: { postId: string; cursor: string | null; signal?: AbortSignal }) {
