@@ -3,7 +3,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { messagingKeys } from '../data/messaging.keys';
-import { getContact, getConversation, getConversations, getMessages, markConversationRead, sendMessage } from '../services/messaging.service';
+import { acceptMessageRequest, deleteMessageRequest, getContact, getConversation, getConversations, getMessages, markConversationRead, sendMessage } from '../services/messaging.service';
 import { useMessagingStreamStore } from '../stores/messaging-stream-store';
 import type { MessagingBox } from '../types/messaging.schema';
 
@@ -80,6 +80,30 @@ export function useSendMessage() {
     retry: false,
     mutationFn: sendMessage,
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: messagingKeys.all }),
+  });
+}
+
+export function useAcceptRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: acceptMessageRequest,
+    onSuccess: (conversation) => {
+      queryClient.setQueryData(messagingKeys.conversation(conversation.id), conversation);
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.all });
+    },
+  });
+}
+
+export function useDeleteRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: deleteMessageRequest,
+    onSuccess: (_result, { id }) => {
+      // Drop the hidden history before refetching: reading the old thread now returns 404.
+      queryClient.removeQueries({ queryKey: messagingKeys.messages(id) });
+      queryClient.removeQueries({ queryKey: messagingKeys.conversation(id) });
+      void queryClient.invalidateQueries({ queryKey: messagingKeys.all });
+    },
   });
 }
 

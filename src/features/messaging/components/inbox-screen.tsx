@@ -186,7 +186,7 @@ function ConversationRow({ conversation }: { conversation: Conversation }) {
   // A stranger's first message needs context; a request you sent says it is waiting.
   const hint = tone === 'stranger' && conversation.requestDirection === 'incoming'
     ? 'Muốn nhắn tin với bạn'
-    : tone === 'pending' ? 'Chờ họ theo dõi lại để trả lời' : null;
+    : tone === 'pending' ? 'Chờ họ chấp nhận để trả lời' : null;
 
   return (
     <Pressable
