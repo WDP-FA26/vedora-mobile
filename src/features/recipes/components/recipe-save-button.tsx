@@ -25,7 +25,7 @@ export function RecipeSaveButton({ recipe }: { recipe: Recipe }) {
         disabled={favorite.pending}
         onPress={() => {
           if (!token || needsLogin) {
-            router.push({ pathname: '/login', params: { returnTo: '/recipes' } });
+            router.push({ pathname: '/login', params: { returnTo: '/explore' } });
             return;
           }
           favorite.toggle(saved);
