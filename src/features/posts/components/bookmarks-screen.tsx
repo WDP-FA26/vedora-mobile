@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { PostCard } from '@/features/feed/components/post-card';
+import { feedPostOf, usePostViewability } from '@/features/feed/hooks/use-post-views';
 import { SavedRecipes } from '@/features/recipes/components/saved-recipes';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
@@ -17,6 +18,7 @@ export function BookmarksScreen() {
   const theme = useTheme();
   const { tab: initialTab } = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<'posts' | 'recipes'>(initialTab === 'recipes' ? 'recipes' : 'posts');
+  const views = usePostViewability(feedPostOf, tab === 'posts');
   const token = useSessionStore((state) => state.accessToken);
   const bookmarks = useBookmarks();
   const posts = (bookmarks.data?.pages.flatMap((page) => page.items) ?? []).filter((post) => post.isBookmarked);
@@ -45,6 +47,7 @@ export function BookmarksScreen() {
         </View>
       ) : tab === 'recipes' ? <SavedRecipes /> : (
         <FlatList
+          {...views}
           data={posts}
           keyExtractor={(post) => post.id}
           contentContainerStyle={styles.list}

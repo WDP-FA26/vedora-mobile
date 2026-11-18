@@ -29,6 +29,7 @@ import { useExploreTabBarScroll } from "@/features/navigation/hooks/use-explore-
 import { getShowcasePosts, type ShowcasePost } from "../data/showcase-posts";
 import { useComposeActions } from "../hooks/use-compose-actions";
 import { useFeed } from "../hooks/use-feed";
+import { usePostViewability } from '../hooks/use-post-views';
 import type { FeedFilter, FeedPost } from "../types/feed.schema";
 import { ComposeDialog } from "./compose-dialog";
 import { FeedTabs, type FeedTab } from "./feed-tabs";
@@ -39,6 +40,8 @@ import { ShowcasePostCard } from "./showcase-post-card";
 type FeedItem =
   | { key: string; kind: "live"; post: FeedPost }
   | { key: string; kind: "showcase"; post: ShowcasePost };
+
+const livePostOf = (item: FeedItem) => item.kind === 'live' ? item.post : null;
 
 const viewabilityConfig = { itemVisiblePercentThreshold: 50 };
 
@@ -61,6 +64,11 @@ export function FeedScreen() {
   );
   const apiFilter: FeedFilter = filter === "blogs" ? "blogs" : "all";
   const listed = filter === "all" || filter === "blogs";
+  const views = usePostViewability(livePostOf, listed && !composerOpen, filter);
+  const viewabilityPairs = useState(() => [
+    { viewabilityConfig, onViewableItemsChanged },
+    { viewabilityConfig: views.viewabilityConfig, onViewableItemsChanged: views.onViewableItemsChanged },
+  ])[0];
   const feed = useFeed(apiFilter, listed);
   const pull = usePullToRefresh(feed.restart);
   const staleCursor = feed.isFetchNextPageError && feed.error instanceof ApiError && feed.error.status === 400;
@@ -135,8 +143,7 @@ export function FeedScreen() {
           <PostCard post={item.post} visible={visibleIds.size === 0 || visibleIds.has(item.key)} />
         ) : <ShowcasePostCard post={item.post} />}
         contentContainerStyle={styles.list}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
+        viewabilityConfigCallbackPairs={viewabilityPairs}
         onEndReachedThreshold={0.5}
         onEndReached={() => {
           if (
