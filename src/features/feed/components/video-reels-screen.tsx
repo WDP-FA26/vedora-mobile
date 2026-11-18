@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SymbolView, type SymbolViewProps } from 'expo-symbols';
 import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View, type FlatListProps } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View, type FlatListProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -23,6 +23,10 @@ const WHITE = '#fffefa';
 const VIEWABILITY = { itemVisiblePercentThreshold: 80 };
 /** Keep loading while fewer than this many videos are ahead of the one being watched. */
 const PREFETCH_AHEAD = 3;
+/** Videos this close to the one on screen keep a loaded player, so a swipe plays without waiting. */
+const WARM_DISTANCE = 1;
+/** Seconds buffered ahead; caps data spent on neighbours the viewer may skip. */
+const BUFFER_AHEAD_SEC = 10;
 
 const formatCount = (value: number) => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
 
@@ -66,8 +70,15 @@ export function VideoReelsScreen() {
         <FlatList
           data={reels}
           keyExtractor={(reel) => reel.post.id}
-          renderItem={({ item }) => (
-            <ReelItem reel={item} height={height} active={item.post.id === currentId && focused} muted={muted} bottomInset={insets.bottom} />
+          renderItem={({ item, index }) => (
+            <ReelItem
+              reel={item}
+              height={height}
+              active={item.post.id === currentId && focused}
+              warm={Math.abs(index - currentIndex) <= WARM_DISTANCE}
+              muted={muted}
+              bottomInset={insets.bottom}
+            />
           )}
           pagingEnabled
           snapToInterval={height}
@@ -123,7 +134,7 @@ function RoundButton({ label, icon, onPress }: { label: string; icon: IconName; 
   );
 }
 
-function ReelItem({ reel, height, active, muted, bottomInset }: { reel: Reel; height: number; active: boolean; muted: boolean; bottomInset: number }) {
+function ReelItem({ reel, height, active, warm, muted, bottomInset }: { reel: Reel; height: number; active: boolean; warm: boolean; muted: boolean; bottomInset: number }) {
   const { post, media } = reel;
   const accessToken = useSessionStore((state) => state.accessToken);
   const { like, bookmark, repost } = useFeedActions(post.id);
@@ -150,7 +161,7 @@ function ReelItem({ reel, height, active, muted, bottomInset }: { reel: Reel; he
   return (
     <View style={{ height }}>
       {!started ? <Image source={media.posterUrl ? { uri: media.posterUrl } : undefined} style={StyleSheet.absoluteFill} contentFit={fit} /> : null}
-      {active ? <ReelPlayer url={reel.playbackUrl} fit={fit} muted={muted} paused={paused} onStarted={() => setStarted(true)} /> : null}
+      {warm || active ? <ReelPlayer url={reel.playbackUrl} fit={fit} active={active} muted={muted} paused={paused} onStarted={() => setStarted(true)} /> : null}
 
       <Pressable
         accessibilityRole="button"
@@ -232,12 +243,21 @@ function setPlayerMuted(player: VideoPlayer, muted: boolean) {
   player.muted = muted;
 }
 
-/** One live player, mounted only for the video on screen so memory stays flat however far you scroll. */
-function ReelPlayer({ url, fit, muted, paused, onStarted }: { url: string; fit: 'cover' | 'contain'; muted: boolean; paused: boolean; onStarted: () => void }) {
+function rewind(player: VideoPlayer) {
+  player.currentTime = 0;
+}
+
+/**
+ * Mounted for the video on screen and its neighbours (at most three players, so memory stays flat).
+ * A neighbour's player fills its buffer without a view; only the active one is shown and played.
+ */
+function ReelPlayer({ url, fit, active, muted, paused, onStarted }: {
+  url: string; fit: 'cover' | 'contain'; active: boolean; muted: boolean; paused: boolean; onStarted: () => void;
+}) {
   const player = useVideoPlayer({ uri: url, contentType: 'hls' }, (instance) => {
     instance.loop = true;
     instance.timeUpdateEventInterval = 0.25;
-    instance.play();
+    if (Platform.OS !== 'web') instance.bufferOptions = { preferredForwardBufferDuration: BUFFER_AHEAD_SEC };
   });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
   const { currentTime } = useEvent(player, 'timeUpdate', { currentTime: 0, bufferedPosition: 0, currentLiveTimestamp: null, currentOffsetFromLive: null });
@@ -251,9 +271,16 @@ function ReelPlayer({ url, fit, muted, paused, onStarted }: { url: string; fit: 
   }, [muted, player]);
 
   useEffect(() => {
-    if (paused) player.pause();
-    else player.play();
-  }, [paused, player]);
+    if (active && !paused) player.play();
+    else player.pause();
+  }, [active, paused, player]);
+
+  // A video that leaves the screen starts from the top next time.
+  useEffect(() => {
+    if (!active) rewind(player);
+  }, [active, player]);
+
+  if (!active) return null;
 
   const duration = player.duration;
   const progress = duration > 0 ? Math.min(1, currentTime / duration) : 0;
