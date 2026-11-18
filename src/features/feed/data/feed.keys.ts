@@ -5,4 +5,6 @@ export const feedKeys = {
   list: (filter: FeedFilter) => [...feedKeys.all, filter] as const,
   /** A single post; lives outside `all` because its cache entry is a post, not a page. */
   detail: (postId: string) => ['post', postId] as const,
+  /** Your private video drafts (`/posts/drafts`). */
+  drafts: ['post-drafts'] as const,
 };

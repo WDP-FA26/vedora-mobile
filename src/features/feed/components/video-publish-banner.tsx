@@ -4,15 +4,17 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
-import { useVideoPublishStore, type VideoPublishJob } from '../stores/video-publish-store';
+import { isVideoPublishActive, useVideoPublishStore, type VideoPublishJob } from '../stores/video-publish-store';
 
 function statusText(job: VideoPublishJob) {
   switch (job.status) {
+    case 'saving': return 'Đang lưu bản nháp…';
     case 'uploading': return job.progress === null ? 'Đang chuẩn bị tải video…' : `Đang tải video ${Math.round(job.progress)}%`;
     case 'posting': return 'Đang đăng bài…';
+    case 'saved': return 'Đã lưu bản nháp. Mở lại trong Tạo nội dung › Bản nháp.';
     case 'published': return 'Đã đăng video thành công.';
     case 'processing': return 'Đã nhận video, đang được xử lý. Bài sẽ hiện khi xử lý xong.';
-    case 'failed': return job.error ?? 'Chưa thể đăng video.';
+    case 'failed': return job.error ?? (job.publish ? 'Chưa thể đăng video.' : 'Chưa lưu được bản nháp.');
   }
 }
 
@@ -22,10 +24,10 @@ export function VideoPublishBanner({ onRetry, onDismiss }: { onRetry: () => void
   const job = useVideoPublishStore((state) => state.job);
   if (!job) return null;
 
-  const active = job.status === 'uploading' || job.status === 'posting';
+  const active = isVideoPublishActive(job);
   const failed = job.status === 'failed';
   const tint = failed ? theme.destructive : theme.primary;
-  const percent = job.status === 'uploading' ? job.progress : 100;
+  const percent = job.status === 'uploading' ? job.progress : job.status === 'saving' ? null : 100;
 
   return (
     <View
@@ -44,7 +46,7 @@ export function VideoPublishBanner({ onRetry, onDismiss }: { onRetry: () => void
           )}
         </View>
         <View style={styles.copy}>
-          <Text numberOfLines={1} style={[styles.title, { color: theme.foreground }]}>{job.title}</Text>
+          <Text numberOfLines={1} style={[styles.title, { color: theme.foreground }]}>{job.title || 'Bản nháp chưa có tiêu đề'}</Text>
           <Text numberOfLines={2} style={[styles.status, { color: failed ? theme.destructive : theme.mutedForeground }]}>{statusText(job)}</Text>
         </View>
         {failed ? (
@@ -53,7 +55,7 @@ export function VideoPublishBanner({ onRetry, onDismiss }: { onRetry: () => void
           </Pressable>
         ) : null}
         {!active ? (
-          <Pressable accessibilityRole="button" accessibilityLabel={failed ? 'Bỏ video' : 'Ẩn thông báo'} onPress={() => onDismiss(job)} hitSlop={8} style={styles.close}>
+          <Pressable accessibilityRole="button" accessibilityLabel={failed ? 'Ẩn lỗi (bản nháp vẫn được lưu)' : 'Ẩn thông báo'} onPress={() => onDismiss(job)} hitSlop={8} style={styles.close}>
             <SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={16} tintColor={theme.mutedForeground} />
           </Pressable>
         ) : null}

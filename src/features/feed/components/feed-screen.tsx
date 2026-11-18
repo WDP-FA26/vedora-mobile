@@ -281,6 +281,7 @@ export function FeedScreen() {
         onPickVideo={compose.pickVideo}
         onRemoveVideo={compose.removeVideo}
         onSubmitVideo={compose.startVideoPublish}
+        onSaveDraft={compose.saveVideoDraft}
       />
     </SafeAreaView>
   );
