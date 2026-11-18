@@ -14,6 +14,7 @@ import { ChatComposer } from '@/shared/components/chat/chat-composer';
 import { useMealPlanner } from '../hooks/meal-planner-provider';
 import { MealRequestForm } from './meal-request-form';
 import { PlannerHistorySheet } from './planner-history-sheet';
+import { weekRange } from '../utils/meal-week';
 
 const QUICK_STARTS = [['Lên thực đơn 7 ngày', 'week'], ['Mỗi bữa nấu trong 30 phút', 'quick'], ['Tận dụng nguyên liệu đang có', 'pantry']] as const;
 const WELCOME =
@@ -23,7 +24,7 @@ const WELCOME =
 export function PlannerChatScreen() {
   const theme = useTheme();
   const planner = useMealPlanner();
-  const { turns, composer, busy, chatError, statuses, latestProposalId, formOpen } = planner;
+  const { turns, composer, busy, chatError, formOpen } = planner;
   const scroll = useRef<ScrollViewInstance>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const avatar = <SproutPet size={26} accessible={false} />;
@@ -49,7 +50,7 @@ export function PlannerChatScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Cuộc trò chuyện mới"
                 accessibilityHint="Cuộc trò chuyện hiện tại vẫn được lưu"
-                disabled={busy}
+                disabled={busy || !!planner.draftAction}
                 onPress={planner.startNewChat}
                 hitSlop={8}
                 style={({ pressed }) => [styles.newChat, { backgroundColor: theme.muted, opacity: busy ? 0.4 : pressed ? 0.7 : 1 }]}>
@@ -79,7 +80,10 @@ export function PlannerChatScreen() {
             restrictions={planner.dietary.data}
             loading={planner.dietary.isPending}
             failed={planner.dietary.isError}
-            busy={busy}
+            busy={busy || !!planner.draftAction}
+            weekStart={planner.weekStart}
+            weeks={planner.weeks}
+            onWeekChange={planner.changeWeek}
             retry={() => void planner.dietary.refetch()}
             onClose={() => planner.setFormOpen(false)}
             onSubmit={(prompt) => {
@@ -120,15 +124,17 @@ export function PlannerChatScreen() {
                   authorLabel="Trợ lý Vedora"
                   avatar={avatar}
                   footer={
-                    turn.proposal?.id === latestProposalId && !statuses[turn.proposal.id] ? (
+                    turn.proposals?.filter(planner.canPreviewProposal).map((proposal) => (
                       <Pressable
+                        key={proposal.id}
                         accessibilityRole="button"
-                        onPress={() => planner.previewProposal(turn.proposal!)}
+                        disabled={busy || !!planner.draftAction}
+                        onPress={() => planner.previewProposal(proposal)}
                         style={({ pressed }) => [styles.proposal, { backgroundColor: theme.primary, opacity: pressed ? 0.8 : 1 }]}>
-                        <Text style={[styles.proposalText, { color: theme.primaryForeground }]}>Xem trong Thực đơn</Text>
+                        <Text style={[styles.proposalText, { color: theme.primaryForeground }]}>Xem thực đơn {weekRange(proposal.weekStart)}</Text>
                         <SymbolView name={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} size={14} tintColor={theme.primaryForeground} />
                       </Pressable>
-                    ) : null
+                    ))
                   }
                 />
               ))}
