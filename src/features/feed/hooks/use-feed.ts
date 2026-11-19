@@ -1,6 +1,8 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 
 import { showReactionBurst } from '@/shared/stores/reaction-burst-store';
+import { useSessionStore } from '@/shared/stores/session-store';
+import { profileKeys } from '@/features/profile/data/profile.keys';
 
 import { feedKeys } from '../data/feed.keys';
 import { getFeedPage, setPostBookmark, setPostLike, setPostRepost } from '../services/feed.service';
@@ -62,8 +64,18 @@ export function useFeedActions(postId: string) {
   });
   const repost = useMutation({
     mutationFn: (reposted: boolean) => setPostRepost(postId, reposted),
-    onMutate: (reposted) => { if (reposted) showReactionBurst('repost'); },
-    onSuccess: (result) => patchCachedPost(queryClient, postId, { isReposted: result.isReposted, repostCount: result.repostCount }),
+    onMutate: (reposted) => {
+      if (reposted) showReactionBurst('repost');
+      return { session: useSessionStore.getState().accessToken };
+    },
+    onSuccess: async (result, _reposted, context) => {
+      if (context?.session !== useSessionStore.getState().accessToken) return;
+      await queryClient.cancelQueries({ queryKey: profileKeys.repostsAll });
+      if (context?.session !== useSessionStore.getState().accessToken) return;
+      patchCachedPost(queryClient, postId, { isReposted: result.isReposted, repostCount: result.repostCount });
+      // Reposting changes order and may remove the current cursor, so restart these lists.
+      await queryClient.resetQueries({ queryKey: profileKeys.repostsAll });
+    },
   });
   return { like, bookmark, repost };
 }

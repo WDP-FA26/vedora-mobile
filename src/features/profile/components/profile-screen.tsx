@@ -13,14 +13,16 @@ import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
 import { VerificationEntry } from '@/features/verification/components/verification-entry';
 import { blogsKeys } from '@/features/blogs/data/blogs.keys';
 import { PostCard } from '@/features/feed/components/post-card';
+import { useScrollPostViews } from '@/features/feed/hooks/use-post-views';
 import { useDietaryRestrictions } from '@/features/meal-plan/hooks/use-meal-plan';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
 import { ZoomImage } from '@/shared/components/image-viewer';
 import { useSessionStore } from '@/shared/stores/session-store';
 
-import { useMyProfile, useProfilePosts } from '../hooks/use-profile';
+import { useMyProfile, useProfilePosts, useProfileReposts } from '../hooks/use-profile';
 import { ProfileAvatar } from './profile-avatar';
+import { ProfileReposts } from './profile-reposts';
 
 const MAX_AVOIDED_CHIPS = 6;
 
@@ -59,9 +61,11 @@ export function ProfileScreen() {
   const dietary = useDietaryRestrictions(token);
   const postsQuery = useProfilePosts(profile?.id, token);
   const signOut = useSignOut();
-  const [contentTab, setContentTab] = useState<'posts' | 'blogs'>('posts');
+  const [contentTab, setContentTab] = useState<'posts' | 'blogs' | 'reposts'>('posts');
+  const reposts = useProfileReposts(profile?.id, !!token && contentTab === 'reposts');
   const posts = postsQuery.data?.items ?? [];
   const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
+  const views = useScrollPostViews(contentTab === 'reposts' ? reposts.data?.pages.flatMap((page) => page.items) ?? [] : shownPosts, contentTab !== 'blogs');
   const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
   const liked = dietary.data?.liked ?? [];
   const queryClient = useQueryClient();
@@ -70,6 +74,7 @@ export function ProfileScreen() {
     dietary.refetch(),
     // refetch() ignores `enabled`, so posts wait until the profile id is known.
     profile ? postsQuery.refetch() : undefined,
+    profile && contentTab === 'reposts' ? reposts.refetch() : undefined,
     queryClient.refetchQueries({ queryKey: blogsKeys.mine, type: 'active' }),
   ]));
 
@@ -111,6 +116,9 @@ export function ProfileScreen() {
       {signOut.isError ? <Text accessibilityRole="alert" style={[styles.helper, styles.signOutError, { color: theme.destructive }]}>Đã thoát trên thiết bị, nhưng chưa thể thu hồi phiên trên máy chủ.</Text> : null}
 
       <ScrollView
+        onLayout={views.onLayout}
+        onScroll={views.onScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
         refreshControl={token ? <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} tintColor={theme.primary} colors={[theme.primary]} /> : undefined}>
@@ -209,18 +217,18 @@ export function ProfileScreen() {
           </Pressable>
 
           <View style={[styles.segment, { backgroundColor: theme.muted }]}>
-            {(['posts', 'blogs'] as const).map((tab) => {
+            {(['posts', 'blogs', 'reposts'] as const).map((tab) => {
               const selected = contentTab === tab;
               return (
                 <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setContentTab(tab)} style={[styles.segmentItem, selected && [styles.segmentSelected, { backgroundColor: theme.card }]]}>
-                  <SymbolView name={tab === 'posts' ? { ios: 'play.rectangle', android: 'smart_display', web: 'smart_display' } : { ios: 'doc.text', android: 'article', web: 'article' }} size={16} tintColor={selected ? theme.primary : theme.mutedForeground} />
-                  <Text style={[styles.segmentText, { color: selected ? theme.primary : theme.mutedForeground }]}>{tab === 'posts' ? 'Bài viết' : 'Blog của tôi'}</Text>
+                  <SymbolView name={tab === 'posts' ? { ios: 'play.rectangle', android: 'smart_display', web: 'smart_display' } : tab === 'blogs' ? { ios: 'doc.text', android: 'article', web: 'article' } : { ios: 'arrow.2.squarepath', android: 'repeat', web: 'repeat' }} size={16} tintColor={selected ? theme.primary : theme.mutedForeground} />
+                  <Text style={[styles.segmentText, { color: selected ? theme.primary : theme.mutedForeground }]}>{tab === 'posts' ? 'Bài viết' : tab === 'blogs' ? 'Blog của tôi' : 'Đăng lại'}</Text>
                 </Pressable>
               );
             })}
           </View>
 
-          {contentTab === 'blogs' ? <MyBlogsScreen embedded /> : <>
+          {contentTab === 'blogs' ? <MyBlogsScreen embedded /> : contentTab === 'reposts' ? <ProfileReposts query={reposts} ownerName="Bạn" onPostLayout={views.onPostLayout} /> : <>
           {postsQuery.isPending && !posts.length ? <View style={styles.loading}><ActivityIndicator color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải bài viết…</Text></View> : null}
           {postsQuery.isError ? <Pressable accessibilityRole="button" onPress={() => void postsQuery.refetch()} style={[styles.card, styles.state, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.helper, { color: theme.destructive }]}>Không tải được bài viết. Chạm để thử lại.</Text></Pressable> : null}
           {!postsQuery.isPending && !postsQuery.isError && shownPosts.length === 0 ? (
@@ -230,7 +238,7 @@ export function ProfileScreen() {
               <Text style={[styles.helper, styles.centerText, { color: theme.mutedForeground }]}>Các bài video ăn uống của bạn sẽ hiện ở đây.</Text>
             </View>
           ) : null}
-          {shownPosts.map((post) => <PostCard key={post.id} post={post} visible />)}
+          {shownPosts.map((post) => <PostCard key={post.id} post={post} visible onLayout={views.onPostLayout(post)} />)}
           </>}
         </> : null}
       </ScrollView>

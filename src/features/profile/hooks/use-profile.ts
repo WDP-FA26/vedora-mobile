@@ -8,7 +8,7 @@ import { uploadImageToStorage } from '@/shared/api/upload-image';
 import { profileKeys } from '../data/profile.keys';
 import { ApiError } from '@/shared/api/api-error';
 
-import { activateImage, dismissSuggestion, getMyProfile, getProfile, getSuggestions, getProfileListPage, getProfilePosts, getRelationship, removeImage, requestImageUpload, setFollow, updateMyProfile, updateMyUsername } from '../services/profile.service';
+import { activateImage, dismissSuggestion, getMyProfile, getProfile, getSuggestions, getProfileListPage, getProfilePosts, getProfileReposts, getRelationship, removeImage, requestImageUpload, setFollow, updateMyProfile, updateMyUsername } from '../services/profile.service';
 import { IMAGE_CONTENT_TYPES, MAX_IMAGE_MB, type FollowSuggestionList, type ImageKind, type Profile, type ProfileListKind } from '../types/profile.schema';
 
 export function useMyProfile(session: string | null) {
@@ -24,6 +24,17 @@ export function useProfilePosts(authorId: string | undefined, session: string | 
     queryKey: [...profileKeys.posts(authorId ?? ''), 'videos'],
     queryFn: ({ signal }) => getProfilePosts(authorId!, signal, 'POST'),
     enabled: !!session && !!authorId,
+  });
+}
+
+/** A page can be empty when reposted posts are hidden; only the server cursor ends pagination. */
+export function useProfileReposts(id: string | undefined, enabled = true) {
+  return useInfiniteQuery({
+    queryKey: profileKeys.reposts(id ?? ''),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam, signal }) => getProfileReposts(id!, pageParam, signal),
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
+    enabled: !!id && enabled,
   });
 }
 

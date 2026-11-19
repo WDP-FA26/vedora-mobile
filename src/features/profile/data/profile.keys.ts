@@ -1,5 +1,7 @@
 export const profileKeys = {
   all: ['profile'] as const,
+  repostsAll: ['profile', 'reposts'] as const,
+  reposts: (id: string) => ['profile', 'reposts', id] as const,
   me: ['profile', 'me'] as const,
   posts: (id: string) => ['profile', 'posts', id] as const,
   detail: (id: string) => ['profile', 'detail', id] as const,

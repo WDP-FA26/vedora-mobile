@@ -17,10 +17,11 @@ export function useRecipes(filters: RecipeFilters, enabled = true) {
   });
 }
 
-export function useRecipe(id: string) {
+export function useRecipe(id: string, enabled = true) {
   return useQuery({
     queryKey: recipeKeys.detail(id),
     queryFn: ({ signal }) => getRecipe(id, signal),
+    enabled,
   });
 }
 
