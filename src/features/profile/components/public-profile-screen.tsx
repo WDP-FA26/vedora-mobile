@@ -1,6 +1,7 @@
 import { ProfessionalBadge } from '@/shared/components/professional-name';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,8 +14,9 @@ import { ZoomImage } from '@/shared/components/image-viewer';
 import { ApiError } from '@/shared/api/api-error';
 import { useSessionStore } from '@/shared/stores/session-store';
 
-import { useAuthorPosts, useMyProfile, useProfile } from '../hooks/use-profile';
+import { useAuthorPosts, useMyProfile, useProfile, useProfileReposts } from '../hooks/use-profile';
 import { FollowButton } from './follow-button';
+import { ProfileReposts } from './profile-reposts';
 
 /** Another member's profile: header, follow button, counts and their public posts. */
 export function PublicProfileScreen() {
@@ -24,8 +26,10 @@ export function PublicProfileScreen() {
   const me = useMyProfile(token);
   const profile = useProfile(id);
   const posts = useAuthorPosts(id);
+  const [tab, setTab] = useState<'posts' | 'reposts'>('posts');
+  const reposts = useProfileReposts(id, tab === 'reposts' && !!profile.data);
   const items = (posts.data?.items ?? []).filter((post) => post.status === 'PUBLISHED');
-  const views = useScrollPostViews(items);
+  const views = useScrollPostViews(tab === 'reposts' ? reposts.data?.pages.flatMap((page) => page.items) ?? [] : items);
   const notFound = profile.error instanceof ApiError && profile.error.status === 404;
 
   if (me.data?.id === id) return <Redirect href="/me" />;
@@ -89,8 +93,13 @@ export function PublicProfileScreen() {
               </View>
             </View>
             <View style={[styles.tab, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-              <Text style={[styles.tabText, { color: theme.primary }]}>Bài viết  {data.postCount}</Text>
+              {(['posts', 'reposts'] as const).map((item) => (
+                <Pressable key={item} accessibilityRole="tab" accessibilityState={{ selected: tab === item }} onPress={() => setTab(item)} style={styles.tabButton}>
+                  <Text style={[styles.tabText, { color: tab === item ? theme.primary : theme.mutedForeground }]}>{item === 'posts' ? `Bài viết  ${data.postCount}` : 'Đăng lại'}</Text>
+                </Pressable>
+              ))}
             </View>
+            {tab === 'reposts' ? <ProfileReposts query={reposts} ownerName={data.fullName} onPostLayout={views.onPostLayout} /> : <>
             {posts.isPending ? <ActivityIndicator color={theme.primary} style={styles.loading} /> : null}
             {posts.isError ? (
               <Pressable accessibilityRole="button" onPress={() => void posts.refetch()} style={styles.state}>
@@ -101,6 +110,7 @@ export function PublicProfileScreen() {
               <Text style={[styles.empty, { color: theme.mutedForeground }]}>Chưa có bài viết công khai.</Text>
             ) : null}
             {items.map((post) => <PostCard key={post.id} post={post} visible onLayout={views.onPostLayout(post)} />)}
+            </>}
           </>
         ) : null}
       </ScrollView>
@@ -133,7 +143,8 @@ const styles = StyleSheet.create({
   counts: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.three, marginTop: Spacing.three },
   count: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
   countNumber: { fontFamily: Fonts.sansBold },
-  tab: { minHeight: 52, borderBottomWidth: 1, paddingHorizontal: Spacing.three, justifyContent: 'center' },
+  tab: { minHeight: 52, borderBottomWidth: 1, paddingHorizontal: Spacing.three, flexDirection: 'row' },
+  tabButton: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontFamily: Fonts.sansBold, fontSize: 14 },
   empty: { fontFamily: Fonts.sans, fontSize: 14, textAlign: 'center', padding: Spacing.five },
 });
