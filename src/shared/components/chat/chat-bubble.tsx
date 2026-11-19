@@ -87,6 +87,7 @@ const styles = StyleSheet.create({
   userColumn: { alignItems: 'flex-end', maxWidth: '82%' },
   author: { fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 16, paddingLeft: Spacing.one },
   bubble: {
+    maxWidth: '100%',
     borderRadius: Radius['2xl'],
     paddingHorizontal: Spacing.three - Spacing.one,
     paddingVertical: Spacing.two + Spacing.one,
