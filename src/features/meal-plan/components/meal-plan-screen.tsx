@@ -1,4 +1,3 @@
-import { Image as PhotoImage } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import type { ReactNode } from 'react';
@@ -7,7 +6,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ZoomImage } from '@/shared/components/image-viewer';
 import { AssistantHeader } from '@/shared/components/chat/assistant-header';
 import { useSessionStore } from '@/shared/stores/session-store';
 
@@ -16,6 +14,7 @@ import type { Weekday } from '../types/meal-plan.schema';
 import { avoidedIngredientsForRecipe, dayLabels, sectionLabels } from '../utils/meal-plan';
 import { weekRange } from '../utils/meal-week';
 import { MealWeekSelector } from './meal-week-selector';
+import { MealRecipePhoto } from './meal-recipe-photo';
 
 const SHORT_DAY: Record<Weekday, string> = { MON: 'T2', TUE: 'T3', WED: 'T4', THU: 'T5', FRI: 'T6', SAT: 'T7', SUN: 'CN' };
 const STICKER = require('@/assets/branding/tomato-sticker.png');
@@ -189,13 +188,7 @@ export function MealPlanScreen() {
                         const avoided = avoidedIngredientsForRecipe(problems, activeDay.day, recipe);
                         return (
                           <View key={recipe.id} style={[styles.recipeCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
-                            {photoOf(recipe) ? (
-                              <ZoomImage source={{ uri: photoOf(recipe) ?? undefined }} style={styles.recipeImage} contentFit="cover" accessibilityLabel={`Ảnh món ${recipe.title}`} />
-                            ) : (
-                              <View style={[styles.recipeImage, styles.recipeImageEmpty, { backgroundColor: theme.secondary }]}>
-                                <PhotoImage source={require('@/assets/branding/tomato-sticker.png')} style={styles.recipeSticker} contentFit="contain" accessible={false} />
-                              </View>
-                            )}
+                            <MealRecipePhoto recipe={recipe} />
                             <Pressable
                               accessibilityRole="link"
                               accessibilityLabel={`Xem công thức ${recipe.title}${avoided.length ? `. Có nguyên liệu cần tránh: ${avoided.join(', ')}` : ''}`}
@@ -314,9 +307,6 @@ const styles = StyleSheet.create({
   mealBlock: { gap: Spacing.two },
   mealLabel: { fontFamily: Fonts.sansBold, fontSize: 11, lineHeight: 16, letterSpacing: 1.1 },
   recipeCard: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two + Spacing.one, borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.two },
-  recipeImage: { width: 56, height: 56, borderRadius: Radius.lg },
-  recipeImageEmpty: { alignItems: 'center', justifyContent: 'center' },
-  recipeSticker: { width: 32, height: 36 },
   recipeLink: { flex: 1, minWidth: 0, alignSelf: 'stretch', justifyContent: 'center', gap: 2 },
   recipeTitle: { fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
   recipeWarning: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.one },
@@ -338,9 +328,3 @@ const styles = StyleSheet.create({
   guestText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21, textAlign: 'center' },
   guestActions: { alignSelf: 'stretch', gap: Spacing.two },
 });
-
-/** Saved recipes carry a photo; the unsaved preview only has id and title. */
-function photoOf(recipe: object): string | null {
-  const url = (recipe as { imageUrl?: string | null }).imageUrl;
-  return typeof url === 'string' && url ? url : null;
-}
