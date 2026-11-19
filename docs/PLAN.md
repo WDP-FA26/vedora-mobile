@@ -989,3 +989,16 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kết quả đã làm: Đóng gói phần Đăng lại trên hồ sơ và bảng Markdown chat AI trên branch feat/profile-reposts-ai-tables từ main cee6a0f để commit, push và tạo PR vào main theo yêu cầu. Giữ các báo cáo rà soát và nhật ký cũ local ngoài commit. Kiểm tra gần nhất sau đồng bộ: 43/43 test liên quan, lint và TypeScript đạt; chưa thử thiết bị/API thật.
 - Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Mở PR trên GitHub, kiểm tra base main và Files changed. (2) Chạy app từ branch PR, vào Tôi/hồ sơ người khác → Đăng lại, thử tải thêm và hủy đăng lại. (3) Mở chat AI yêu cầu bảng, kiểm tra lưới chữ nhật, hàng nhiều dòng và cuộn ngang.
 - Người thực hiện: Codex.
+
+## 2026-11-19 — Sửa thiếu ảnh món trong xem trước thực đơn
+
+- Kết quả đã làm: Xác nhận MealRecipeRefDto của backend chỉ trả ID/tên/tag cho bản xem trước, không có imageUrl; mobile trước đây chỉ đọc imageUrl từ món rồi hiện sticker. Thêm MealRecipePhoto để lấy chi tiết /recipes/:id khi ref thiếu ảnh, dùng chung query key/cache và AbortSignal của useRecipe; chỉ mount cho món thuộc ngày đang xem. Món đã có URL/null không phát sinh request chi tiết; giữ ảnh của thực đơn đã lưu. Có trạng thái chờ, hình thay thế khi món không có ảnh/API lỗi hoặc URL ảnh lỗi và giữ phóng to ảnh. Không thay đổi ID món, đề xuất hay dữ liệu lưu thực đơn; không thêm thư viện, chưa commit/push.
+- Kiểm tra: 16/16 kiểm thử ảnh món/tuần thực đơn/hồ sơ ăn uống đạt, gồm dedupe request, dùng cache, URL ảnh có sẵn, ảnh null, lỗi công thức/ảnh và luồng lưu đề xuất. Lint và TypeScript đạt. Chưa kiểm tra trên điện thoại thật hoặc gọi API thật.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Nhờ AI tạo thực đơn, nhấn Xem thực đơn để mở bản xem trước chưa lưu. (2) Ở ngày có món, chờ tải chi tiết, kiểm tra ảnh món hiện thay sticker; nhấn ảnh để phóng to. (3) Chuyển ngày rồi quay lại, kiểm tra đúng ảnh từng món và tận dụng cache. (4) Lưu thực đơn, kiểm tra ảnh vẫn đúng và không tải chi tiết thêm chỉ để lấy ảnh khi thực đơn đã có URL. (5) Thử món không có ảnh, tắt mạng hoặc URL ảnh không tải được; kiểm tra hình thay thế và tên món vẫn hiện, không cản thao tác lưu. (6) Kiểm tra cảnh báo nguyên liệu, đổi tuần và mở công thức vẫn hoạt động.
+- Người thực hiện: Codex.
+
+## 2026-11-19 — Bàn giao sửa ảnh xem trước thực đơn
+
+- Kết quả đã làm: Đóng gói bản sửa ảnh xem trước thực đơn trên branch fix/meal-preview-photos từ main d19a96c để commit, push và tạo PR vào main theo yêu cầu. Giữ các báo cáo rà soát và nhật ký cũ ở local ngoài commit. Kiểm tra gần nhất: 16/16 test liên quan, lint và TypeScript đạt.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Mở PR trên GitHub, kiểm tra base main và Files changed. (2) Chạy app từ branch PR → nhờ AI tạo thực đơn → mở xem trước, kiểm tra ảnh món tải lên và phóng to được. (3) Chuyển ngày, lưu thực đơn và thử món không có ảnh để kiểm tra ảnh thay thế.
+- Người thực hiện: Codex.
