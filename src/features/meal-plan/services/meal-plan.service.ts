@@ -1,6 +1,6 @@
 import { apiClient } from '@/shared/api/api-client';
 import { requestJson } from '@/shared/api/request-json';
-import { requestAiStream } from '@/shared/api/ai-stream';
+import { requestAiStream, type AiPart } from '@/shared/api/ai-stream';
 
 import {
   dietaryRestrictionsSchema,
@@ -27,8 +27,8 @@ export function saveMealDays(weekStart: string, days: MealDayInput[]) {
 }
 
 /** Streams an answer; the API saves the question and the answer into thread `threadId` (created on first use). */
-export function askMealPlanner(weekStart: string, threadId: string, messages: { role: 'user' | 'assistant'; text: string }[], onText?: (text: string) => void) {
-  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { weekStart: weekStartSchema.parse(weekStart), threadId, messages: messages.slice(-10) }, onText });
+export function askMealPlanner(weekStart: string, threadId: string, messages: { role: 'user' | 'assistant'; text: string }[], onParts?: (parts: AiPart[]) => void) {
+  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { weekStart: weekStartSchema.parse(weekStart), threadId, messages: messages.slice(-10) }, onParts });
 }
 
 export async function discardPlannerDraft(weekStart: string) {
