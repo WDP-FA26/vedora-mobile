@@ -17,7 +17,6 @@ import { Fonts, Radius, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { AssistantHeader } from "@/shared/components/chat/assistant-header";
 import {
-  CHAT_CONTENT_INSET,
   ChatBubble,
   ChatStatus,
 } from "@/shared/components/chat/chat-bubble";
@@ -308,7 +307,6 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   suggestions: {
-    paddingLeft: CHAT_CONTENT_INSET,
     gap: Spacing.two,
   },
   suggestionLabel: {
@@ -335,7 +333,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   error: {
-    paddingLeft: CHAT_CONTENT_INSET,
     fontFamily: Fonts.sans,
     fontSize: 14,
     lineHeight: 20,

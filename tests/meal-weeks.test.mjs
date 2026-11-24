@@ -58,11 +58,12 @@ mock.module('react', { namedExports: {
   },
   useRef: (initial) => { const index = slot++; return slots[index] ??= { current: initial }; },
   useEffect: () => {},
-  useMemo: (factory) => factory(), createContext: () => 'context', use: () => {},
+  useMemo: (factory) => factory(), useCallback: (callback) => callback, createContext: () => 'context', use: () => {},
 } });
 const jsx = (type, props) => ({ type, props });
 mock.module('react/jsx-runtime', { namedExports: { jsx, jsxs: jsx, Fragment: 'Fragment' } });
-mock.module('react-native', { namedExports: { View: 'View', Text: 'Text', Pressable: 'Pressable', Modal: 'Modal', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (styles) => styles } } });
+mock.module('expo-symbols', { namedExports: { SymbolView: 'SymbolView' } });
+mock.module('react-native', { namedExports: { PanResponder: { create: (handlers) => ({ panHandlers: handlers }) }, View: 'View', Text: 'Text', Pressable: 'Pressable', Modal: 'Modal', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (styles) => styles } } });
 mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({}) } });
 
 const schema = await import('../src/features/meal-plan/types/meal-plan.schema.ts');
@@ -71,7 +72,10 @@ const { displayDays, avoidedIngredientsForRecipe } = await import('../src/featur
 const { savedPlanChanges } = await import('../src/features/meal-plan/utils/planner-changes.ts');
 const interactions = await import('../src/features/meal-plan/utils/planner-interactions.ts');
 const { PlannerQuestionCard, PlannerWebConsentCard, PlannerRewindDialog } = await import('../src/features/meal-plan/components/planner-interaction-cards.tsx');
+const { PlannerMessageActions } = await import('../src/features/meal-plan/components/planner-message-actions.tsx');
 const service = await import('../src/features/meal-plan/services/meal-plan.service.ts');
+const { ApiError } = await import('../src/shared/api/api-error.ts');
+const { assistantErrorText } = await import('../src/features/blogs/hooks/use-blog-assistant.ts');
 const { mealPlanKeys } = await import('../src/features/meal-plan/data/meal-plan.keys.ts');
 const currentWeek = '2026-11-16', nextWeek = '2026-11-23';
 function plan(week = currentWeek) {
@@ -93,6 +97,36 @@ function reset() {
   respond = (config) => plan(config.params?.weekStart); streamFailure = null; streamParts = [];
   streamResult = { text: '', tools: [], parts: [], refused: false };
 }
+
+test('swiping reveals the rewind icon while holding or accessibility actions open confirmation directly', () => {
+  let revealed = 0, rewound = 0;
+  const props = { text: 'message', children: 'bubble', open: false, disabled: false,
+    onReveal: () => revealed++, onDismiss: () => {}, onRewind: () => rewound++ };
+  let row = PlannerMessageActions(props);
+  assert.equal(row.props.children[1], null);
+  const gesture = (dx, dy) => ({ dx, dy });
+  assert.equal(row.props.onMoveShouldSetPanResponderCapture(null, gesture(5, 60)), false);
+  assert.equal(row.props.onMoveShouldSetPanResponderCapture(null, gesture(45, 5)), true);
+  row.props.onPanResponderRelease(null, gesture(20, 2));
+  row.props.onPanResponderRelease(null, gesture(5, 60));
+  assert.equal(revealed, 0);
+  row.props.onPanResponderRelease(null, gesture(-45, 5));
+  assert.equal(revealed, 1);
+  assert.equal(rewound, 0);
+  row.props.children[0].props.onLongPress();
+  assert.equal(rewound, 1);
+  row.props.children[0].props.onAccessibilityAction({ nativeEvent: { actionName: 'showRewind' } });
+  assert.equal(revealed, 1);
+  assert.equal(rewound, 2);
+  row = PlannerMessageActions({ ...props, open: true });
+  row.props.children[1].props.onPress();
+  assert.equal(rewound, 3);
+  row = PlannerMessageActions({ ...props, open: true, disabled: true });
+  assert.equal(row.props.children[1], null);
+  assert.equal(row.props.onMoveShouldSetPanResponderCapture(null, gesture(45, 5)), false);
+  row.props.onPanResponderRelease(null, gesture(45, 5));
+  assert.equal(revealed, 1);
+});
 test('calendar dates, allowed weeks and avoided warnings remain server-driven', () => {
   assert.equal(addCalendarDays('2026-12-28', 7), '2027-01-04');
   assert.equal(planningWeeks(plan()).length, 5);
@@ -140,6 +174,33 @@ test('a lost connection after a write preserves the partial turn and refreshes t
   assert.ok(planner.chatError); assert.equal(planner.composer, '');
   assert.equal(client.getQueryState(mealPlanKeys.week(nextWeek)).isInvalidated, true);
   assert.equal(requests.filter((item) => item.url === '/meal-plan/chat').length, 1);
+});
+
+test('blog assistant keeps model and overload messages for structured stream errors', () => {
+  for (const code of ['MODEL_ERROR', 'RATE_LIMITED']) {
+    assert.equal(assistantErrorText(new ApiError(null, code, 'Assistant stream failed')), assistantErrorText(new Error(code)));
+  }
+});
+
+test('immediate HTTP and model failures show their actual category instead of a misleading lost connection warning', async () => {
+  for (const [error, expected] of [
+    [new ApiError(400, 'BAD_REQUEST', 'Debug-only detail'), 'HTTP 400'],
+    [new ApiError(503, 'SERVICE_UNAVAILABLE', 'Debug-only detail'), 'HTTP 503'],
+    [new ApiError(500, 'INTERNAL_SERVER_ERROR', 'Debug-only detail'), 'HTTP 500'],
+    [new ApiError(null, 'MODEL_ERROR', 'Debug-only detail'), 'MODEL_ERROR'],
+    [new ApiError(null, 'RATE_LIMITED', 'Debug-only detail'), 'RATE_LIMITED'],
+  ]) {
+    reset(); streamFailure = error;
+    await render().sendMessage('Hello');
+    assert.ok(render().chatError.includes(expected));
+    assert.equal(render().chatError.includes('Debug-only detail'), false);
+    assert.equal(render().chatError.includes('gián đoạn'), false);
+    assert.equal(render().chatError.includes('có thể đã'), false);
+  }
+  reset(); streamParts = [part()]; streamFailure = new ApiError(null, 'MODEL_ERROR', 'Hidden detail');
+  await render().sendMessage('Replace dinner');
+  assert.ok(render().chatError.includes('MODEL_ERROR'));
+  assert.ok(render().chatError.includes('có thể đã'));
 });
 test('late results from a different session cannot repopulate calendar or chat state', async () => {
   reset();

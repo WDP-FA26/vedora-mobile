@@ -13,7 +13,7 @@ import { answerPlannerTool, askMealPlanner, getMealPlan, getPlannerThread, rewin
 import { type PlannerThread, type Weekday, type MealSection } from '../types/meal-plan.schema';
 import { dayLabels, displayDays, sectionLabels } from '../utils/meal-plan';
 import { isPlanningWeekend, planningWeeks } from '../utils/meal-week';
-import { savedPlanChanges } from '../utils/planner-changes';
+import { PLAN_CHANGE_TOOLS, savedPlanChanges } from '../utils/planner-changes';
 import { openPlannerInteraction, plannerContextText, plannerWebAllowed, rewindSummary, WEB_APPROVED_TEXT, WEB_DECLINED_TEXT } from '../utils/planner-interactions';
 import { isToolPart, savedToolParts, type ToolPart } from '../utils/planner-trace';
 import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan } from './use-meal-plan';
@@ -29,16 +29,24 @@ function restoreTurns(messages: PlannerThread['messages']): ChatTurn[] {
   }));
 }
 
-function friendlyError(error: unknown) {
+function friendlyError(error: unknown, planWriteSeen: boolean) {
   const quotaText = aiQuotaMessage(error);
   if (quotaText) return quotaText;
+  const savedWarning = ' Một số thay đổi có thể đã được lưu. Hãy kiểm tra Thực đơn hoặc mở lại cuộc trò chuyện trước khi gửi yêu cầu tiếp.';
   if (error instanceof ApiError) {
+    if (error.code === 'MODEL_ERROR') return 'Dịch vụ xử lý của trợ lý đang gặp lỗi (MODEL_ERROR). Hãy thử lại sau.' + (planWriteSeen ? savedWarning : '');
+    if (error.code === 'RATE_LIMITED') return 'Dịch vụ xử lý của trợ lý đang quá tải (RATE_LIMITED). Hãy đợi một chút rồi thử lại.' + (planWriteSeen ? savedWarning : '');
     if (error.status === 401) return 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.';
     if (error.status === 429) return 'Bạn gửi hơi nhanh. Hãy đợi một chút rồi thử lại.';
     if (error.code === 'MEAL_DAY_LOCKED') return 'Một số ngày đã qua và chỉ có thể xem lại.';
     if (error.code === 'MEAL_WEEK_OUT_OF_RANGE') return 'Hãy chọn tuần trong khoảng được phép lập thực đơn.';
+    if (error.status === 503) return 'Trợ lý đang tạm thời không khả dụng (HTTP 503). Hãy thử lại sau.';
+    if (error.status === 400 || error.status === 422) return `Trợ lý chưa chấp nhận được dữ liệu yêu cầu (HTTP ${error.status}). Hãy thử trong cuộc trò chuyện mới.`;
+    if (error.status === 403) return 'Tài khoản hiện không có quyền gửi yêu cầu này (HTTP 403).';
+    if (error.status !== null && error.status >= 500) return `Máy chủ trợ lý đang gặp lỗi (HTTP ${error.status}). Hãy thử lại sau.`;
+    if (error.status !== null) return `Chưa gửi được yêu cầu đến trợ lý (HTTP ${error.status}). Hãy mở lại cuộc trò chuyện để kiểm tra.`;
   }
-  return 'Kết nối với trợ lý bị gián đoạn. Một số thay đổi có thể đã được lưu. Hãy kiểm tra Thực đơn hoặc mở lại cuộc trò chuyện trước khi gửi yêu cầu tiếp.';
+  return 'Kết nối với trợ lý bị gián đoạn.' + savedWarning;
 }
 
 function useMealPlannerState() {
@@ -164,10 +172,12 @@ function useMealPlannerState() {
     const request = new AbortController();
     abort.current = request;
     let started = false;
+    let planWriteSeen = false;
     const seen = new Set<string>();
     const update = (parts: AiPart[], streaming: boolean) => {
       if (!isCurrent()) return;
       const toolParts = parts.filter(isToolPart);
+      planWriteSeen ||= toolParts.some((part) => PLAN_CHANGE_TOOLS.includes(part.type.replace(/^tool-/, '')));
       const changes = savedPlanChanges(toolParts.map((part) => ({ name: part.type, callId: part.toolCallId, output: part.output })));
       if (changes.some((change) => !seen.has(change.id))) {
         changes.forEach((change) => seen.add(change.id));
@@ -212,7 +222,7 @@ function useMealPlannerState() {
       if (isCurrent()) {
         // A tool may already have committed: preserve the partial answer and never silently resend it.
         setTurns((old) => old.map((turn) => turn.id === assistantId ? { ...turn, streaming: false } : turn));
-        setChatError(started ? friendlyError(error) : 'Chưa gửi được câu trả lời. Hãy thử lại hoặc mở lại lịch sử trò chuyện.');
+        setChatError(started ? friendlyError(error, planWriteSeen) : 'Chưa gửi được câu trả lời. Hãy thử lại hoặc mở lại lịch sử trò chuyện.');
       }
     } finally {
       sending.current = false;

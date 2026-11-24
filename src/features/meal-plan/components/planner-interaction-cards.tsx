@@ -56,13 +56,13 @@ export function PlannerRewindDialog({ text, hasComposer, busy, error, onCancel, 
   return <Modal visible={text !== null} transparent animationType="fade" onRequestClose={() => { if (!busy) onCancel(); }}>
     <View style={styles.overlay}><View accessibilityViewIsModal style={[styles.dialog, { backgroundColor: theme.card }]}>
       <ScrollView contentContainerStyle={styles.dialogContent}>
-        <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Hoàn tác từ tin nhắn này?</Text>
+        <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Quay lại yêu cầu trước đó</Text>
         <Text style={[styles.text, { color: theme.foreground }]}>{text?.slice(0, 180)}</Text>
         <Text style={[styles.text, { color: theme.mutedForeground }]}>Thực đơn sẽ trở về trước yêu cầu này. Tin nhắn này và mọi tin nhắn sau nó sẽ bị xóa khỏi cuộc trò chuyện. Ngày đã qua giữ nguyên; món đã xóa hoặc nay cần kiêng có thể không được khôi phục.</Text>
         <Text style={[styles.hint, { color: theme.mutedForeground }]}>{hasComposer ? 'Nội dung đang nhập sẽ được thay bằng tin nhắn này để bạn sửa và gửi lại.' : 'Tin nhắn này được đưa lại vào ô nhập để bạn sửa và gửi lại.'}</Text>
         {error ? <Text accessibilityRole="alert" style={[styles.text, { color: theme.destructive }]}>{error}</Text> : null}
-        {busy ? <View style={styles.progress}><ActivityIndicator color={theme.primary} /><Text style={[styles.text, { color: theme.foreground }]}>Đang hoàn tác…</Text></View> : null}
-        <Pressable accessibilityRole="button" disabled={busy} onPress={onConfirm} style={[styles.button, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: busy ? 0.5 : 1 }]}><Text style={[styles.title, { color: theme.primaryForeground }]}>Xác nhận hoàn tác</Text></Pressable>
+        {busy ? <View style={styles.progress}><ActivityIndicator color={theme.primary} /><Text style={[styles.text, { color: theme.foreground }]}>Đang quay lại…</Text></View> : null}
+        <Pressable accessibilityRole="button" disabled={busy} onPress={onConfirm} style={[styles.button, { backgroundColor: theme.primary, borderColor: theme.primary, opacity: busy ? 0.5 : 1 }]}><Text style={[styles.title, { color: theme.primaryForeground }]}>Quay lại</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={busy} onPress={onCancel} style={[styles.button, { borderColor: theme.border, opacity: busy ? 0.5 : 1 }]}><Text style={[styles.text, { color: theme.foreground }]}>Hủy</Text></Pressable>
       </ScrollView>
     </View></View>

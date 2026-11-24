@@ -109,7 +109,8 @@ const styles = StyleSheet.create({
   },
   box: {
     width: '100%',
-    maxWidth: 680,
+    // Message containers include their horizontal padding inside the 680px limit.
+    maxWidth: 680 - Spacing.three * 2,
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -138,6 +139,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hint: {
+    width: '100%',
+    maxWidth: 680 - Spacing.three * 2,
+    alignSelf: 'center',
     textAlign: 'center',
     fontFamily: Fonts.sans,
     fontSize: 11,
