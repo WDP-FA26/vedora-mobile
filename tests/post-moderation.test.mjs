@@ -32,7 +32,9 @@ const local = (path) => new URL(path, sourceRoot).href;
 let response, lastRequest;
 mock.module(local('shared/api/api-client.ts'), { namedExports: { apiClient: { request: async (config) => { lastRequest = config; return { data: response }; } } } });
 mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({ foreground: '#111', mutedForeground: '#555', destructive: '#900', muted: '#eee', border: '#ccc' }) } });
-mock.module('react-native', { namedExports: { View: 'View', Text: 'Text', StyleSheet: { create: (value) => value } } });
+const routes = [];
+mock.module('expo-router', { namedExports: { router: { push: (route) => routes.push(route) } } });
+mock.module('react-native', { namedExports: { View: 'View', Text: 'Text', Pressable: 'Pressable', StyleSheet: { create: (value) => value } } });
 const jsx = (type, props) => ({ type, props });
 mock.module('react/jsx-runtime', { namedExports: { jsx, jsxs: jsx } });
 mock.module('@tanstack/react-query', { namedExports: { useQuery: (config) => config, useInfiniteQuery: (config) => config, useMutation: (config) => config, useQueryClient: () => ({}) } });
@@ -96,4 +98,24 @@ test('polling follows only unfinished states and stops at a terminal state', () 
     assert.equal(useMyBlogs().refetchInterval({ state: { data: { pages: [{ items: [blog(status)] }] } } }), expected);
   }
   assert.equal(usePost(id).refetchInterval({ state: {} }), false);
+});
+
+test('appeal actions use server eligibility and open the correct post or existing ticket', () => {
+  const actions = (node) => {
+    if (!node || typeof node !== 'object') return [];
+    if (Array.isArray(node)) return node.flatMap(actions);
+    return [...(node.type === 'Pressable' ? [node] : []), ...actions(node.props?.children)];
+  };
+  const eligible = feedPostSchema.parse({ ...post('REJECTED'), appeal: { activeTicket: null, latestTicket: null, canAppeal: true, deadlineAt: '2026-11-30T00:00:00Z', blockedReason: null } });
+  const create = actions(PostModerationNotice({ post: eligible }));
+  assert.equal(create.length, 1); create[0].props.onPress();
+  assert.deepEqual(routes.at(-1), { pathname: '/support/new', params: { postId: id } });
+  const pending = { ...eligible, appeal: { ...eligible.appeal, activeTicket: { id: 'ticket-active' }, canAppeal: false } };
+  const existing = actions(PostModerationNotice({ post: pending }));
+  assert.equal(existing.length, 1); existing[0].props.onPress();
+  assert.deepEqual(routes.at(-1), { pathname: '/support/[id]', params: { id: 'ticket-active' } });
+  const expired = { ...eligible, appeal: { activeTicket: null, canAppeal: false, blockedReason: 'APPEAL_WINDOW_EXPIRED' } };
+  assert.equal(actions(PostModerationNotice({ post: expired })).length, 0);
+  assert.match(flatten(PostModerationNotice({ post: expired })), /hết thời hạn/);
+  assert.equal(actions(PostModerationNotice({ post: post('REJECTED') })).length, 0);
 });

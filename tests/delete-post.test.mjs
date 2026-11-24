@@ -45,8 +45,11 @@ mock.module('@tanstack/react-query', { namedExports: {
   } }),
 } });
 let slots = [], slot = 0, token = 'session', memberId = 'owner';
+let reportResponse = async () => {}, uploadResponse = async () => null;
+const sentReports = [];
+globalThis.require = (asset) => asset;
 mock.module('react', { namedExports: {
-  useState: (initial) => { const index = slot++; if (!(index in slots)) slots[index] = initial; return [slots[index], (value) => { slots[index] = value; }]; },
+  useState: (initial) => { const index = slot++; if (!(index in slots)) slots[index] = initial; return [slots[index], (value) => { slots[index] = typeof value === 'function' ? value(slots[index]) : value; }]; },
   useRef: (initial) => { const index = slot++; return slots[index] ??= { current: initial }; },
 } });
 const jsx = (type, props) => ({ type, props });
@@ -57,13 +60,18 @@ mock.module('react-native', { namedExports: Object.fromEntries([
 ]) });
 mock.module('expo-router', { namedExports: { router: { push: () => {} } } });
 mock.module('expo-symbols', { namedExports: { SymbolView: 'SymbolView' } });
+mock.module('expo-image', { namedExports: { Image: 'Image' } });
 mock.module('react-native-safe-area-context', { namedExports: { useSafeAreaInsets: () => ({ bottom: 24 }) } });
 mock.module(local('constants/theme.ts'), { namedExports: { Fonts: {}, Radius: {}, Spacing: {} } });
 mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({}) } });
 mock.module(local('shared/config/env.ts'), { namedExports: { WEB_URL: 'https://example.test' } });
-mock.module(local('shared/stores/session-store.ts'), { namedExports: { useSessionStore: (select) => select({ accessToken: token }) } });
+const sessionStore = (select) => select({ accessToken: token });
+sessionStore.getState = () => ({ accessToken: token });
+mock.module(local('shared/stores/session-store.ts'), { namedExports: { useSessionStore: sessionStore } });
 mock.module(local('features/profile/hooks/use-profile.ts'), { namedExports: { useMyProfile: () => ({ data: { id: memberId } }) } });
-mock.module(local('features/posts/hooks/use-posts.ts'), { namedExports: { useReportPost: () => ({}) } });
+mock.module(local('features/posts/hooks/use-posts.ts'), { namedExports: { useReportPost: () => ({ isPending: false, mutateAsync: async (input) => { sentReports.push(input); return reportResponse(); } }) } });
+mock.module(local('features/posts/hooks/use-report-evidence.ts'), { namedExports: { useReportEvidence: () => ({ isPending: false, mutateAsync: () => uploadResponse() }) } });
+mock.module(local('shared/components/image-viewer.tsx'), { namedExports: { ZoomImage: 'ZoomImage' } });
 mock.module(local('features/messaging/components/share-post-picker.tsx'), { namedExports: { SharePostPicker: 'SharePostPicker' } });
 
 const { deletePost } = await import('../src/features/posts/services/posts.service.ts');
@@ -79,7 +87,7 @@ function find(node, predicate) {
 }
 const button = (tree, label) => find(tree, (node) => node.type === 'Pressable' && node.props.accessibilityLabel === label)[0];
 const flush = () => new Promise((resolve) => setImmediate(resolve));
-function reset() { slots = []; requests.length = 0; token = 'session'; memberId = 'owner'; client.clear(); respond = async () => undefined; }
+function reset() { slots = []; requests.length = 0; sentReports.length = 0; token = 'session'; memberId = 'owner'; client.clear(); respond = async () => undefined; reportResponse = async () => {}; uploadResponse = async () => null; }
 
 test('post and Blog use their own DELETE endpoints and accept an empty 204 response', async () => {
   reset();
@@ -206,4 +214,49 @@ test('permission, missing Blog and network errors remain visible and allow closi
     assert.equal(requests.length, 2);
   }
   client.clear();
+});
+
+function openReportForm() {
+  button(render(), 'Thêm tùy chọn cho bài viết').props.onPress();
+  button(render(), 'Báo cáo bài viết').props.onPress();
+  find(render(), node => node.props?.accessibilityRole === 'radio')[0].props.onPress();
+}
+test('report form keeps 3 uploaded images after failure, allows removing and retrying with the same IDs', async () => {
+  reset(); memberId = 'reader'; openReportForm();
+  const ids = [1, 2, 3].map(n => `00000000-0000-4000-8000-00000000000${n}`);
+  for (const id of ids) {
+    uploadResponse = async () => ({ id, uri: `file:///${id}.png` });
+    button(render(), 'Thêm ảnh minh chứng').props.onPress(); await flush();
+  }
+  assert.equal(button(render(), 'Thêm ảnh minh chứng'), undefined);
+  reportResponse = async () => { throw new Error('offline'); };
+  button(render(), 'Gửi báo cáo').props.onPress(); await flush();
+  assert.deepEqual(sentReports[0].evidenceIds, ids);
+  assert.equal(find(render(), node => node.type === 'ZoomImage').length, 3);
+  assert.equal(find(render(), node => node.props?.accessibilityRole === 'alert').length, 1);
+  button(render(), 'Gỡ ảnh minh chứng 2').props.onPress();
+  reportResponse = async () => {};
+  button(render(), 'Gửi báo cáo').props.onPress(); await flush();
+  assert.deepEqual(sentReports[1].evidenceIds, [ids[0], ids[2]]);
+  assert.equal(find(render(), node => node.type === 'Text' && node.props.children === 'Cảm ơn bạn đã báo cáo').length, 1);
+});
+test('upload and submit locks prevent repeated requests and closing; closing later clears evidence', async () => {
+  reset(); memberId = 'reader'; openReportForm();
+  let finish, uploadCount = 0;
+  uploadResponse = () => { uploadCount++; return new Promise(resolve => { finish = resolve; }); };
+  let tree = render();
+  button(tree, 'Thêm ảnh minh chứng').props.onPress();
+  button(tree, 'Thêm ảnh minh chứng').props.onPress();
+  button(tree, 'Gửi báo cáo').props.onPress();
+  find(tree, node => node.type === 'Modal')[0].props.onRequestClose();
+  assert.equal(uploadCount, 1); assert.equal(sentReports.length, 0);
+  assert.equal(find(render(), node => node.type === 'Modal')[0].props.visible, true);
+  finish({ id: '00000000-0000-4000-8000-000000000001', uri: 'file:///proof.png' }); await flush();
+  reportResponse = () => new Promise(resolve => { finish = resolve; });
+  tree = render(); button(tree, 'Gửi báo cáo').props.onPress(); button(tree, 'Gửi báo cáo').props.onPress();
+  assert.equal(sentReports.length, 1);
+  finish(); await flush();
+  find(render(), node => node.type === 'Modal')[0].props.onRequestClose();
+  openReportForm();
+  assert.equal(find(render(), node => node.type === 'ZoomImage').length, 0);
 });

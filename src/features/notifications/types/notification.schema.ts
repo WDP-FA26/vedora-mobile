@@ -16,6 +16,7 @@ export const notificationSchema = z.object({
   postId: z.string().nullable(),
   postType: z.enum(['POST', 'BLOG']).nullable().optional(),
   commentId: z.string().nullable().optional(),
+  ticketId: z.string().nullable().optional(),
   reason: z.string().nullable().optional(),
   reasonText: z.string().nullable().optional(),
   note: z.string().nullable().optional(),

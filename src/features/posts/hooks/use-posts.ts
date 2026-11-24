@@ -4,6 +4,7 @@ import { feedKeys } from '@/features/feed/data/feed.keys';
 import { patchCachedPost } from '@/features/feed/hooks/use-feed';
 
 import { useSessionStore } from '@/shared/stores/session-store';
+import { ApiError } from '@/shared/api/api-error';
 
 import { postsKeys } from '../data/posts.keys';
 import { createComment, createReply, deleteComment, getBookmarkPage, getComment, getCommentPage, getPost, getReplyPage, reportPost, searchPostPage, updateComment } from '../services/posts.service';
@@ -75,7 +76,12 @@ export function useCommentActions(postId: string) {
 }
 
 export function useReportPost(postId: string) {
-  return useMutation({ mutationFn: (input: ReportInput) => reportPost(postId, input) });
+  const token = useSessionStore((state) => state.accessToken);
+  return useMutation({ networkMode: 'always', retry: false, mutationFn: async (input: ReportInput) => {
+    if (!token || useSessionStore.getState().accessToken !== token) throw new ApiError(401, 'SESSION_CHANGED', 'Session changed');
+    await reportPost(postId, input);
+    if (useSessionStore.getState().accessToken !== token) throw new ApiError(401, 'SESSION_CHANGED', 'Session changed');
+  } });
 }
 
 export function useBookmarks() {

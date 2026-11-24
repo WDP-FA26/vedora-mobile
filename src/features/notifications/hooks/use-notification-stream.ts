@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 
 import { useSessionStore } from '@/shared/stores/session-store';
+import { supportKeys } from '@/features/support/data/support.keys';
 
 import { notificationKeys } from '../data/notification.keys';
 import { readNotificationStream, StreamAuthError } from '../services/notification.service';
@@ -50,6 +51,7 @@ export function useNotificationStream() {
             return { ...previous, pages: [{ ...first, items: [incoming, ...first.items] }, ...rest] };
           });
           queryClient.setQueryData<number>(notificationKeys.unread, (count) => (count ?? 0) + 1);
+          if (incoming.ticketId) void queryClient.invalidateQueries({ queryKey: supportKeys.all });
         },
       })
         .then(

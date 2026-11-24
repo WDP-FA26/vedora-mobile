@@ -19,6 +19,18 @@ function quoted(note: string | null | undefined) {
 /** What the actor (or Vedora, when `actor` is null) did, worded for "<name> <text>". */
 export function notificationText(item: AppNotification): string {
   switch (item.type) {
+    case "SUPPORT_TICKET_REPLIED":
+      return "đã phản hồi yêu cầu hỗ trợ của bạn";
+    case "SUPPORT_TICKET_RESOLVED":
+      return "đã giải quyết yêu cầu hỗ trợ của bạn";
+    case "SUPPORT_TICKET_CLOSED":
+      return "đã đóng yêu cầu hỗ trợ của bạn";
+    case "SUPPORT_TICKET_EXPIRED":
+      return "đã đóng yêu cầu do hết hạn phản hồi";
+    case "SUPPORT_TICKET_REMINDER":
+      return "đang chờ bạn phản hồi yêu cầu hỗ trợ";
+    case "POST_RESTORED":
+      return "đã khôi phục bài viết sau khi xem xét khiếu nại";
     case "LIKE":
       return "đã tim bài viết của bạn";
     case "COMMENT_REPLY":
