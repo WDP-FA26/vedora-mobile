@@ -87,6 +87,7 @@ export function MealPlanScreen() {
       />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <MealWeekSelector weeks={planner.weeks} selected={planner.weekStart} onChange={planner.changeWeek} disabled={!!draftAction || planner.busy} />
+        <OutlineButton label="Nhật ký ăn uống · Ghi món đã ăn" onPress={() => router.push('/meal-log')} />
         {planner.weekend && planner.weekStart === planner.weeks[0] && planner.weeks[1] ? (
           <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
             <Text style={[styles.cardTitle, { color: theme.foreground }]}>Chuẩn bị thực đơn cho tuần sau</Text>

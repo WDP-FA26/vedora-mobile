@@ -11,10 +11,12 @@ import { AssistantHeader } from '@/shared/components/chat/assistant-header';
 import { CHAT_CONTENT_INSET, ChatBubble, ChatStatus } from '@/shared/components/chat/chat-bubble';
 import { ChatComposer } from '@/shared/components/chat/chat-composer';
 
-import { useMealPlanner } from '../hooks/meal-planner-provider';
+import { useMealPlanner, type ChatTurn } from '../hooks/meal-planner-provider';
 import { MealRequestForm } from './meal-request-form';
 import { PlannerHistorySheet } from './planner-history-sheet';
+import { PlannerTrace } from './planner-trace';
 import { weekRange } from '../utils/meal-week';
+import { traceSteps } from '../utils/planner-trace';
 
 const QUICK_STARTS = [['Lên thực đơn 7 ngày', 'week'], ['Mỗi bữa nấu trong 30 phút', 'quick'], ['Tận dụng nguyên liệu đang có', 'pantry']] as const;
 const WELCOME =
@@ -123,6 +125,7 @@ export function PlannerChatScreen() {
                   streaming={turn.streaming}
                   authorLabel="Trợ lý Vedora"
                   avatar={avatar}
+                  header={turn.toolParts ? <TurnTrace turn={turn} /> : null}
                   footer={
                     turn.proposals?.filter(planner.canPreviewProposal).map((proposal) => (
                       <Pressable
@@ -138,7 +141,7 @@ export function PlannerChatScreen() {
                   }
                 />
               ))}
-              {busy && !turns.some((turn) => turn.streaming) ? <ChatStatus>Trợ lý đang trả lời…</ChatStatus> : null}
+              {busy && !turns.some((turn) => turn.streaming) ? <ChatStatus>Đang suy nghĩ…</ChatStatus> : null}
               {chatError ? (
                 <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>
                   {chatError}
@@ -170,6 +173,12 @@ export function PlannerChatScreen() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+function TurnTrace({ turn }: { turn: ChatTurn }) {
+  const steps = traceSteps(turn.toolParts ?? [], !turn.streaming);
+  const thinking = !!turn.streaming && !turn.text && !steps.some((step) => step.status === 'running');
+  return <PlannerTrace steps={steps} thinking={thinking} />;
 }
 
 function QuickChip({ label, onPress }: { label: string; onPress: () => void }) {

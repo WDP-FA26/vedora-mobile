@@ -17,12 +17,14 @@ type ChatBubbleProps = {
   /** Assistant avatar content (mascot). */
   avatar?: ReactNode;
   authorLabel?: string;
+  /** Extra content above the bubble, e.g. the assistant's steps. */
+  header?: ReactNode;
   /** Extra content under the bubble, e.g. an action button. */
   footer?: ReactNode;
 };
 
-/** One chat message: assistant on the left with avatar and name, user on the right. */
-export function ChatBubble({ role, text, streaming, avatar, authorLabel, footer }: ChatBubbleProps) {
+/** One chat message: assistant on the left with avatar and name, user on the right. An empty assistant text shows no bubble. */
+export function ChatBubble({ role, text, streaming, avatar, authorLabel, header, footer }: ChatBubbleProps) {
   const theme = useTheme();
   const isUser = role === 'user';
 
@@ -35,7 +37,8 @@ export function ChatBubble({ role, text, streaming, avatar, authorLabel, footer 
         {!isUser && authorLabel ? (
           <Text style={[styles.author, { color: theme.mutedForeground }]}>{authorLabel}</Text>
         ) : null}
-        <View
+        {header}
+        {isUser || text ? <View
           style={[
             styles.bubble,
             isUser
@@ -52,7 +55,7 @@ export function ChatBubble({ role, text, streaming, avatar, authorLabel, footer 
           ) : (
             <ChatMarkdown text={text} color={theme.foreground} cursor={streaming} />
           )}
-        </View>
+        </View> : null}
         {footer}
       </View>
     </View>

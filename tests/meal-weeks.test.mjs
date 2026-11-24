@@ -110,7 +110,7 @@ const render = () => { slot = 0; return MealPlannerProvider({ children: null }).
 function reset() {
   slots = []; requests.length = 0; routes.length = 0; client.clear(); holdRead = undefined;
   respond = (config) => plan(config.params?.weekStart ?? config.data?.weekStart);
-  streamResult = { text: 'Next week', refused: false, tools: [{ name: 'fillSlots', callId: 'next', output: proposal() }] };
+  streamResult = { text: 'Next week', refused: false, tools: [{ name: 'fillSlots', callId: 'next', output: proposal() }], parts: [] };
 }
 
 test('weeks and weekend use server dates, including Sunday and year boundaries', () => {
