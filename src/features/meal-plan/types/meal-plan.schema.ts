@@ -48,10 +48,11 @@ export const mealPlanSchema = z.object({
   problems: z.array(mealProblemSchema),
 });
 
-export const proposalSchema = z.object({
+/** These changes are already saved when `applied` is true. */
+export const planChangeSchema = z.object({
   weekStart: weekStartSchema,
-  ok: z.boolean(),
-  problems: z.array(mealProblemSchema).optional(),
+  applied: z.boolean(),
+  problems: z.array(mealProblemSchema),
   days: z.array(z.object({
     day: daySchema,
     sections: z.array(z.object({
@@ -62,12 +63,9 @@ export const proposalSchema = z.object({
   })),
 });
 
-export const proposalStatuses = ['staged', 'saved', 'dismissed'] as const;
-
 /** One saved assistant conversation (`GET /meal-plan/chat/threads/:id`), oldest message first. */
 export const plannerThreadSchema = z.object({
   id: z.string(),
-  proposalStatuses: z.record(z.string(), z.enum(proposalStatuses)),
   messages: z.array(z.object({
     id: z.string(),
     role: z.enum(['user', 'assistant']),
@@ -94,17 +92,8 @@ export const dietaryRestrictionsSchema = z.object({
   groups: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
 });
 
-export const mealDayInputSchema = z.object({
-  day: daySchema,
-  breakfast: z.array(z.string()),
-  lunch: z.array(z.string()),
-  dinner: z.array(z.string()),
-  others: z.array(z.string()),
-});
-
 export type MealPlan = z.output<typeof mealPlanSchema>;
-export type MealPlanProposal = z.output<typeof proposalSchema>;
+export type PlanChange = z.output<typeof planChangeSchema>;
 export type PlannerThread = z.output<typeof plannerThreadSchema>;
 export type PlannerThreadSummary = z.output<typeof plannerThreadPageSchema>['items'][number];
 export type DietaryRestrictions = z.output<typeof dietaryRestrictionsSchema>;
-export type MealDayInput = z.input<typeof mealDayInputSchema>;

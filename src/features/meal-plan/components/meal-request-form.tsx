@@ -109,7 +109,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
     if (invalid) { setIngredientError(invalid); setPantryOpen(true); return null; }
     const all = [...ingredients, ...(hasPending ? [{ ...pending, name: clean(pending.name), id: nextId }] : [])];
     const prompt = [
-      `Hãy đề xuất bản nháp thực đơn cho tuần bắt đầu ${weekStart} (${weekRange(weekStart!)}), từ Thứ Hai đến Chủ nhật. Chỉ lập các ngày còn được phép sửa của tuần này.`,
+      `Hãy lên và lưu thực đơn cho tuần bắt đầu ${weekStart} (${weekRange(weekStart!)}), từ Thứ Hai đến Chủ nhật. Chỉ lập các ngày còn được phép sửa của tuần này.`,
       `Các bữa cần lập mỗi ngày: ${mealSections.filter((meal) => meals.includes(meal)).map((meal) => sectionLabels[meal].toLowerCase()).join(', ')}.`,
       avoided.length ? `Thực phẩm cần tránh đã lưu: ${avoided.join(', ')}.` : '',
       people ? `Số người ăn: ${people === 6 ? 'từ 6 người trở lên' : people}.` : '',
@@ -117,7 +117,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
       `Ưu tiên: ${priority.toLowerCase()}.`,
       all.length ? `Nguyên liệu đang có, hãy ưu tiên tận dụng khi phù hợp: ${all.map(ingredientLabel).join(', ')}.` : '',
       clean(note) ? `Yêu cầu bổ sung: ${note.trim()}` : '',
-      'Hãy cho tôi xem đề xuất trước, tôi sẽ tự quyết định khi nào lưu thực đơn.',
+      'Hãy lưu các thay đổi vào thực đơn và tóm tắt những món đã sắp xếp.',
     ].filter(Boolean).join('\n');
     if (prompt.length > 4000) { setSubmitError('Yêu cầu quá dài. Hãy rút ngắn ghi chú hoặc bớt nguyên liệu.'); return null; }
     setSubmitError('');
@@ -142,7 +142,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
         </Pressable>
         <View style={styles.heading}>
           <Text style={[styles.title, { color: theme.foreground }]}>Lên thực đơn 7 ngày</Text>
-          <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Chọn vài thông tin, trợ lý sẽ đề xuất thực đơn để bạn xem trước khi lưu.</Text>
+          <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Chọn vài thông tin, trợ lý sẽ lên thực đơn và lưu các món vào tuần bạn chọn.</Text>
         </View>
 
         <MealWeekSelector weeks={weeks} selected={weekStart} onChange={onWeekChange} disabled={busy} />

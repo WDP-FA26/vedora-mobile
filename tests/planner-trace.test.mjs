@@ -10,13 +10,13 @@ test('steps follow the tool calls: running while streaming, then their result', 
   const parts = [
     call('searchKnowledge', 'k', { query: 'soy iron' }, { status: 'ok', hits: [{}, {}] }),
     call('searchRecipes', 'r', { query: 'đậu hũ' }, [{ id: '1', title: 'Đậu hũ sốt cà' }]),
-    call('fillSlots', 'f', {}, { ok: false, problems: [{}] }),
+    call('fillSlots', 'f', {}, { applied: false, days: [], problems: [{}] }),
     call('getPlan', 'p', {}),
   ];
   assert.deepEqual(traceSteps(parts, false).map(({ status, title, description }) => [status, title, description]), [
     ['done', 'Đã tra cứu tài liệu “soy iron”', '2 đoạn'],
     ['done', 'Đã tìm món “đậu hũ”', '1 món'],
-    ['error', 'Đề xuất chưa đạt, chọn lại món', '1 vấn đề'],
+    ['done', 'Không có thay đổi được lưu', '1 vấn đề cần xem lại'],
     ['running', 'Đang xem thực đơn hiện tại…', undefined],
   ]);
 });

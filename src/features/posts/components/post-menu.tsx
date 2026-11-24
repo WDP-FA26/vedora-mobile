@@ -25,7 +25,7 @@ import {
 type Step = 'menu' | 'report' | 'done' | 'delete' | 'share';
 
 /** Readers can report; only the signed-in author can confirm deletion. */
-export function PostMenu({ postId, authorId, returnTo, postType, title, canShare = true, onDeleted, variant = 'menu' }: { postId: string; authorId: string; returnTo: string; postType: FeedPost['type']; title?: string; canShare?: boolean; onDeleted?: () => void; variant?: 'menu' | 'share' }) {
+export function PostMenu({ postId, authorId, returnTo, postType, title, canShare = true, deletionLocked = false, onDeleted, variant = 'menu' }: { postId: string; authorId: string; returnTo: string; postType: FeedPost['type']; title?: string; canShare?: boolean; deletionLocked?: boolean; onDeleted?: () => void; variant?: 'menu' | 'share' }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const token = useSessionStore((state) => state.accessToken);
@@ -53,7 +53,7 @@ export function PostMenu({ postId, authorId, returnTo, postType, title, canShare
   }
 
   async function confirmDelete() {
-    if (!isOwn || deleteLock.current) return;
+    if (!isOwn || deletionLocked || deleteLock.current) return;
     deleteLock.current = true;
     setError('');
     try {
@@ -127,7 +127,7 @@ export function PostMenu({ postId, authorId, returnTo, postType, title, canShare
                     <Text style={[styles.optionText, { color: theme.destructive }]}>Báo cáo bài viết</Text>
                   </Pressable>
                 ) : null}
-                {variant === 'menu' && isOwn ? (
+                {variant === 'menu' && isOwn && !deletionLocked ? (
                   <Pressable accessibilityRole="button" accessibilityLabel={`Xóa ${itemName}`} onPress={() => { setError(''); setStep('delete'); }} style={styles.option}>
                     <SymbolView name={{ ios: 'trash', android: 'delete', web: 'delete' }} size={20} tintColor={theme.destructive} />
                     <Text style={[styles.optionText, { color: theme.destructive }]}>Xóa {itemName}</Text>

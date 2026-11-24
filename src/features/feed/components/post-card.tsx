@@ -11,6 +11,8 @@ import { HEART_COLOR } from "@/shared/components/reaction-burst";
 import { useSessionStore } from "@/shared/stores/session-store";
 
 import { PostMenu } from "@/features/posts/components/post-menu";
+import { PostModerationNotice } from '@/features/posts/components/post-moderation-notice';
+import { isPostEditLocked } from '@/features/posts/utils/post-status';
 import { ProfessionalName } from '@/shared/components/professional-name';
 
 import { useFeedActions } from "../hooks/use-feed";
@@ -77,8 +79,10 @@ export function PostCard({
   const { title, description } = splitBody(body, videos.length > 0);
   const descriptionNodes = hashtagNodes(description, theme.primary, "d");
   const saveOnImage = !!post.blog?.coverImageUrl || imageCount > 0;
+  const published = post.status === 'PUBLISHED';
 
   function saveButton(overlay = false) {
+    if (!published) return null;
     return (
       <Pressable
         accessibilityRole="button"
@@ -148,11 +152,12 @@ export function PostCard({
             <Text style={[styles.typeText, { color: theme.primary }]}>Blog</Text>
           </View>
         ) : null}
-        <PostMenu postId={post.id} authorId={post.author.id} postType={post.type} title={post.blog?.title ?? body} returnTo="/explore" onDeleted={detail ? () => router.replace('/explore') : undefined} />
+        <PostMenu postId={post.id} authorId={post.author.id} postType={post.type} title={post.blog?.title ?? body} canShare={published} deletionLocked={isPostEditLocked(post)} returnTo="/explore" onDeleted={detail ? () => router.replace('/explore') : undefined} />
         {!saveOnImage ? saveButton() : null}
       </View>
 
       <View style={styles.postContent}>
+      <PostModerationNotice post={post} />
       {body && canExpand && !detail ? (
         <View>
           <Pressable onPress={openDetail} accessibilityRole="link" accessibilityLabel="Xem chi tiết bài viết">
@@ -254,7 +259,7 @@ export function PostCard({
         </View>
       ) : null}
 
-      <View style={[styles.actions, { borderTopColor: theme.border }]} accessibilityRole="toolbar">
+      {published ? <View style={[styles.actions, { borderTopColor: theme.border }]} accessibilityRole="toolbar">
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={
@@ -293,7 +298,7 @@ export function PostCard({
           <Text style={[styles.stat, { color: theme.mutedForeground }]}>{formatCount(post.viewCount)}</Text>
         </View>
         <PostMenu variant="share" postId={post.id} authorId={post.author.id} postType={post.type} returnTo={detail ? `/posts/${post.id}` : '/explore'} />
-      </View>
+      </View> : null}
       {like.isError || bookmark.isError || repost.isError ? (
         <Text
           accessibilityRole="alert"

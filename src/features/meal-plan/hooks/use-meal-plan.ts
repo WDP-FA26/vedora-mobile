@@ -1,9 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSessionStore } from '@/shared/stores/session-store';
 
 import { mealPlanKeys } from '../data/meal-plan.keys';
-import { deletePlannerThread, getDietaryRestrictions, getLatestPlannerThread, getMealPlan, getPlannerThreads, saveMealDays } from '../services/meal-plan.service';
-import type { MealDayInput } from '../types/meal-plan.schema';
+import { deletePlannerThread, getDietaryRestrictions, getLatestPlannerThread, getMealPlan, getPlannerThreads } from '../services/meal-plan.service';
 
 export function useMealPlan(session: string | null, weekStart?: string) {
   return useQuery({
@@ -49,19 +47,5 @@ export function useDeletePlannerThread() {
   return useMutation({
     mutationFn: deletePlannerThread,
     onSettled: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.plannerThreads }),
-  });
-}
-
-export function useSaveMealDays(session: string | null) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    networkMode: 'always',
-    mutationFn: ({ weekStart, days }: { weekStart: string; days: MealDayInput[] }) => saveMealDays(weekStart, days),
-    onSuccess: (result) => {
-      if (session && useSessionStore.getState().accessToken === session) {
-        queryClient.setQueryData(mealPlanKeys.week(result.weekStart), result);
-        if (result.weekStart === result.currentWeekStart) queryClient.setQueryData(mealPlanKeys.week(), result);
-      }
-    },
   });
 }

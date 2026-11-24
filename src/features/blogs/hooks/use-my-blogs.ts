@@ -8,6 +8,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { blogsKeys } from '../data/blogs.keys';
 import { getMyBlogs, saveBlog } from '../services/blogs.service';
 import type { BlogInput } from '../types/blogs.schema';
+import { isPostProcessing } from '@/features/posts/utils/post-status';
 
 export function useMyBlogs() {
   const token = useSessionStore((state) => state.accessToken);
@@ -17,6 +18,7 @@ export function useMyBlogs() {
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => getMyBlogs(pageParam, signal),
     getNextPageParam: (page) => page.nextCursor ?? undefined,
+    refetchInterval: (query) => query.state.data?.pages.some((page) => page.items.some((item) => isPostProcessing(item.status))) ? 5000 : false,
   });
 }
 

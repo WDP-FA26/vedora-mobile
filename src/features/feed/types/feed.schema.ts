@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { postModerationShape } from '@/shared/types/post-moderation.schema';
 
 const captionSchema = z.object({
   languageCode: z.string(),
@@ -27,7 +28,7 @@ const mediaSchema = z.object({
 export const feedPostSchema = z.object({
   id: z.uuid(),
   type: z.enum(['POST', 'BLOG']),
-  status: z.enum(['DRAFT', 'PROCESSING', 'PUBLISHED', 'FAILED']),
+  ...postModerationShape,
   body: z.string().nullable(),
   blog: z.object({
     title: z.string(),

@@ -5,6 +5,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { PostMenu } from '@/features/posts/components/post-menu';
+import { PostModerationNotice } from '@/features/posts/components/post-moderation-notice';
+import { isPostEditLocked, POST_STATUS_LABELS } from '@/features/posts/utils/post-status';
 import { useMyProfile } from '@/features/profile/hooks/use-profile';
 import { usePullToRefresh } from '@/hooks/use-pull-to-refresh';
 import { useTheme } from '@/hooks/use-theme';
@@ -25,15 +27,16 @@ export function MyBlogsScreen({ embedded = false }: { embedded?: boolean }) {
   const renderBlog = (item: (typeof items)[number]) => (
     <View key={item.id} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={styles.cardHeader}>
-        <Text style={[styles.badge, { color: theme.primary }]}>{item.status === 'PUBLISHED' ? 'Đã đăng' : 'Bản nháp'}</Text>
-        {me.data ? <PostMenu postId={item.id} authorId={me.data.id} postType="BLOG" title={item.blog.title} canShare={item.status === 'PUBLISHED'} returnTo="/blogs" /> : null}
+        <Text style={[styles.badge, { color: theme.primary }]}>{POST_STATUS_LABELS[item.status]}</Text>
+        {me.data ? <PostMenu postId={item.id} authorId={me.data.id} postType="BLOG" title={item.blog.title} deletionLocked={isPostEditLocked(item)} canShare={item.status === 'PUBLISHED'} returnTo="/blogs" /> : null}
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Chỉnh sửa ${item.blog.title}`} onPress={() => router.push({ pathname: '/blogs/[id]/edit', params: { id: item.id } })}>
+      {item.status !== 'PUBLISHED' && item.status !== 'DRAFT' ? <View style={styles.cardCopy}><PostModerationNotice post={item} /></View> : null}
+      <Pressable accessibilityRole="button" accessibilityLabel={`Mở ${item.blog.title}`} onPress={() => router.push({ pathname: isPostEditLocked(item) ? '/posts/[id]' : '/blogs/[id]/edit', params: { id: item.id } })}>
         {item.blog.coverImageUrl ? <Image source={{ uri: item.blog.coverImageUrl }} style={styles.cover} contentFit="cover" /> : null}
         <View style={styles.cardCopy}>
           <Text style={[styles.emptyTitle, { color: theme.foreground }]}>{item.blog.title}</Text>
           {item.blog.excerpt ? <Text numberOfLines={2} style={[styles.copy, { color: theme.mutedForeground }]}>{plainText(item.blog.excerpt)}</Text> : null}
-          <Text style={[styles.date, { color: theme.mutedForeground }]}>{new Date(item.createdAt).toLocaleDateString('vi-VN')} · Chạm để chỉnh sửa</Text>
+          <Text style={[styles.date, { color: theme.mutedForeground }]}>{new Date(item.createdAt).toLocaleDateString('vi-VN')} · {isPostEditLocked(item) ? 'Chạm để xem bài' : 'Chạm để chỉnh sửa'}</Text>
         </View>
       </Pressable>
     </View>

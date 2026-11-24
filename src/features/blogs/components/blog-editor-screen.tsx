@@ -8,6 +8,8 @@ import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { ZoomImage } from '@/shared/components/image-viewer';
 import { ApiError } from '@/shared/api/api-error';
+import { PostModerationNotice } from '@/features/posts/components/post-moderation-notice';
+import { isPostEditLocked, POST_STATUS_LABELS } from '@/features/posts/utils/post-status';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useBlog } from '../hooks/use-blog';
@@ -15,7 +17,7 @@ import { useBlogAssistant } from '../hooks/use-blog-assistant';
 import { useBlogBlocks } from '../hooks/use-blog-blocks';
 import { useBlogImage } from '../hooks/use-blog-image';
 import { useSaveBlog } from '../hooks/use-my-blogs';
-import { blogInputSchema, MAX_BLOG_CONTENT_LENGTH, MAX_BLOG_TITLE_LENGTH, type Blog } from '../types/blogs.schema';
+import { blogInputSchema, MAX_BLOG_CONTENT_LENGTH, MAX_BLOG_TITLE_LENGTH, type Blog, type BlogInput } from '../types/blogs.schema';
 import { BlogAssistantSheet, type EditorApply } from './blog-assistant-sheet';
 import { blocksToMarkdown, markdownToBlocks } from '../utils/blog-blocks';
 import { BlogMarkdown } from './blog-article';
@@ -45,7 +47,10 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
   const [id, setId] = useState(initial?.id ?? null);
   const [title, setTitle] = useState(initial?.blog.title ?? '');
   const [cover, setCover] = useState(initial?.blog.coverImageUrl ?? '');
-  const [status, setStatus] = useState<Blog['status']>(initial?.status ?? 'DRAFT');
+  const live = useBlog(id ?? '', !!id);
+  const moderation = live.data ?? initial;
+  const status = moderation?.status ?? 'DRAFT';
+  const locked = !!moderation && isPostEditLocked(moderation);
   // The saved text is compared in the form the editor writes, so opening a blog never shows "unsaved".
   const [saved, setSaved] = useState(() => ({ title: initial?.blog.title ?? '', content: blocksToMarkdown(markdownToBlocks(initial?.content ?? '')), cover: initial?.blog.coverImageUrl ?? '' }));
   const [preview, setPreview] = useState(false);
@@ -61,18 +66,20 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
   const assistant = useBlogAssistant({ blogId: id, getEditor: () => ({ title, content, range: editor.markdownRange() }) });
   const dirty = title !== saved.title || content !== saved.content || cover !== saved.cover;
   const busy = save.isPending || image.isPending;
+  const disabled = busy || locked;
   usePreventRemove(!discard && (dirty || busy), ({ repeat }) => {
     if (!actionLock.current) setLeave(() => repeat);
   });
 
   /** A change the assistant proposed and the user accepted. */
   function applyAssistant(result: EditorApply) {
+    if (locked || busy) return;
     setTitle(result.title);
     editor.replaceAll(result.content);
   }
 
-  async function persist(nextStatus: Blog['status']) {
-    if (actionLock.current) return;
+  async function persist(nextStatus: BlogInput['status']) {
+    if (actionLock.current || locked) return;
     const input = blogInputSchema.safeParse({ title, content, coverImageUrl: cover.trim() || null, status: nextStatus });
     if (!input.success) { setError(input.error.issues[0]?.message ?? 'Kiểm tra lại nội dung.'); return; }
     if (!token) { setError('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.'); return; }
@@ -86,11 +93,11 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
       const stored = result.content === content ? content : blocksToMarkdown(markdownToBlocks(result.content));
       if (result.content !== content) editor.replaceAll(result.content);
       setCover(result.blog.coverImageUrl ?? '');
-      setStatus(result.status);
       setSaved({ title: result.blog.title, content: stored, cover: result.blog.coverImageUrl ?? '' });
-      setNotice(result.status === 'PUBLISHED' ? 'Đã lưu và đăng blog.' : 'Đã lưu bản nháp.');
+      setNotice(result.status === 'PUBLISHED' ? 'Đã lưu và đăng blog.' : result.status === 'DRAFT' ? 'Đã lưu bản nháp.' : `Đã lưu blog · ${POST_STATUS_LABELS[result.status]}.`);
     } catch (caught) {
       setError(caught instanceof ApiError && caught.code === 'BLOG_CONTENT_REQUIRED' ? 'Hãy viết nội dung trước khi đăng.'
+        : caught instanceof ApiError && caught.status === 409 ? 'Bài đang bị khóa hoặc đã thay đổi. Hãy mở lại bài để xem trạng thái mới nhất.'
         : caught instanceof ApiError && caught.status === 404 ? 'Blog không còn tồn tại hoặc bạn không có quyền sửa.'
         : caught instanceof ApiError && caught.status === 401 ? 'Phiên đăng nhập đã hết hạn. Nội dung vẫn được giữ trên màn hình.'
         : 'Chưa lưu được blog. Nội dung vẫn được giữ, hãy thử lại.');
@@ -98,7 +105,7 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
   }
 
   async function addImage(asCover: boolean) {
-    if (actionLock.current) return;
+    if (actionLock.current || locked) return;
     actionLock.current = true;
     changed();
     try {
@@ -124,15 +131,15 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
         <Text accessibilityRole="header" numberOfLines={1} style={[styles.heading, { color: theme.foreground }]}>{id ? 'Chỉnh sửa blog' : 'Viết blog'}</Text>
         <View style={styles.statusRow}>
           <View style={[styles.dot, { backgroundColor: published ? theme.primary : theme.chart3 }]} />
-          <Text style={[styles.statusText, { color: theme.mutedForeground }]}>{published ? 'Đã đăng' : 'Bản nháp'}{dirty ? ' · Chưa lưu' : ''}</Text>
+          <Text style={[styles.statusText, { color: theme.mutedForeground }]}>{POST_STATUS_LABELS[status]}{dirty ? ' · Chưa lưu' : ''}</Text>
         </View>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Mở trợ lý viết blog" disabled={busy} onPress={() => setAssistantOpen(true)} style={({ pressed }) => [styles.assist, { backgroundColor: theme.secondary, opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Mở trợ lý viết blog" disabled={disabled} onPress={() => setAssistantOpen(true)} style={({ pressed }) => [styles.assist, { backgroundColor: theme.secondary, opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}>
         <SymbolView name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={16} tintColor={theme.primary} />
         <Text style={[styles.assistText, { color: theme.secondaryForeground }]}>Trợ lý</Text>
       </Pressable>
       {id && published && !dirty ? (
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => router.push({ pathname: '/posts/[id]', params: { id } })} style={[styles.viewButton, { backgroundColor: theme.secondary }]}>
+        <Pressable accessibilityRole="button" disabled={disabled} onPress={() => router.push({ pathname: '/posts/[id]', params: { id } })} style={[styles.viewButton, { backgroundColor: theme.secondary }]}>
           <Text style={[styles.viewText, { color: theme.secondaryForeground }]}>Xem bài</Text>
         </Pressable>
       ) : null}
@@ -152,6 +159,7 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
 
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        {moderation ? <PostModerationNotice post={moderation} /> : null}
         {preview ? <>
           {cover ? <ZoomImage source={{ uri: cover }} style={styles.cover} contentFit="cover" accessibilityLabel="Ảnh bìa" /> : null}
           <Text style={[styles.previewTitle, { color: theme.foreground }]}>{title || 'Tiêu đề blog'}</Text>
@@ -161,12 +169,12 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
             <View style={styles.coverWrap}>
               <ZoomImage source={{ uri: cover }} style={styles.cover} contentFit="cover" accessibilityLabel="Ảnh bìa" />
               <View style={styles.coverActions}>
-                <Pressable accessibilityRole="button" disabled={busy} onPress={() => void addImage(true)} style={styles.coverButton}><Text style={styles.coverButtonText}>Đổi ảnh</Text></Pressable>
-                <Pressable accessibilityRole="button" disabled={busy} onPress={() => { setCover(''); changed(); }} style={styles.coverButton}><Text style={styles.coverButtonText}>Gỡ</Text></Pressable>
+                <Pressable accessibilityRole="button" disabled={disabled} onPress={() => void addImage(true)} style={styles.coverButton}><Text style={styles.coverButtonText}>Đổi ảnh</Text></Pressable>
+                <Pressable accessibilityRole="button" disabled={disabled} onPress={() => { setCover(''); changed(); }} style={styles.coverButton}><Text style={styles.coverButtonText}>Gỡ</Text></Pressable>
               </View>
             </View>
           ) : (
-            <Pressable accessibilityRole="button" accessibilityLabel="Thêm ảnh bìa" disabled={busy} onPress={() => void addImage(true)} style={({ pressed }) => [styles.coverEmpty, { borderColor: theme.border, backgroundColor: theme.card, opacity: pressed ? 0.8 : 1 }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Thêm ảnh bìa" disabled={disabled} onPress={() => void addImage(true)} style={({ pressed }) => [styles.coverEmpty, { borderColor: theme.border, backgroundColor: theme.card, opacity: pressed ? 0.8 : 1 }]}>
               <View style={[styles.coverIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: 'photo', android: 'image', web: 'image' }} size={22} tintColor={theme.primary} /></View>
               <Text style={[styles.coverTitle, { color: theme.foreground }]}>Thêm ảnh bìa</Text>
               <Text style={[styles.coverHint, { color: theme.mutedForeground }]}>JPEG, PNG, WebP hoặc GIF, tối đa 5 MB</Text>
@@ -176,7 +184,7 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
           <TextInput
             accessibilityLabel="Tiêu đề blog"
             value={title}
-            editable={!busy}
+            editable={!disabled}
             onChangeText={(value) => { setTitle(value); changed(); }}
             maxLength={MAX_BLOG_TITLE_LENGTH}
             placeholder="Tiêu đề blog"
@@ -190,13 +198,13 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
           <Text style={[styles.counter, { color: title.length > MAX_BLOG_TITLE_LENGTH - 20 ? theme.destructive : theme.mutedForeground }]}>{title.length}/{MAX_BLOG_TITLE_LENGTH}</Text>
 
           <View style={styles.body}>
-            <BlogRichEditor editor={editor} disabled={busy} />
+            <BlogRichEditor editor={editor} disabled={disabled} />
           </View>
           <Text style={[styles.counter, { color: content.length > MAX_BLOG_CONTENT_LENGTH ? theme.destructive : theme.mutedForeground }]}>{content.length.toLocaleString('vi-VN')}/50.000 ký tự</Text>
         </>}
       </ScrollView>
 
-      {preview ? null : <BlogFormatBar editor={editor} disabled={busy} onImage={() => void addImage(false)} />}
+      {preview ? null : <BlogFormatBar editor={editor} disabled={disabled} onImage={() => void addImage(false)} />}
 
       <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
         <View style={styles.footerInner}>
@@ -206,18 +214,18 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
             <Text accessibilityRole="alert" style={[styles.feedbackText, styles.feedbackCenter, { color: error ? theme.destructive : theme.primary }]}>{feedback}</Text>
           ) : null}
           <View style={styles.actions}>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={() => void persist(status)} style={({ pressed }) => [styles.action, styles.actionOutline, { borderColor: theme.border, opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}>
-              <Text style={[styles.actionText, { color: theme.primary }]}>{published ? 'Lưu thay đổi' : 'Lưu nháp'}</Text>
+            <Pressable accessibilityRole="button" disabled={disabled} onPress={() => void persist(status === 'DRAFT' ? 'DRAFT' : 'PUBLISHED')} style={({ pressed }) => [styles.action, styles.actionOutline, { borderColor: theme.border, opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}>
+              <Text style={[styles.actionText, { color: theme.primary }]}>{status === 'DRAFT' ? 'Lưu nháp' : 'Lưu và gửi duyệt lại'}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={() => void persist(published ? 'DRAFT' : 'PUBLISHED')} style={({ pressed }) => [styles.action, published ? styles.actionOutline : styles.actionPrimary, published ? { borderColor: theme.border } : { backgroundColor: theme.primary }, { opacity: busy ? 0.5 : pressed ? 0.85 : 1 }]}>
-              <Text style={[styles.actionText, { color: published ? theme.foreground : theme.primaryForeground }]}>{published ? 'Chuyển về nháp' : 'Đăng blog'}</Text>
+            <Pressable accessibilityRole="button" disabled={disabled} onPress={() => void persist(status === 'DRAFT' ? 'PUBLISHED' : 'DRAFT')} style={({ pressed }) => [styles.action, status !== 'DRAFT' ? styles.actionOutline : styles.actionPrimary, status !== 'DRAFT' ? { borderColor: theme.border } : { backgroundColor: theme.primary }, { opacity: disabled ? 0.5 : pressed ? 0.85 : 1 }]}>
+              <Text style={[styles.actionText, { color: status !== 'DRAFT' ? theme.foreground : theme.primaryForeground }]}>{status !== 'DRAFT' ? 'Chuyển về nháp' : 'Đăng blog'}</Text>
             </Pressable>
           </View>
         </View>
       </View>
     </KeyboardAvoidingView>
 
-    <BlogAssistantSheet visible={assistantOpen} onClose={() => setAssistantOpen(false)} assistant={assistant} title={title} content={content} range={editor.markdownRange()} onApply={applyAssistant} />
+    <BlogAssistantSheet visible={assistantOpen && !locked} onClose={() => setAssistantOpen(false)} assistant={assistant} title={title} content={content} range={editor.markdownRange()} onApply={applyAssistant} />
 
     <Modal visible={!!leave} transparent animationType="fade" onRequestClose={() => setLeave(null)}>
       <View style={styles.overlay}><View style={[styles.dialog, { backgroundColor: theme.card }]}>
