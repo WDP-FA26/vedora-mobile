@@ -12,7 +12,13 @@ export const postModerationShape = {
     mediaId: z.string().nullable(), seconds: z.number().nullable(),
   })).optional(),
   removalReason: z.string().nullable().optional(),
-  appeal: z.object({ activeTicket: z.object({ id: z.string() }).nullable() }).nullable().optional(),
+  appeal: z.object({
+    activeTicket: z.object({ id: z.string() }).nullable(),
+    latestTicket: z.object({ id: z.string() }).nullable().optional(),
+    canAppeal: z.boolean().optional(),
+    deadlineAt: z.string().nullable().optional(),
+    blockedReason: z.string().nullable().optional(),
+  }).nullable().optional(),
 };
 
 export const postModerationSchema = z.object(postModerationShape);

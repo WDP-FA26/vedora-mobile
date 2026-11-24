@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -10,7 +11,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 /** Evidence is plain selectable text; it must never be interpreted as HTML or Markdown. */
-export function PostModerationNotice({ post }: { post: PostModeration }) {
+export function PostModerationNotice({ post }: { post: PostModeration & { id?: string } }) {
   const theme = useTheme();
   if (post.status === 'PUBLISHED' || post.status === 'DRAFT') return null;
   const blocked = ['REJECTED', 'REMOVED', 'FAILED'].includes(post.status);
@@ -28,6 +29,17 @@ export function PostModerationNotice({ post }: { post: PostModeration }) {
       <Text selectable style={[styles.text, { color: theme.mutedForeground }]}>{finding.reason}{finding.reasonText ? ` (${finding.reasonText})` : ''}</Text>
     </View>) : null}
     {post.appeal?.activeTicket ? <Text style={[styles.text, { color: theme.mutedForeground }]}>Khiếu nại đang được xử lý. Tạm thời không thể sửa hoặc xóa bài.</Text> : null}
+    {post.appeal?.deadlineAt && post.appeal.canAppeal ? <Text style={[styles.text, { color: theme.foreground }]}>Hạn gửi khiếu nại: {new Date(post.appeal.deadlineAt).toLocaleString('vi-VN')}</Text> : null}
+    {post.appeal?.blockedReason === 'APPEAL_WINDOW_EXPIRED' ? <Text style={[styles.text, { color: theme.mutedForeground }]}>Đã hết thời hạn khiếu nại.</Text> : null}
+    {post.appeal?.blockedReason === 'WITHDRAWAL_LIMIT_REACHED' ? <Text style={[styles.text, { color: theme.mutedForeground }]}>Đã đạt giới hạn rút khiếu nại cho lần xử lý này.</Text> : null}
+    {post.appeal?.activeTicket || post.appeal?.latestTicket ? <Pressable accessibilityRole="button" style={styles.action}
+      onPress={() => router.push({ pathname: '/support/[id]', params: { id: (post.appeal!.activeTicket ?? post.appeal!.latestTicket)!.id } })}>
+      <Text style={[styles.title, { color: theme.primary }]}>Xem khiếu nại</Text>
+    </Pressable> : null}
+    {post.id && post.appeal?.canAppeal && !post.appeal.activeTicket ? <Pressable accessibilityRole="button" style={styles.action}
+      onPress={() => router.push({ pathname: '/support/new', params: { postId: post.id! } })}>
+      <Text style={[styles.title, { color: theme.primary }]}>Gửi khiếu nại</Text>
+    </Pressable> : null}
   </View>;
 }
 
@@ -36,4 +48,5 @@ const styles = StyleSheet.create({
   title: { fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 20 },
   text: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
   finding: { gap: Spacing.one },
+  action: { minHeight: 48, justifyContent: 'center' },
 });

@@ -60,8 +60,8 @@ export async function deleteComment(postId: string, commentId: string) {
 }
 
 export async function reportPost(postId: string, input: ReportInput) {
-  const { reason, details } = reportFormSchema.parse(input);
-  await apiClient.post(`/posts/${postId}/report`, { reason, ...(details ? { details } : {}) });
+  const { reason, details, evidenceIds } = reportFormSchema.parse(input);
+  await apiClient.post(`/posts/${postId}/report`, { reason, ...(details ? { details } : {}), ...(evidenceIds.length ? { evidenceIds } : {}) });
 }
 
 export function getBookmarkPage({ cursor, signal }: { cursor: string | null; signal?: AbortSignal }) {

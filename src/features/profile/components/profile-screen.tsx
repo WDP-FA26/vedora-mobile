@@ -167,6 +167,19 @@ export function ProfileScreen() {
 
           <VerificationEntry />
 
+          <Pressable accessibilityRole="button" onPress={() => router.push('/support')} style={({ pressed }) => [styles.card, styles.dietary, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }]}>
+            <View style={styles.dietaryTop}>
+              <View style={[styles.dietaryIcon, { backgroundColor: theme.secondary }]}>
+                <Image source={require('@/assets/branding/carrot-sticker.png')} style={styles.dietarySticker} contentFit="contain" accessible={false} />
+              </View>
+              <View style={styles.dietaryHeading}>
+                <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Hỗ trợ & khiếu nại</Text>
+                <Text style={[styles.helper, { color: theme.mutedForeground }]}>Vedora lắng nghe và hỗ trợ bạn</Text>
+              </View>
+              <SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={18} tintColor={theme.primary} />
+            </View>
+          </Pressable>
+
           <Pressable accessibilityRole="button" accessibilityLabel="Xem chi tiết hồ sơ ăn uống" onPress={() => router.push('/dietary-profile')} style={({ pressed }) => [styles.card, styles.dietary, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.85 : 1 }]}>
             <View style={styles.dietaryTop}>
               <View style={[styles.dietaryIcon, { backgroundColor: theme.secondary }]}>

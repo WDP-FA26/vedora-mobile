@@ -30,6 +30,10 @@ export function NotificationsScreen() {
 
   function open(item: AppNotification) {
     if (!item.readAt) markRead.mutate(item.id);
+    if (item.ticketId) {
+      router.push({ pathname: '/support/[id]', params: { id: item.ticketId } });
+      return;
+    }
     if (!item.actor) {
       // From Vedora: the author's own blog opens in the editor; removed posts have no postId.
       if (item.postId && item.postType === 'BLOG') router.push({ pathname: '/blogs/[id]/edit', params: { id: item.postId } });

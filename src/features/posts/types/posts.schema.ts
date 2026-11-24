@@ -4,6 +4,13 @@ import { feedPostSchema } from '@/features/feed/types/feed.schema';
 
 export const MAX_COMMENT_LENGTH = 1000;
 export const MAX_REPORT_DETAILS_LENGTH = 500;
+export const MAX_REPORT_IMAGES = 3;
+export const MAX_REPORT_IMAGE_MB = 5;
+export const reportEvidenceInputSchema = z.object({
+  contentType: z.enum(['image/jpeg', 'image/png', 'image/webp'], 'Chỉ hỗ trợ ảnh JPG, PNG hoặc WebP.'),
+  sizeBytes: z.number().int().positive('Không đọc được ảnh đã chọn.').max(MAX_REPORT_IMAGE_MB * 1048576, `Ảnh tối đa ${MAX_REPORT_IMAGE_MB} MB.`),
+});
+export const reportEvidenceResponseSchema = z.object({ id: z.uuidv4() });
 /** Mirrors the API's MAX_SEARCH_QUERY_LENGTH. */
 export const MAX_SEARCH_QUERY_LENGTH = 200;
 
@@ -45,6 +52,7 @@ export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
 export const reportFormSchema = z.object({
   reason: z.enum(REPORT_REASONS, 'Chọn một lý do'),
   details: z.string().trim().max(MAX_REPORT_DETAILS_LENGTH, `Tối đa ${MAX_REPORT_DETAILS_LENGTH} ký tự`),
+  evidenceIds: z.array(z.uuidv4()).max(MAX_REPORT_IMAGES, `Tối đa ${MAX_REPORT_IMAGES} ảnh minh chứng.`).refine((ids) => new Set(ids).size === ids.length, 'Ảnh minh chứng bị trùng.').default([]),
 }).refine((values) => values.reason !== 'OTHER' || values.details !== '', {
   path: ['details'],
   message: 'Mô tả ngắn gọn vấn đề của bài viết',
