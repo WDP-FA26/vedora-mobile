@@ -61,3 +61,14 @@ export const reportFormSchema = z.object({
 export type Comment = z.output<typeof commentSchema>;
 export type CommentPage = z.output<typeof commentPageSchema>;
 export type ReportInput = z.output<typeof reportFormSchema>;
+
+// Comment reports accept text only; post evidence IDs are not part of this API.
+export const commentReportFormSchema = z.object({
+  reason: z.enum(REPORT_REASONS, 'Chọn một lý do'),
+  details: z.string().trim().max(MAX_REPORT_DETAILS_LENGTH, `Tối đa ${MAX_REPORT_DETAILS_LENGTH} ký tự`),
+}).strict();
+export const commentReportReceiptSchema = z.object({
+  id: z.uuidv4(), postId: z.uuidv4(), commentId: z.uuidv4(), reason: z.enum(REPORT_REASONS),
+  details: z.string().nullable(), status: z.enum(['PENDING', 'RESOLVED', 'DISMISSED']), createdAt: z.string(),
+});
+export type CommentReportInput = z.output<typeof commentReportFormSchema>;

@@ -8,6 +8,7 @@ import { supportKeys } from '@/features/support/data/support.keys';
 import { notificationKeys } from '../data/notification.keys';
 import { readNotificationStream, StreamAuthError } from '../services/notification.service';
 import type { NotificationPage } from '../types/notification.schema';
+import { isCommentCacheKey, isCommentNotification } from '../utils/comment-notification';
 
 const RETRY_DELAY_MS = 5_000;
 
@@ -43,6 +44,8 @@ export function useNotificationStream() {
         onOpen: () => {
           void queryClient.invalidateQueries({ queryKey: notificationKeys.unread });
           void queryClient.invalidateQueries({ queryKey: notificationKeys.list });
+          // A moderation event may have been missed while backgrounded/offline.
+          void queryClient.invalidateQueries({ predicate: (query) => isCommentCacheKey(query.queryKey) });
         },
         onNotification: (incoming) => {
           queryClient.setQueryData<InfiniteData<NotificationPage, string | null>>(notificationKeys.list, (previous) => {
@@ -52,6 +55,7 @@ export function useNotificationStream() {
           });
           queryClient.setQueryData<number>(notificationKeys.unread, (count) => (count ?? 0) + 1);
           if (incoming.ticketId) void queryClient.invalidateQueries({ queryKey: supportKeys.all });
+          if (isCommentNotification(incoming.type)) void queryClient.invalidateQueries({ predicate: (query) => isCommentCacheKey(query.queryKey) });
         },
       })
         .then(

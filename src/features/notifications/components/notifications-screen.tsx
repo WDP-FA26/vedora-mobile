@@ -12,6 +12,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../hooks/use-notifications';
 import type { AppNotification } from '../types/notification.schema';
 import { notificationText } from '../utils/notification-text';
+import { isCommentNotification } from '../utils/comment-notification';
 
 function formatTime(value: string) {
   const date = new Date(value);
@@ -32,6 +33,10 @@ export function NotificationsScreen() {
     if (!item.readAt) markRead.mutate(item.id);
     if (item.ticketId) {
       router.push({ pathname: '/support/[id]', params: { id: item.ticketId } });
+      return;
+    }
+    if (isCommentNotification(item.type)) {
+      if (item.postId) router.push({ pathname: '/posts/[id]', params: { id: item.postId } });
       return;
     }
     if (!item.actor) {
