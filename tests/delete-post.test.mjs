@@ -132,6 +132,16 @@ test('guests and other authors never see the delete option', () => {
   assert.equal(button(render(), 'Xóa bài viết'), undefined);
 });
 
+test('a moderation lock hides deletion and blocks an already-open confirmation', async () => {
+  reset();
+  assert.equal(button(render({ deletionLocked: true }), 'Xóa bài viết'), undefined);
+  button(render(), 'Thêm tùy chọn cho bài viết').props.onPress();
+  button(render(), 'Xóa bài viết').props.onPress();
+  button(render({ deletionLocked: true }), 'Xác nhận xóa bài viết').props.onPress();
+  await flush();
+  assert.equal(requests.length, 0);
+});
+
 test('sharing is hidden for drafts and opens the recipient picker without sending for published posts', () => {
   reset();
   const shareOnly = render({ variant: 'share' });

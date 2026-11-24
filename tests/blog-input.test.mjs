@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { blogInputSchema, blogPageSchema } from '../src/features/blogs/types/blogs.schema.ts';
+import { registerHooks } from 'node:module';
+registerHooks({ resolve(specifier, context, next) {
+  if (specifier.startsWith('@/')) specifier = new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href;
+  return next(specifier, context);
+} });
+const { blogInputSchema, blogPageSchema } = await import('../src/features/blogs/types/blogs.schema.ts');
 
 const draft = { title: '  Bếp chay  ', content: '', coverImageUrl: null, status: 'DRAFT' };
 
@@ -31,5 +36,5 @@ test('covers accept uploaded HTTP(S) URLs and reject executable or local URLs', 
 test('private list responses have cursor and creation date, without full content', () => {
   const item = { id: 'blog-1', status: 'DRAFT', createdAt: '2026-11-06T00:00:00Z', blog: { title: 'Bếp chay', coverImageUrl: null, excerpt: '' } };
   assert.equal(blogPageSchema.parse({ items: [item], nextCursor: 'blog-1' }).items[0].id, 'blog-1');
-  assert.equal(blogPageSchema.safeParse({ items: [{ ...item, status: 'FAILED' }], nextCursor: null }).success, false);
+  assert.equal(blogPageSchema.safeParse({ items: [{ ...item, status: 'UNKNOWN' }], nextCursor: null }).success, false);
 });

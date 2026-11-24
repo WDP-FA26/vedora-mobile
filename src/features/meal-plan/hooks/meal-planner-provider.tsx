@@ -1,80 +1,52 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { createContext, use, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { createClientMessageId } from '@/features/messaging/utils/messaging';
 import { ApiError } from '@/shared/api/api-error';
 import { aiQuotaMessage } from '@/shared/api/ai-quota';
 import { useSessionStore } from '@/shared/stores/session-store';
+import type { AiPart } from '@/shared/api/ai-stream';
 
-import { askMealPlanner, discardPlannerDraft, getMealPlan, getPlannerThread, savePlannerStatuses } from '../services/meal-plan.service';
+import { mealPlanKeys } from '../data/meal-plan.keys';
+import { askMealPlanner, getMealPlan, getPlannerThread } from '../services/meal-plan.service';
 import { type PlannerThread, type Weekday, type MealSection } from '../types/meal-plan.schema';
-import { changedDayInputs, dayLabels, displayDays, sectionLabels } from '../utils/meal-plan';
+import { dayLabels, displayDays, sectionLabels } from '../utils/meal-plan';
 import { isPlanningWeekend, planningWeeks } from '../utils/meal-week';
-import { latestProposalIds, plannerProposals, type PlannerProposal } from '../utils/planner-proposals';
+import { savedPlanChanges } from '../utils/planner-changes';
 import { isToolPart, savedToolParts, type ToolPart } from '../utils/planner-trace';
-import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan, useSaveMealDays } from './use-meal-plan';
+import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan } from './use-meal-plan';
 
-export type Proposal = PlannerProposal;
-export type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; refused?: boolean; proposals?: Proposal[]; toolParts?: ToolPart[]; streaming?: boolean };
-export type ProposalStatus = 'staged' | 'saved' | 'dismissed';
+export type ChatTurn = { id: string; role: 'user' | 'assistant'; text: string; refused?: boolean; toolParts?: ToolPart[]; streaming?: boolean };
 export type Preset = 'week' | 'quick' | 'pantry';
 
-/** Replaces the turn with the same id, or appends it. */
-function upsertTurn(turns: ChatTurn[], next: ChatTurn) {
-  return turns.some((turn) => turn.id === next.id) ? turns.map((turn) => turn.id === next.id ? next : turn) : [...turns, next];
-}
-
-const PROPOSAL_FALLBACK = 'Mình đã chuẩn bị đề xuất thực đơn để bạn xem trước.';
-const NO_PROPOSAL_FALLBACK = 'Mình chưa thể đề xuất thực đơn lúc này.';
-
-/** Rebuilds chat turns from a saved thread. Negative ids never clash with the live counter (from 1). */
 function restoreTurns(messages: PlannerThread['messages']): ChatTurn[] {
-  return messages.map((message, index) => {
-    const id = -(index + 1);
-    if (message.role === 'user') {
-      return { id, role: 'user', text: message.text, refused: messages[index + 1]?.metadata?.refused === true };
-    }
-    const proposals = plannerProposals(message.parts.flatMap((part) => typeof part.type === 'string' && typeof part.toolCallId === 'string'
-      ? [{ name: part.type, callId: part.toolCallId, output: part.output }] : []));
-    const refused = message.metadata?.refused === true;
-    return { id, role: 'assistant', text: message.text || (proposals.length ? PROPOSAL_FALLBACK : NO_PROPOSAL_FALLBACK), refused, proposals, toolParts: savedToolParts(message.parts) };
-  });
+  return messages.map((message, index) => ({
+    id: message.id, role: message.role, text: message.text,
+    refused: message.role === 'user' ? messages[index + 1]?.metadata?.refused === true : message.metadata?.refused === true,
+    toolParts: message.role === 'assistant' ? savedToolParts(message.parts) : undefined,
+  }));
 }
 
-function proposalContext(proposal: Proposal, status?: ProposalStatus) {
-  const state = status === 'saved' ? 'người dùng đã lưu thực đơn'
-    : status === 'staged' ? 'người dùng đang xem bản nháp, chưa lưu'
-      : status === 'dismissed' ? 'người dùng đã bỏ qua' : 'chưa áp dụng';
-  const meals = proposal.days.map(({ day, sections }) => {
-    const filled = sections.filter(({ recipes }) => recipes.length).map(({ section, recipes }) =>
-      `${sectionLabels[section].toLowerCase()}: ${recipes.map(({ title, id }) => `${title} (id ${id})`).join(', ')}`);
-    return `${dayLabels[day]} (${filled.join('; ') || 'trống'})`;
-  }).join(' | ');
-  return `[Đề xuất tuần ${proposal.weekStart} (${state}): ${meals}]`;
-}
-
-function friendlyError(error: unknown, fallback: string) {
+function friendlyError(error: unknown) {
   const quotaText = aiQuotaMessage(error);
   if (quotaText) return quotaText;
   if (error instanceof ApiError) {
     if (error.status === 401) return 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.';
     if (error.status === 429) return 'Bạn gửi hơi nhanh. Hãy đợi một chút rồi thử lại.';
-    if (error.status === 503) return 'Trợ lý đang tạm nghỉ. Hãy thử lại sau.';
-    if (error.code === 'MEAL_DAY_LOCKED') return 'Một số ngày đã qua và chỉ có thể xem lại. Hãy tạo đề xuất mới cho những ngày còn lại hoặc tuần sau.';
-    if (error.code === 'MEAL_WEEK_OUT_OF_RANGE') return 'Tuần này chưa nằm trong khoảng được phép lập thực đơn. Hãy chọn lại tuần.';
-    if (error.status === 409) return 'Thực đơn hoặc thông tin ăn uống đã thay đổi. Hãy kiểm tra lại trước khi lưu.';
+    if (error.code === 'MEAL_DAY_LOCKED') return 'Một số ngày đã qua và chỉ có thể xem lại.';
+    if (error.code === 'MEAL_WEEK_OUT_OF_RANGE') return 'Hãy chọn tuần trong khoảng được phép lập thực đơn.';
   }
-  if (error instanceof Error && error.message.startsWith('Thực đơn đã thay đổi')) return error.message;
-  return fallback;
+  return 'Kết nối với trợ lý bị gián đoạn. Một số thay đổi có thể đã được lưu. Hãy kiểm tra Thực đơn hoặc mở lại cuộc trò chuyện trước khi gửi yêu cầu tiếp.';
 }
 
 function useMealPlannerState() {
   const token = useSessionStore((s) => s.accessToken);
+  const client = useQueryClient();
   const [selectedWeek, setSelectedWeek] = useState<string>();
   const currentPlan = useMealPlan(token);
   const plan = useMealPlan(token, selectedWeek);
   const dietary = useDietaryRestrictions(token);
-  const save = useSaveMealDays(token);
   const latestThread = useLatestPlannerThread(token);
   const [threadId, setThreadId] = useState(createClientMessageId);
   const [restored, setRestored] = useState(false);
@@ -82,203 +54,163 @@ function useMealPlannerState() {
   const [composer, setComposer] = useState('');
   const [busy, setBusy] = useState(false);
   const [chatError, setChatError] = useState('');
-  const [saveError, setSaveError] = useState('');
-  const [suggestion, setSuggestion] = useState<Proposal | null>(null);
-  const [drafts, setDrafts] = useState<Record<string, Proposal>>({});
-  const weekStart = selectedWeek ?? currentPlan.data?.weekStart;
-  const draft = weekStart ? drafts[weekStart] ?? null : null;
-  const weeks = planningWeeks(currentPlan.data);
-  const weekend = isPlanningWeekend(currentPlan.data);
-  const [draftAction, setDraftAction] = useState<'save' | 'discard' | null>(null);
-  const draftLock = useRef(false);
-  const [statuses, setStatuses] = useState<Record<string, ProposalStatus>>({});
   const [selectedDay, setSelectedDay] = useState<Weekday>('MON');
   const [formOpen, setFormOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
   const [preset, setPreset] = useState<Preset>('week');
   const sending = useRef(false);
-  const nextId = useRef(1);
-  const streamIds = useRef<number[]>([]);
-  const days = useMemo(() => displayDays(plan.data, draft), [plan.data, draft]);
+  const opening = useRef(false);
+  const alive = useRef(true);
+  const abort = useRef<AbortController | null>(null);
+  useEffect(() => {
+    alive.current = true;
+    return () => { alive.current = false; abort.current?.abort(); };
+  }, []);
+  const isCurrent = () => alive.current && !!token && useSessionStore.getState().accessToken === token;
+  const weekStart = selectedWeek ?? currentPlan.data?.weekStart;
+  const weeks = planningWeeks(currentPlan.data);
+  const weekend = isPlanningWeekend(currentPlan.data);
+  const days = useMemo(() => displayDays(plan.data), [plan.data]);
   const activeDay = days.find(({ day }) => day === selectedDay) ?? days[0];
-  const latestByWeek = latestProposalIds(turns);
 
-  function canPreviewProposal(proposal: Proposal) {
-    return latestByWeek[proposal.weekStart] === proposal.id && statuses[proposal.id] !== 'saved' && statuses[proposal.id] !== 'dismissed' && draft?.id !== proposal.id;
-  }
-
-  function changeWeek(week: string) {
-    if (draftLock.current || sending.current || !weeks.includes(week)) return;
-    setSelectedWeek(week);
-    setSaveError('');
-  }
-
-  /** Shows a saved conversation as the current chat. */
   function showThread(thread: PlannerThread) {
     setThreadId(thread.id);
     setTurns(restoreTurns(thread.messages));
-    // A staged draft lived only in memory, so its proposal is offered again.
-    setStatuses(Object.fromEntries(Object.entries(thread.proposalStatuses).filter(([, status]) => status !== 'staged')));
-    setSuggestion(null);
-    setDrafts({});
-    setSaveError('');
     setChatError('');
   }
 
-  // Reopen the last saved conversation once, unless the user has already started chatting.
   if (!restored && latestThread.data !== undefined) {
     setRestored(true);
     if (latestThread.data && turns.length === 0) showThread(latestThread.data);
   }
 
-  /** Loads a conversation picked from the history sheet; throws so the sheet can say it failed. */
   async function openThread(id: string) {
-    if (sending.current || draftLock.current) return;
-    if (id === threadId) return;
-    const thread = await getPlannerThread(id);
-    if (sending.current || draftLock.current) return;
-    setRestored(true);
-    setFormOpen(false);
-    showThread(thread);
+    if (sending.current || opening.current || !isCurrent()) return;
+    opening.current = true;
+    setBusy(true);
+    try {
+      const thread = await getPlannerThread(id);
+      if (!isCurrent()) return;
+      setRestored(true);
+      setFormOpen(false);
+      showThread(thread);
+    } finally {
+      opening.current = false;
+      if (isCurrent()) setBusy(false);
+    }
   }
 
-  /** Sets proposal statuses here and in the saved thread. */
-  function markStatuses(updates: Record<string, ProposalStatus>) {
-    setStatuses((old) => ({ ...old, ...updates }));
-    // shortcut: a failed sync only means an old proposal may show its button again after a restart; retry if that matters.
-    savePlannerStatuses(threadId, updates).catch(() => undefined);
-  }
-
-  /** Leaves the current conversation (it stays saved) and starts an empty one. */
   function startNewChat() {
-    if (sending.current || draftLock.current) return;
+    if (sending.current || opening.current) return;
     setRestored(true);
     setThreadId(createClientMessageId());
     setTurns([]);
-    setStatuses({});
-    setSuggestion(null);
-    setDrafts({});
+    setComposer('');
     setChatError('');
   }
 
-  /** Opens the request form in the assistant tab. */
+  function changeWeek(week: string) {
+    if (!weeks.includes(week)) return;
+    setSelectedWeek(week);
+  }
+
+  function showSavedWeek(week: string) {
+    if (!weeks.includes(week)) return;
+    setSelectedWeek(week);
+    router.navigate('/meal-plan');
+  }
+
   function startForm(nextPreset: Preset = 'week') {
-    if (sending.current || draftLock.current) return;
+    if (sending.current || opening.current) return;
     setPreset(nextPreset);
     setFormKey((key) => key + 1);
     setFormOpen(true);
     router.navigate('/ai');
   }
 
-  /** Asks the assistant, from the Thực đơn tab, to swap one meal. */
   function requestReplacement(day: Weekday, section: MealSection, title: string) {
-    if (!weekStart || !plan.data?.days.find((item) => item.day === day)?.editable) return;
-    setComposer(`Đề xuất món khác thay cho "${title}" ở ${dayLabels[day]} của tuần bắt đầu ${weekStart}, bữa ${sectionLabels[section].toLowerCase()}. Chỉ đổi bữa này, hãy cho tôi xem đề xuất trước khi lưu.`);
+    if (!weekStart || !plan.data?.days.find((item) => item.day === day)?.editable || busy) return;
+    setComposer(`Đổi món khác thay cho "${title}" ở ${dayLabels[day]} của tuần bắt đầu ${weekStart}, bữa ${sectionLabels[section].toLowerCase()}. Chỉ đổi bữa này.`);
     setFormOpen(false);
     router.navigate('/ai');
   }
 
-  /** Sends the chat box, or `override` (e.g. the request built by the form) when given. */
+  async function refreshPlan() {
+    if (!isCurrent()) return;
+    // Includes the current-week alias and every cached week the assistant may have changed.
+    await client.invalidateQueries({ queryKey: mealPlanKeys.plan });
+  }
+
   async function sendMessage(override?: string) {
     const text = (override ?? composer).trim();
-    if (sending.current || draftLock.current) return;
+    if (sending.current || opening.current || !isCurrent()) return;
     if (!text) { setChatError('Nhập câu hỏi hoặc yêu cầu trước khi gửi.'); return; }
     if (text.length > 4000) { setChatError('Tin nhắn tối đa 4.000 ký tự.'); return; }
     sending.current = true;
-    streamIds.current = [];
+    setRestored(true);
     setBusy(true);
     setChatError('');
+    const userId = createClientMessageId();
+    const assistantId = createClientMessageId();
+    const request = new AbortController();
+    abort.current = request;
+    const seen = new Set<string>();
+    const update = (parts: AiPart[], streaming: boolean) => {
+      if (!isCurrent()) return;
+      const toolParts = parts.filter(isToolPart);
+      const changes = savedPlanChanges(toolParts.map((part) => ({ name: part.type, callId: part.toolCallId, output: part.output })));
+      if (changes.some((change) => !seen.has(change.id))) {
+        changes.forEach((change) => seen.add(change.id));
+        void refreshPlan().catch(() => undefined);
+      }
+      if (toolParts.some((part) => part.state === 'output-available' && ['tool-updatePreferences', 'tool-updateAllergyNote'].includes(part.type))) {
+        void client.invalidateQueries({ queryKey: mealPlanKeys.dietary }).catch(() => undefined);
+      }
+      const answer: ChatTurn = { id: assistantId, role: 'assistant', text: parts.flatMap((part) => part.type === 'text' ? [part.text] : []).join(''), toolParts, streaming };
+      setTurns((old) => old.some((turn) => turn.id === assistantId) ? old.map((turn) => turn.id === assistantId ? answer : turn) : [...old, answer]);
+    };
     try {
-      const context = turns.filter((turn) => !turn.refused && turn.text).map((turn) => ({
-        role: turn.role,
-        text: [turn.text, ...(turn.proposals ?? []).map((proposal) => proposalContext(proposal, statuses[proposal.id]))].filter(Boolean).join('\n').slice(0, 4000),
-      }));
-      const userId = nextId.current++;
-      const assistantId = nextId.current++;
-      streamIds.current = [userId, assistantId];
+      const context = turns.filter((turn) => !turn.refused).flatMap((turn) => {
+        const changes = savedPlanChanges((turn.toolParts ?? []).map((part) => ({ name: part.type, callId: part.toolCallId, output: part.output })));
+        const note = changes.length ? `\n[Đã lưu vào thực đơn: ${JSON.stringify(changes)}]` : '';
+        const content = `${turn.text}${note}`.slice(0, 8000);
+        return content.trim() ? [{ role: turn.role, text: content }] : [];
+      });
       setTurns((old) => [...old, { id: userId, role: 'user', text }]);
       setComposer('');
-      const targetWeek = weekStart ?? (await getMealPlan()).weekStart;
-      const result = await askMealPlanner(targetWeek, threadId, [...context, { role: 'user', text }], (parts) => {
-        const partial = parts.flatMap((part) => part.type === 'text' ? [part.text] : []).join('');
-        setTurns((old) => upsertTurn(old, { id: assistantId, role: 'assistant', text: partial, toolParts: parts.filter(isToolPart), streaming: true }));
-      });
-      const proposals = plannerProposals(result.tools);
-      setTurns((old) => upsertTurn(old.map((turn) => turn.id === userId ? { ...turn, refused: result.refused } : turn), {
-        id: assistantId,
-        role: 'assistant',
-        text: result.text || (proposals.length ? PROPOSAL_FALLBACK : NO_PROPOSAL_FALLBACK),
-        refused: result.refused,
-        proposals,
-        toolParts: result.parts.filter(isToolPart),
-      }));
-      if (proposals.length) setSuggestion(proposals.at(-1)!);
+      const targetWeek = weekStart ?? (await getMealPlan(undefined, request.signal)).weekStart;
+      if (!isCurrent()) return;
+      const result = await askMealPlanner(targetWeek, threadId, userId, [...context, { role: 'user', text }], (parts) => update(parts, true), request.signal);
+      if (!isCurrent()) return;
+      update(result.parts, false);
+      setTurns((old) => old.map((turn) => turn.id === userId || turn.id === assistantId ? { ...turn, refused: result.refused } : turn));
     } catch (error) {
-      // Drop the question and any partial answer, and give the text back so it can be resent.
-      const failed = streamIds.current;
-      setTurns((old) => old.filter((turn) => !failed.includes(turn.id)));
-      setComposer(text);
-      setChatError(friendlyError(error, 'Chưa gửi được yêu cầu. Nội dung vẫn còn để bạn thử lại.'));
+      if (isCurrent()) {
+        // A tool may already have committed: preserve the partial answer and never silently resend it.
+        setTurns((old) => old.map((turn) => turn.id === assistantId ? { ...turn, streaming: false } : turn));
+        setChatError(friendlyError(error));
+      }
     } finally {
       sending.current = false;
-      setBusy(false);
+      if (isCurrent()) {
+        setBusy(false);
+        void client.invalidateQueries({ queryKey: mealPlanKeys.plannerThreads });
+        await refreshPlan().catch(() => undefined);
+      }
     }
   }
 
-  /** Stages a proposal as an unsaved draft and shows it in the Thực đơn tab. */
-  function previewProposal(proposal: Proposal) {
-    if (!canPreviewProposal(proposal) || draftLock.current || sending.current) return;
-    markStatuses({ [proposal.id]: 'staged' });
-    setDrafts((old) => ({ ...old, [proposal.weekStart]: proposal }));
-    setSelectedWeek(proposal.weekStart);
-    setSuggestion(null); setSaveError(''); setFormOpen(false);
-    router.navigate('/meal-plan');
-  }
-
-  async function saveDraft() {
-    if (!draft || draftLock.current || sending.current || !token) return;
-    if (latestByWeek[draft.weekStart] !== draft.id) { setSaveError('Đã có đề xuất mới hơn cho tuần này. Hãy mở đề xuất mới nhất trong trò chuyện.'); return; }
-    draftLock.current = true;
-    setDraftAction('save');
-    setSaveError('');
-    try {
-      const fresh = await getMealPlan(draft.weekStart);
-      const changes = changedDayInputs(draft, fresh);
-      if (!changes.length) { setSaveError('Đề xuất này không có thay đổi để lưu.'); return; }
-      await save.mutateAsync({ weekStart: draft.weekStart, days: changes });
-      markStatuses({ [draft.id]: 'saved' });
-      setDrafts((old) => Object.fromEntries(Object.entries(old).filter(([week]) => week !== draft.weekStart)));
-    } catch (error) {
-      setSaveError(friendlyError(error, 'Không lưu được thực đơn. Đề xuất vẫn còn để bạn thử lại.'));
-    } finally { draftLock.current = false; setDraftAction(null); }
-  }
-
-  async function discardDraft() {
-    if (!draft || draftLock.current || sending.current) return;
-    draftLock.current = true;
-    setDraftAction('discard');
-    setSaveError('');
-    try {
-      await discardPlannerDraft(draft.weekStart);
-      markStatuses({ [draft.id]: 'dismissed' });
-      setDrafts((old) => Object.fromEntries(Object.entries(old).filter(([week]) => week !== draft.weekStart)));
-    } catch (error) {
-      setSaveError(friendlyError(error, 'Chưa bỏ được đề xuất. Hãy kiểm tra kết nối và thử lại.'));
-    } finally { draftLock.current = false; setDraftAction(null); }
-  }
-
   return {
-    token, plan, dietary, save, turns, composer, setComposer, busy, chatError, setChatError, saveError, suggestion, draft, statuses,
-    selectedDay, setSelectedDay, formOpen, setFormOpen, formKey, preset, days, activeDay, canPreviewProposal,
-    weekStart, weeks, weekend, changeWeek, draftAction,
-    threadId, startForm, requestReplacement, sendMessage, previewProposal, saveDraft, discardDraft, startNewChat, openThread,
+    token, plan, dietary, turns, composer, setComposer, busy, chatError, setChatError,
+    selectedDay, setSelectedDay, formOpen, setFormOpen, formKey, preset, days, activeDay,
+    weekStart, weeks, weekend, changeWeek, showSavedWeek,
+    threadId, startForm, requestReplacement, sendMessage, startNewChat, openThread,
   };
 }
 
 type MealPlanner = ReturnType<typeof useMealPlannerState>;
 const MealPlannerContext = createContext<MealPlanner | null>(null);
 
-/** One planner session shared by the Trợ lý (chat, form) and Thực đơn (timetable, draft) tabs. */
 export function MealPlannerProvider({ children }: { children: ReactNode }) {
   const value = useMealPlannerState();
   return <MealPlannerContext value={value}>{children}</MealPlannerContext>;

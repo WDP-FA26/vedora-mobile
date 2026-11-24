@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { postModerationShape } from '@/shared/types/post-moderation.schema';
 
 /** Mirrors vedora-api's `GET /blogs/:id`: the full article, which feed items only summarise. */
 export const blogSchema = z.object({
   id: z.string(),
-  status: z.enum(['DRAFT', 'PUBLISHED']),
+  ...postModerationShape,
   content: z.string(),
   updatedAt: z.string(),
   blog: z.object({

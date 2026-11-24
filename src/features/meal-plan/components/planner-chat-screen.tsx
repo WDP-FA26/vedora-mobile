@@ -17,12 +17,13 @@ import { PlannerHistorySheet } from './planner-history-sheet';
 import { PlannerTrace } from './planner-trace';
 import { weekRange } from '../utils/meal-week';
 import { traceSteps } from '../utils/planner-trace';
+import { savedPlanChanges } from '../utils/planner-changes';
 
 const QUICK_STARTS = [['Lên thực đơn 7 ngày', 'week'], ['Mỗi bữa nấu trong 30 phút', 'quick'], ['Tận dụng nguyên liệu đang có', 'pantry']] as const;
 const WELCOME =
-  'Chào bạn, mình là trợ lý Vedora. Mình có thể gợi ý món chay theo khẩu vị, thời gian nấu và thực phẩm bạn cần tránh, hoặc lên thực đơn cả tuần. Thực đơn mình đề xuất sẽ hiện ở tab Thực đơn của tôi để bạn xem và lưu.';
+  'Chào bạn, mình là trợ lý Vedora. Mình có thể gợi ý món chay theo khẩu vị, thời gian nấu và thực phẩm bạn cần tránh, hoặc lên thực đơn cả tuần. Khi bạn yêu cầu thêm hoặc đổi món, mình sẽ lưu trực tiếp vào tab Thực đơn của tôi.';
 
-/** The signed-in Trợ lý Vedora tab: chat and the request form. Proposals open as a draft in the Thực đơn tab. */
+/** The assistant writes straight to the saved calendar. */
 export function PlannerChatScreen() {
   const theme = useTheme();
   const planner = useMealPlanner();
@@ -52,7 +53,7 @@ export function PlannerChatScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Cuộc trò chuyện mới"
                 accessibilityHint="Cuộc trò chuyện hiện tại vẫn được lưu"
-                disabled={busy || !!planner.draftAction}
+                disabled={busy}
                 onPress={planner.startNewChat}
                 hitSlop={8}
                 style={({ pressed }) => [styles.newChat, { backgroundColor: theme.muted, opacity: busy ? 0.4 : pressed ? 0.7 : 1 }]}>
@@ -63,18 +64,6 @@ export function PlannerChatScreen() {
         }
       />
       <PlannerHistorySheet open={historyOpen} onClose={() => setHistoryOpen(false)} />
-      {planner.suggestion ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => planner.previewProposal(planner.suggestion!)}
-          style={({ pressed }) => [styles.banner, { backgroundColor: theme.secondary, borderBottomColor: theme.border, opacity: pressed ? 0.8 : 1 }]}>
-          <Text style={[styles.bannerText, { color: theme.secondaryForeground }]}>Có thực đơn mới để bạn xem</Text>
-          <View style={styles.bannerAction}>
-            <Text style={[styles.bannerActionText, { color: theme.primary }]}>Xem ngay</Text>
-            <SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={14} tintColor={theme.primary} />
-          </View>
-        </Pressable>
-      ) : null}
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         {formOpen ? (
           <MealRequestForm
@@ -82,7 +71,7 @@ export function PlannerChatScreen() {
             restrictions={planner.dietary.data}
             loading={planner.dietary.isPending}
             failed={planner.dietary.isError}
-            busy={busy || !!planner.draftAction}
+            busy={busy}
             weekStart={planner.weekStart}
             weeks={planner.weeks}
             onWeekChange={planner.changeWeek}
@@ -127,15 +116,11 @@ export function PlannerChatScreen() {
                   avatar={avatar}
                   header={turn.toolParts ? <TurnTrace turn={turn} /> : null}
                   footer={
-                    turn.proposals?.filter(planner.canPreviewProposal).map((proposal) => (
-                      <Pressable
-                        key={proposal.id}
-                        accessibilityRole="button"
-                        disabled={busy || !!planner.draftAction}
-                        onPress={() => planner.previewProposal(proposal)}
-                        style={({ pressed }) => [styles.proposal, { backgroundColor: theme.primary, opacity: pressed ? 0.8 : 1 }]}>
-                        <Text style={[styles.proposalText, { color: theme.primaryForeground }]}>Xem thực đơn {weekRange(proposal.weekStart)}</Text>
-                        <SymbolView name={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} size={14} tintColor={theme.primaryForeground} />
+                    [...new Set(savedPlanChanges((turn.toolParts ?? []).map((part) => ({ name: part.type, callId: part.toolCallId, output: part.output }))).map((change) => change.weekStart))].map((week) => (
+                      <Pressable key={week} accessibilityRole="button" onPress={() => planner.showSavedWeek(week)}
+                        disabled={!planner.weeks.includes(week)}
+                        style={({ pressed }) => [styles.proposal, { backgroundColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>
+                        <Text style={[styles.proposalText, { color: theme.primary }]}>Đã lưu · Xem thực đơn {weekRange(week)}</Text>
                       </Pressable>
                     ))
                   }
@@ -166,7 +151,7 @@ export function PlannerChatScreen() {
           sendLabel="Gửi yêu cầu"
           sendDisabled={busy}
           maxLength={4000}
-          hint="Thực đơn chỉ thay đổi sau khi bạn bấm Lưu."
+          hint="Yêu cầu thêm hoặc đổi món sẽ được lưu trực tiếp vào thực đơn."
             />
           </>
         )}

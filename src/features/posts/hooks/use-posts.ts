@@ -8,11 +8,13 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { postsKeys } from '../data/posts.keys';
 import { createComment, createReply, deleteComment, getBookmarkPage, getComment, getCommentPage, getPost, getReplyPage, reportPost, searchPostPage, updateComment } from '../services/posts.service';
 import type { ReportInput } from '../types/posts.schema';
+import { isPostProcessing } from '../utils/post-status';
 
 export function usePost(postId: string) {
   return useQuery({
     queryKey: feedKeys.detail(postId),
     queryFn: ({ signal }) => getPost(postId, signal),
+    refetchInterval: (query) => query.state.data && isPostProcessing(query.state.data.status) ? 5000 : false,
   });
 }
 

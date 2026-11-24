@@ -62,7 +62,7 @@ export function PostDetailScreen() {
               detail
               blogContent={post.data.blog ? <BlogArticle blogId={post.data.id} title={post.data.blog.title} /> : undefined}
             />
-            <View onLayout={(event) => {
+            {post.data.status === 'PUBLISHED' ? <View onLayout={(event) => {
               commentsY.current = event.nativeEvent.layout.y;
               if (comment && scrolledTarget.current !== comment) {
                 scroll.current?.scrollTo({ y: commentsY.current, animated: true });
@@ -70,11 +70,11 @@ export function PostDetailScreen() {
               }
             }}>
               <CommentList targetId={comment} postId={post.data.id} postAuthorId={post.data.author.id} commentCount={post.data.commentCount} draft={draft} />
-            </View>
+            </View> : null}
           </>
         ) : null}
       </ScrollView>
-      {post.data ? <CommentComposer draft={draft} /> : null}
+      {post.data?.status === 'PUBLISHED' ? <CommentComposer draft={draft} /> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
