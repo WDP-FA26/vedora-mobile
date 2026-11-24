@@ -20,8 +20,9 @@ import { useTheme } from '@/hooks/use-theme';
 import { ZoomImage } from '@/shared/components/image-viewer';
 import { useSessionStore } from '@/shared/stores/session-store';
 
-import { useMyProfile, useProfilePosts } from '../hooks/use-profile';
+import { useMyProfile, useProfilePosts, useProfileReposts } from '../hooks/use-profile';
 import { ProfileAvatar } from './profile-avatar';
+import { ProfileReposts } from './profile-reposts';
 
 const MAX_AVOIDED_CHIPS = 6;
 
@@ -60,18 +61,19 @@ export function ProfileScreen() {
   const dietary = useDietaryRestrictions(token);
   const postsQuery = useProfilePosts(profile?.id, token);
   const signOut = useSignOut();
-  const [contentTab, setContentTab] = useState<'posts' | 'blogs'>('posts');
+  const [contentTab, setContentTab] = useState<'posts' | 'blogs' | 'reposts'>('posts');
+  const reposts = useProfileReposts(profile?.id, !!token && contentTab === 'reposts');
   const posts = postsQuery.data?.items ?? [];
   const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
-  const views = useScrollPostViews(shownPosts, contentTab === 'posts');
+  const views = useScrollPostViews(contentTab === 'reposts' ? reposts.data?.pages.flatMap((page) => page.items) ?? [] : shownPosts, contentTab !== 'blogs');
   const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
-  const liked = dietary.data?.liked ?? [];
   const queryClient = useQueryClient();
   const pull = usePullToRefresh(() => Promise.all([
     profileQuery.refetch(),
     dietary.refetch(),
     // refetch() ignores `enabled`, so posts wait until the profile id is known.
     profile ? postsQuery.refetch() : undefined,
+    profile && contentTab === 'reposts' ? reposts.refetch() : undefined,
     queryClient.refetchQueries({ queryKey: blogsKeys.mine, type: 'active' }),
   ]));
 
@@ -188,16 +190,6 @@ export function ProfileScreen() {
                   {avoided.length > MAX_AVOIDED_CHIPS ? <View style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>+{avoided.length - MAX_AVOIDED_CHIPS}</Text></View> : null}
                 </View>
               ) : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa khai báo</Text>}
-            <View style={styles.dietaryLabelRow}>
-              <SymbolView name={{ ios: 'hand.thumbsup', android: 'thumb_up', web: 'thumb_up' }} size={16} tintColor={theme.primary} />
-              <Text style={[styles.dietaryLabel, { color: theme.foreground }]}>Thích</Text>
-            </View>
-            {dietary.isPending ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải…</Text>
-              : dietary.isError ? <Text style={[styles.helper, { color: theme.destructive }]}>Chưa tải được</Text>
-              : liked.length ? <View style={styles.chips}>
-                {liked.slice(0, MAX_AVOIDED_CHIPS).map(({ id, name }) => <View key={id} style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>{name}</Text></View>)}
-                {liked.length > MAX_AVOIDED_CHIPS ? <View style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>+{liked.length - MAX_AVOIDED_CHIPS}</Text></View> : null}
-              </View> : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa chọn</Text>}
           </Pressable>
 
           <Pressable accessibilityRole="button" accessibilityLabel="Gói của bạn. Xem gói dịch vụ và thanh toán" onPress={() => router.push('/billing')} style={({ pressed }) => [styles.card, styles.billing, { backgroundColor: theme.secondary, borderColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>
@@ -214,18 +206,18 @@ export function ProfileScreen() {
           </Pressable>
 
           <View style={[styles.segment, { backgroundColor: theme.muted }]}>
-            {(['posts', 'blogs'] as const).map((tab) => {
+            {(['posts', 'blogs', 'reposts'] as const).map((tab) => {
               const selected = contentTab === tab;
               return (
                 <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => setContentTab(tab)} style={[styles.segmentItem, selected && [styles.segmentSelected, { backgroundColor: theme.card }]]}>
-                  <SymbolView name={tab === 'posts' ? { ios: 'play.rectangle', android: 'smart_display', web: 'smart_display' } : { ios: 'doc.text', android: 'article', web: 'article' }} size={16} tintColor={selected ? theme.primary : theme.mutedForeground} />
-                  <Text style={[styles.segmentText, { color: selected ? theme.primary : theme.mutedForeground }]}>{tab === 'posts' ? 'Bài viết' : 'Blog của tôi'}</Text>
+                  <SymbolView name={tab === 'posts' ? { ios: 'play.rectangle', android: 'smart_display', web: 'smart_display' } : tab === 'blogs' ? { ios: 'doc.text', android: 'article', web: 'article' } : { ios: 'arrow.2.squarepath', android: 'repeat', web: 'repeat' }} size={16} tintColor={selected ? theme.primary : theme.mutedForeground} />
+                  <Text style={[styles.segmentText, { color: selected ? theme.primary : theme.mutedForeground }]}>{tab === 'posts' ? 'Bài viết' : tab === 'blogs' ? 'Blog của tôi' : 'Đăng lại'}</Text>
                 </Pressable>
               );
             })}
           </View>
 
-          {contentTab === 'blogs' ? <MyBlogsScreen embedded /> : <>
+          {contentTab === 'blogs' ? <MyBlogsScreen embedded /> : contentTab === 'reposts' ? <ProfileReposts query={reposts} ownerName="Bạn" onPostLayout={views.onPostLayout} /> : <>
           {postsQuery.isPending && !posts.length ? <View style={styles.loading}><ActivityIndicator color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải bài viết…</Text></View> : null}
           {postsQuery.isError ? <Pressable accessibilityRole="button" onPress={() => void postsQuery.refetch()} style={[styles.card, styles.state, { borderColor: theme.border, backgroundColor: theme.card }]}><Text style={[styles.helper, { color: theme.destructive }]}>Không tải được bài viết. Chạm để thử lại.</Text></Pressable> : null}
           {!postsQuery.isPending && !postsQuery.isError && shownPosts.length === 0 ? (

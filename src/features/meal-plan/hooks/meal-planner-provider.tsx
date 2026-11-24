@@ -11,10 +11,11 @@ import { type PlannerThread, type Weekday, type MealSection } from '../types/mea
 import { changedDayInputs, dayLabels, displayDays, sectionLabels } from '../utils/meal-plan';
 import { isPlanningWeekend, planningWeeks } from '../utils/meal-week';
 import { latestProposalIds, plannerProposals, type PlannerProposal } from '../utils/planner-proposals';
+import { isToolPart, savedToolParts, type ToolPart } from '../utils/planner-trace';
 import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan, useSaveMealDays } from './use-meal-plan';
 
 export type Proposal = PlannerProposal;
-export type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; refused?: boolean; proposals?: Proposal[]; streaming?: boolean };
+export type ChatTurn = { id: number; role: 'user' | 'assistant'; text: string; refused?: boolean; proposals?: Proposal[]; toolParts?: ToolPart[]; streaming?: boolean };
 export type ProposalStatus = 'staged' | 'saved' | 'dismissed';
 export type Preset = 'week' | 'quick' | 'pantry';
 
@@ -36,7 +37,7 @@ function restoreTurns(messages: PlannerThread['messages']): ChatTurn[] {
     const proposals = plannerProposals(message.parts.flatMap((part) => typeof part.type === 'string' && typeof part.toolCallId === 'string'
       ? [{ name: part.type, callId: part.toolCallId, output: part.output }] : []));
     const refused = message.metadata?.refused === true;
-    return { id, role: 'assistant', text: message.text || (proposals.length ? PROPOSAL_FALLBACK : NO_PROPOSAL_FALLBACK), refused, proposals };
+    return { id, role: 'assistant', text: message.text || (proposals.length ? PROPOSAL_FALLBACK : NO_PROPOSAL_FALLBACK), refused, proposals, toolParts: savedToolParts(message.parts) };
   });
 }
 
@@ -198,8 +199,9 @@ function useMealPlannerState() {
       setTurns((old) => [...old, { id: userId, role: 'user', text }]);
       setComposer('');
       const targetWeek = weekStart ?? (await getMealPlan()).weekStart;
-      const result = await askMealPlanner(targetWeek, threadId, [...context, { role: 'user', text }], (partial) => {
-        setTurns((old) => upsertTurn(old, { id: assistantId, role: 'assistant', text: partial, streaming: true }));
+      const result = await askMealPlanner(targetWeek, threadId, [...context, { role: 'user', text }], (parts) => {
+        const partial = parts.flatMap((part) => part.type === 'text' ? [part.text] : []).join('');
+        setTurns((old) => upsertTurn(old, { id: assistantId, role: 'assistant', text: partial, toolParts: parts.filter(isToolPart), streaming: true }));
       });
       const proposals = plannerProposals(result.tools);
       setTurns((old) => upsertTurn(old.map((turn) => turn.id === userId ? { ...turn, refused: result.refused } : turn), {
@@ -208,6 +210,7 @@ function useMealPlannerState() {
         text: result.text || (proposals.length ? PROPOSAL_FALLBACK : NO_PROPOSAL_FALLBACK),
         refused: result.refused,
         proposals,
+        toolParts: result.parts.filter(isToolPart),
       }));
       if (proposals.length) setSuggestion(proposals.at(-1)!);
     } catch (error) {

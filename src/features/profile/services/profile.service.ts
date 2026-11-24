@@ -1,4 +1,5 @@
 import { apiClient } from '@/shared/api/api-client';
+import { z } from 'zod';
 import { requestJson } from '@/shared/api/request-json';
 import { feedPageSchema } from '@/features/feed/types/feed.schema';
 
@@ -33,6 +34,15 @@ export function getProfilePosts(authorId: string, signal?: AbortSignal, type?: '
     method: 'GET',
     url: '/posts',
     params: { authorId, limit: 20, ...(type ? { type } : {}) },
+    signal,
+  });
+}
+
+export function getProfileReposts(id: string, cursor: string | null, signal?: AbortSignal) {
+  return requestJson(feedPageSchema, {
+    method: 'GET',
+    url: `/posts/reposted-by/${z.uuid().parse(id)}`,
+    params: { limit: 20, ...(cursor ? { cursor } : {}) },
     signal,
   });
 }

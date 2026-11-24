@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
-import { Linking, StyleSheet, Text, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { parseMarkdown, type Block, type InlineNode } from '@/features/blogs/utils/markdown';
+import { parseMarkdown, type Block, type InlineNode } from '@/shared/utils/markdown';
 
 type Theme = ReturnType<typeof useTheme>;
 
@@ -54,6 +54,25 @@ function BlockView({ block, color, theme }: { block: Block; color: string; theme
           <Text selectable style={[styles.codeText, { color }]}>{block.text}</Text>
         </View>
       );
+    case 'table':
+      return (
+        <ScrollView horizontal nestedScrollEnabled style={styles.tableScroll} accessibilityLabel="Bảng dữ liệu, vuốt ngang để xem thêm cột">
+          <View style={[styles.table, { borderColor: theme.mutedForeground, width: block.headers.length * TABLE_COLUMN_WIDTH + 2 }]}>
+            {[block.headers, ...block.rows].map((row, rowIndex) => (
+              <View key={rowIndex} style={[styles.tableRow, rowIndex === 0 && { backgroundColor: theme.secondary }]}>
+                {row.map((cell, column) => (
+                  <View key={column} style={[styles.tableCell, { borderColor: theme.mutedForeground }, column > 0 && styles.cellBorder, rowIndex > 0 && styles.cellTop]}>
+                    <Text selectable accessibilityRole={rowIndex === 0 ? 'header' : undefined}
+                      style={[styles.text, { color, textAlign: block.alignments[column] }, rowIndex === 0 && styles.bold]}>
+                      <Inline nodes={cell} theme={theme} />
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      );
     case 'image':
       return block.alt ? <Text style={[styles.text, { color: theme.mutedForeground }]}>{block.alt}</Text> : null;
     case 'video':
@@ -63,14 +82,10 @@ function BlockView({ block, color, theme }: { block: Block; color: string; theme
   }
 }
 
-/** A lone line break that is not followed by a blank line or by a list, heading, quote or code fence. */
-const SINGLE_BREAK = /([^\n])\n(?!\n|\s*(?:[-*+] |\d+[.)] |#{1,6} |> |```|~~~))/g;
-
 /** An assistant answer written in Markdown, shown as formatted text instead of ##, ** and - characters. */
 export function ChatMarkdown({ text, color, cursor }: { text: string; color: string; cursor?: boolean }) {
   const theme = useTheme();
-  // Chat answers put one line per row with a single line break; keep them as separate lines, not one joined paragraph.
-  const blocks = useMemo(() => parseMarkdown(text.replace(SINGLE_BREAK, '$1\n\n')), [text]);
+  const blocks = useMemo(() => parseMarkdown(text, { tables: true, preserveLineBreaks: true }), [text]);
   return (
     <View style={styles.root}>
       {blocks.map((block, index) => <BlockView key={index} block={block} color={color} theme={theme} />)}
@@ -79,8 +94,16 @@ export function ChatMarkdown({ text, color, cursor }: { text: string; color: str
   );
 }
 
+const TABLE_COLUMN_WIDTH = 144;
+
 const styles = StyleSheet.create({
-  root: { gap: Spacing.two },
+  root: { gap: Spacing.two, maxWidth: '100%' },
+  tableScroll: { maxWidth: '100%', flexGrow: 0 },
+  table: { borderWidth: 1, borderRadius: 0, overflow: 'hidden' },
+  tableRow: { flexDirection: 'row', alignItems: 'stretch', gap: 0 },
+  tableCell: { width: TABLE_COLUMN_WIDTH, flexShrink: 0, padding: Spacing.two, justifyContent: 'center' },
+  cellBorder: { borderLeftWidth: 1 },
+  cellTop: { borderTopWidth: 1 },
   text: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 22 },
   heading: { fontFamily: Fonts.headingBold, fontSize: 16, lineHeight: 24 },
   bold: { fontFamily: Fonts.sansBold },

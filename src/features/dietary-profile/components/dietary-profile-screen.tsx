@@ -7,10 +7,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import { ApiError } from '@/shared/api/api-error';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useDietaryProfile, useSaveDietaryProfile } from '../hooks/use-dietary-profile';
+import { NutritionSection } from './nutrition-section';
 import type { DietaryRestrictions, DietaryUpdate } from '../types/dietary-profile.schema';
 
 type Selection = DietaryUpdate;
@@ -19,7 +19,6 @@ function fromRestrictions(value: DietaryRestrictions): Selection {
   return {
     groupIds: value.groups.map(({ id }) => id),
     ingredientIds: value.ingredients.map(({ id }) => id),
-    likedIngredientIds: value.liked.map(({ id }) => id),
   };
 }
 
@@ -48,36 +47,27 @@ export function DietaryProfileScreen() {
   const [saved, setSaved] = useState<Selection | null>(null);
   const [groupSearch, setGroupSearch] = useState('');
   const [ingredientSearch, setIngredientSearch] = useState('');
-  const [likedSearch, setLikedSearch] = useState('');
   const [groupOpen, setGroupOpen] = useState(false);
   const [ingredientOpen, setIngredientOpen] = useState(false);
-  const [likedOpen, setLikedOpen] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
   const savedSelection = saved ?? (mine.data ? fromRestrictions(mine.data) : null);
-  const current = selection ?? savedSelection ?? { groupIds: [], ingredientIds: [], likedIngredientIds: [] };
-  const dirty = !!savedSelection && (!sameIds(current.groupIds, savedSelection.groupIds) || !sameIds(current.ingredientIds, savedSelection.ingredientIds) || !sameIds(current.likedIngredientIds, savedSelection.likedIngredientIds));
+  const current = selection ?? savedSelection ?? { groupIds: [], ingredientIds: [] };
+  const dirty = !!savedSelection && (!sameIds(current.groupIds, savedSelection.groupIds) || !sameIds(current.ingredientIds, savedSelection.ingredientIds));
   const ingredientNames = useMemo(() => new Map(options.data?.ingredients.map(({ id, name }) => [id, name]) ?? []), [options.data]);
   const groupNames = useMemo(() => new Map(options.data?.groups.map(({ id, name }) => [id, name]) ?? []), [options.data]);
   const selectedGroups = current.groupIds.map((id) => ({ id, name: groupNames.get(id) ?? mine.data?.groups.find((item) => item.id === id)?.name ?? id }));
   const selectedIngredients = current.ingredientIds.map((id) => ({ id, name: ingredientNames.get(id) ?? mine.data?.ingredients.find((item) => item.id === id)?.name ?? id }));
   const groupResults = options.data?.groups.filter((item) => matches(item.name, groupSearch.trim())).slice(0, 40) ?? [];
   const ingredientResults = options.data?.ingredients.filter((item) => matches(item.name, ingredientSearch.trim()) || item.aliases.some((alias) => matches(alias, ingredientSearch.trim()))).slice(0, 50) ?? [];
-  const selectedLiked = current.likedIngredientIds.map((id) => ({ id, name: ingredientNames.get(id) ?? mine.data?.liked.find((item) => item.id === id)?.name ?? id }));
-  const likedMatches = options.data?.ingredients.filter((item) => matches(item.name, likedSearch.trim()) || item.aliases.some((alias) => matches(alias, likedSearch.trim()))) ?? [];
-  const likedResults = likedMatches.slice(0, 50);
 
   function toggle(kind: keyof Selection, id: string) {
     if (save.isPending) return;
     const ids = current[kind];
-    const limit = kind === 'groupIds' ? 50 : kind === 'ingredientIds' ? 200 : 100;
+    const limit = kind === 'groupIds' ? 50 : 200;
     if (!ids.includes(id) && ids.length >= limit) {
       setError(`Bạn chỉ có thể chọn tối đa ${limit} ${kind === 'groupIds' ? 'nhóm thực phẩm' : 'nguyên liệu'}.`);
-      return;
-    }
-    if (!ids.includes(id) && ((kind === 'likedIngredientIds' && current.ingredientIds.includes(id)) || (kind === 'ingredientIds' && current.likedIngredientIds.includes(id)))) {
-      setError('Nguyên liệu này đã được chọn ở mục còn lại. Hãy bỏ lựa chọn đó trước khi đổi giữa Thích và Không ăn.');
       return;
     }
     setSelection({ ...current, [kind]: ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id] });
@@ -103,11 +93,9 @@ export function DietaryProfileScreen() {
       const next = fromRestrictions(result);
       setSelection(next);
       setSaved(next);
-      setNotice('Đã lưu thực phẩm cần tránh và nguyên liệu yêu thích.');
-    } catch (caught) {
-      setError(caught instanceof ApiError && caught.code === 'CONFLICTING_PREFERENCE'
-        ? 'Một nguyên liệu không thể vừa thích vừa không ăn. Hãy kiểm tra lại lựa chọn.'
-        : 'Không lưu được hồ sơ ăn uống. Các lựa chọn vẫn còn để bạn thử lại.');
+      setNotice('Đã lưu thực phẩm cần tránh.');
+    } catch {
+      setError('Không lưu được hồ sơ ăn uống. Các lựa chọn vẫn còn để bạn thử lại.');
     }
   }
 
@@ -115,7 +103,7 @@ export function DietaryProfileScreen() {
   if (!token) return <SafeAreaView edges={['top']} style={[styles.screen, styles.center, { backgroundColor: theme.background }]}>
     <Image source={require('@/assets/branding/avocado-sticker.png')} style={styles.guestSticker} contentFit="contain" accessible={false} />
     <Text style={[styles.title, { color: theme.foreground }]}>Hồ sơ ăn uống</Text>
-    <Text style={[styles.helper, styles.centerText, { color: theme.mutedForeground }]}>Đăng nhập để cập nhật thực phẩm cần tránh và nguyên liệu yêu thích.</Text>
+    <Text style={[styles.helper, styles.centerText, { color: theme.mutedForeground }]}>Đăng nhập để cập nhật thực phẩm cần tránh và chỉ số cơ thể.</Text>
     <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/login', params: { returnTo: '/dietary-profile' } })} style={[styles.button, { backgroundColor: theme.primary }]}><Text style={[styles.buttonText, { color: theme.primaryForeground }]}>Đăng nhập</Text></Pressable>
   </SafeAreaView>;
 
@@ -135,11 +123,13 @@ export function DietaryProfileScreen() {
           <View style={styles.heroStickerFrame}><Image source={require('@/assets/branding/carrot-sticker.png')} contentFit="contain" style={styles.heroSticker} accessible={false} /></View>
         </View>
         {mine.data ? <View style={[styles.summary, { borderColor: theme.border }]}>
-          {[{ value: current.groupIds.length, label: 'Nhóm không ăn' }, { value: current.ingredientIds.length, label: 'Nguyên liệu tránh' }, { value: current.likedIngredientIds.length, label: 'Nguyên liệu thích' }].map(({ value, label }) => <View key={label} style={[styles.summaryItem, { backgroundColor: theme.card }]}><Text style={[styles.summaryValue, { color: theme.primary }]}>{value}</Text><Text style={[styles.summaryLabel, { color: theme.mutedForeground }]}>{label}</Text></View>)}
+          {[{ value: current.groupIds.length, label: 'Nhóm không ăn' }, { value: current.ingredientIds.length, label: 'Nguyên liệu tránh' }].map(({ value, label }) => <View key={label} style={[styles.summaryItem, { backgroundColor: theme.card }]}><Text style={[styles.summaryValue, { color: theme.primary }]}>{value}</Text><Text style={[styles.summaryLabel, { color: theme.mutedForeground }]}>{label}</Text></View>)}
         </View> : null}
       </View>
       {mine.isPending || options.isPending ? <View style={styles.loading}><ActivityIndicator color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải hồ sơ ăn uống…</Text></View> : null}
       {mine.isError || options.isError ? <View style={[styles.errorBox, { borderColor: theme.destructive }]}><Text style={[styles.helper, { color: theme.destructive }]}>Chưa tải được {mine.isError ? 'hồ sơ ăn uống' : 'danh mục thực phẩm'}.</Text><Pressable accessibilityRole="button" onPress={() => { void mine.refetch(); void options.refetch(); }}><Text style={[styles.link, { color: theme.primary }]}>Thử lại</Text></Pressable></View> : null}
+
+      <NutritionSection token={token} />
 
       {mine.data && options.data ? <>
         <View style={styles.sectionHeading}><View style={[styles.sectionIcon, { backgroundColor: theme.muted }]}><Image source={require('@/assets/branding/avocado-sticker.png')} contentFit="contain" style={styles.sectionSticker} accessible={false} /></View><View style={styles.heroCopy}><Text style={[styles.sectionTitle, { color: theme.foreground }]}>Những món mình tránh</Text><Text style={[styles.helper, { color: theme.mutedForeground }]}>Để mỗi gợi ý đều phù hợp với bạn.</Text></View></View>
@@ -162,21 +152,7 @@ export function DietaryProfileScreen() {
             <View style={styles.options}>{ingredientResults.map((item) => <Pressable key={item.id} accessibilityRole="checkbox" disabled={save.isPending} accessibilityState={{ checked: current.ingredientIds.includes(item.id), disabled: save.isPending }} onPress={() => toggle('ingredientIds', item.id)} style={[styles.option, { borderColor: theme.border }]}><SelectionCheck checked={current.ingredientIds.includes(item.id)} /><Text style={[styles.optionName, styles.flex, { color: theme.foreground }]}>{item.name}</Text></Pressable>)}{!ingredientResults.length ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Không tìm thấy nguyên liệu phù hợp.</Text> : null}</View></> : null}
         </View>
 
-        <View style={styles.sectionHeading}>
-          <View style={[styles.sectionIcon, { backgroundColor: theme.muted }]}><Image source={require('@/assets/branding/tomato-sticker.png')} contentFit="contain" style={styles.sectionSticker} accessible={false} /></View>
-          <View style={styles.heroCopy}><Text style={[styles.sectionTitle, { color: theme.foreground }]}>Thêm một chút yêu thích</Text><Text style={[styles.helper, { color: theme.mutedForeground }]}>Chọn nguyên liệu khiến bạn thấy ngon miệng.</Text></View>
-        </View>
-        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.fieldHeading}><Text style={[styles.fieldTitle, styles.flex, { color: theme.foreground }]}>Nguyên liệu tôi thích</Text><Text style={[styles.count, { color: theme.primary, backgroundColor: theme.secondary }]}>{current.likedIngredientIds.length}/100</Text></View>
-          {selectedLiked.length ? <View style={styles.chips}>{selectedLiked.map(({ id, name }) => <Pressable key={id} accessibilityRole="button" accessibilityLabel={`Bỏ yêu thích ${name}`} disabled={save.isPending} onPress={() => toggle('likedIngredientIds', id)} style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.primary }]}>{name}  ×</Text></Pressable>)}</View> : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa chọn nguyên liệu yêu thích.</Text>}
-          <Pressable accessibilityRole="button" accessibilityState={{ expanded: likedOpen }} onPress={() => setLikedOpen((value) => !value)} style={[styles.disclosure, { borderColor: theme.border, backgroundColor: theme.muted }]}><Text style={[styles.disclosureText, { color: theme.foreground }]}>{likedOpen ? 'Thu gọn nguyên liệu yêu thích' : 'Chọn nguyên liệu yêu thích'}</Text><SymbolView name={{ ios: likedOpen ? 'chevron.up' : 'chevron.down', android: 'expand_more', web: 'expand_more' }} size={18} tintColor={theme.primary} /></Pressable>
-          {likedOpen ? <>
-            <TextInput accessibilityLabel="Tìm nguyên liệu yêu thích" value={likedSearch} onChangeText={setLikedSearch} placeholder="Ví dụ: nấm, đậu hũ" placeholderTextColor={theme.mutedForeground} style={[styles.input, { color: theme.foreground, borderColor: theme.border, backgroundColor: theme.background }]} />
-            <View style={styles.options}>{likedResults.map((item) => <Pressable key={item.id} accessibilityRole="checkbox" accessibilityState={{ checked: current.likedIngredientIds.includes(item.id), disabled: save.isPending }} disabled={save.isPending} onPress={() => toggle('likedIngredientIds', item.id)} style={[styles.option, { borderColor: theme.border }]}><SelectionCheck checked={current.likedIngredientIds.includes(item.id)} /><View style={styles.flex}><Text style={[styles.optionName, { color: theme.foreground }]}>{item.name}</Text>{current.ingredientIds.includes(item.id) ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đã chọn Không ăn</Text> : null}</View></Pressable>)}{!likedResults.length ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Không tìm thấy nguyên liệu phù hợp.</Text> : null}</View>
-            {likedMatches.length > 50 ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang hiển thị 50 kết quả. Nhập tên cụ thể hơn để tìm thêm.</Text> : null}
-          </> : null}
-        </View>
-        <View style={[styles.tip, { backgroundColor: theme.muted }]}><SymbolView name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={18} tintColor={theme.primary} /><Text style={[styles.helper, styles.flex, { color: theme.mutedForeground }]}>Vedora ưu tiên tránh thực phẩm bạn không ăn trước, rồi mới gợi ý theo sở thích. Bạn có thể thay đổi bất cứ lúc nào.</Text></View>
+        <View style={[styles.tip, { backgroundColor: theme.muted }]}><SymbolView name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={18} tintColor={theme.primary} /><Text style={[styles.helper, styles.flex, { color: theme.mutedForeground }]}>Vedora ưu tiên tránh thực phẩm bạn không ăn trước, rồi mới gợi ý món. Bạn có thể thay đổi bất cứ lúc nào.</Text></View>
       </> : null}
     </ScrollView>
     {mine.data && options.data ? <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>

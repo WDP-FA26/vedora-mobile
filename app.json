@@ -11,6 +11,8 @@
       "icon": "./assets/branding/app-icon.png"
     },
     "android": {
+      "package": "com.vedora.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#255d32",
         "foregroundImage": "./assets/branding/android-foreground.png"
@@ -49,6 +51,17 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {
+        "asyncRoutes": {
+          "web": true
+        }
+      },
+      "eas": {
+        "projectId": "8e1bb0f4-c168-4783-8570-8b1125c0bf11"
+      }
+    },
+    "owner": "ngochivy"
   }
 }
