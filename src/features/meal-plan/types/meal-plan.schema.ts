@@ -97,3 +97,20 @@ export type PlanChange = z.output<typeof planChangeSchema>;
 export type PlannerThread = z.output<typeof plannerThreadSchema>;
 export type PlannerThreadSummary = z.output<typeof plannerThreadPageSchema>['items'][number];
 export type DietaryRestrictions = z.output<typeof dietaryRestrictionsSchema>;
+
+export const plannerRewindSchema = z.object({
+  text: z.string(),
+  weeks: z.array(z.object({
+    weekStart: weekStartSchema, restored: z.array(daySchema), skipped: z.array(daySchema),
+    droppedDishes: z.number().int().nonnegative(),
+  })),
+});
+export type PlannerRewind = z.output<typeof plannerRewindSchema>;
+
+export const plannerQuestionSchema = z.object({
+  question: z.string().min(1).max(200), options: z.array(z.string().min(1).max(80)).min(1).max(6),
+  multiple: z.boolean().optional(),
+});
+export const plannerWebRequestSchema = z.object({ reason: z.string().min(1) });
+export const plannerAnswerSchema = z.object({ answer: z.string().trim().min(1).max(4000) });
+export const plannerWebDecisionSchema = z.object({ approved: z.boolean() });

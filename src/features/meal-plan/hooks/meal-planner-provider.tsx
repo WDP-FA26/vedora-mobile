@@ -9,11 +9,12 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import type { AiPart } from '@/shared/api/ai-stream';
 
 import { mealPlanKeys } from '../data/meal-plan.keys';
-import { askMealPlanner, getMealPlan, getPlannerThread } from '../services/meal-plan.service';
+import { answerPlannerTool, askMealPlanner, getMealPlan, getPlannerThread, rewindPlannerThread } from '../services/meal-plan.service';
 import { type PlannerThread, type Weekday, type MealSection } from '../types/meal-plan.schema';
 import { dayLabels, displayDays, sectionLabels } from '../utils/meal-plan';
 import { isPlanningWeekend, planningWeeks } from '../utils/meal-week';
 import { savedPlanChanges } from '../utils/planner-changes';
+import { openPlannerInteraction, plannerContextText, plannerWebAllowed, rewindSummary, WEB_APPROVED_TEXT, WEB_DECLINED_TEXT } from '../utils/planner-interactions';
 import { isToolPart, savedToolParts, type ToolPart } from '../utils/planner-trace';
 import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan } from './use-meal-plan';
 
@@ -54,6 +55,8 @@ function useMealPlannerState() {
   const [composer, setComposer] = useState('');
   const [busy, setBusy] = useState(false);
   const [chatError, setChatError] = useState('');
+  const [rewindingId, setRewindingId] = useState<string | null>(null);
+  const [rewindNotice, setRewindNotice] = useState('');
   const [selectedDay, setSelectedDay] = useState<Weekday>('MON');
   const [formOpen, setFormOpen] = useState(false);
   const [formKey, setFormKey] = useState(0);
@@ -77,6 +80,7 @@ function useMealPlannerState() {
     setThreadId(thread.id);
     setTurns(restoreTurns(thread.messages));
     setChatError('');
+    setRewindNotice('');
   }
 
   if (!restored && latestThread.data !== undefined) {
@@ -107,6 +111,7 @@ function useMealPlannerState() {
     setTurns([]);
     setComposer('');
     setChatError('');
+    setRewindNotice('');
   }
 
   function changeWeek(week: string) {
@@ -141,19 +146,24 @@ function useMealPlannerState() {
     await client.invalidateQueries({ queryKey: mealPlanKeys.plan });
   }
 
-  async function sendMessage(override?: string) {
+  async function sendMessage(override?: string, decision?: { callId: string; output: { answer: string } | { approved: boolean } }) {
     const text = (override ?? composer).trim();
     if (sending.current || opening.current || !isCurrent()) return;
     if (!text) { setChatError('Nhập câu hỏi hoặc yêu cầu trước khi gửi.'); return; }
     if (text.length > 4000) { setChatError('Tin nhắn tối đa 4.000 ký tự.'); return; }
+    const interaction = openPlannerInteraction(turns);
+    if (decision && decision.callId !== interaction?.callId) return;
+    if (decision && ((interaction?.kind === 'web') !== ('approved' in decision.output))) return;
     sending.current = true;
     setRestored(true);
     setBusy(true);
     setChatError('');
+    setRewindNotice('');
     const userId = createClientMessageId();
     const assistantId = createClientMessageId();
     const request = new AbortController();
     abort.current = request;
+    let started = false;
     const seen = new Set<string>();
     const update = (parts: AiPart[], streaming: boolean) => {
       if (!isCurrent()) return;
@@ -170,17 +180,31 @@ function useMealPlannerState() {
       setTurns((old) => old.some((turn) => turn.id === assistantId) ? old.map((turn) => turn.id === assistantId ? answer : turn) : [...old, answer]);
     };
     try {
-      const context = turns.filter((turn) => !turn.refused).flatMap((turn) => {
-        const changes = savedPlanChanges((turn.toolParts ?? []).map((part) => ({ name: part.type, callId: part.toolCallId, output: part.output })));
-        const note = changes.length ? `\n[Đã lưu vào thực đơn: ${JSON.stringify(changes)}]` : '';
-        const content = `${turn.text}${note}`.slice(0, 8000);
+      let nextTurns = turns;
+      const answer = decision ?? (interaction?.kind === 'question' ? { callId: interaction.callId, output: { answer: text } }
+        : interaction?.kind === 'web' ? { callId: interaction.callId, output: { approved: false } } : undefined);
+      if (answer) {
+        const saved = await answerPlannerTool(threadId, answer.callId, answer.output, request.signal);
+        if (!isCurrent()) return;
+        const message = restoreTurns(saved.messages).find((turn) => turn.toolParts?.some((part) => part.toolCallId === answer.callId));
+        if (message) {
+          nextTurns = turns.map((turn, index) => index === turns.length - 1 ? message : turn);
+          setTurns(nextTurns);
+        }
+      }
+      const withUser = [...nextTurns, { id: userId, role: 'user' as const, text }];
+      const allowWebSearch = plannerWebAllowed(withUser);
+      const context = nextTurns.flatMap((turn, index) => {
+        if (turn.refused) return [];
+        const content = plannerContextText(turn, withUser[index + 1]?.role === 'user');
         return content.trim() ? [{ role: turn.role, text: content }] : [];
       });
-      setTurns((old) => [...old, { id: userId, role: 'user', text }]);
+      setTurns(withUser);
       setComposer('');
+      started = true;
       const targetWeek = weekStart ?? (await getMealPlan(undefined, request.signal)).weekStart;
       if (!isCurrent()) return;
-      const result = await askMealPlanner(targetWeek, threadId, userId, [...context, { role: 'user', text }], (parts) => update(parts, true), request.signal);
+      const result = await askMealPlanner(targetWeek, threadId, userId, [...context, { role: 'user', text }], (parts) => update(parts, true), request.signal, allowWebSearch);
       if (!isCurrent()) return;
       update(result.parts, false);
       setTurns((old) => old.map((turn) => turn.id === userId || turn.id === assistantId ? { ...turn, refused: result.refused } : turn));
@@ -188,13 +212,48 @@ function useMealPlannerState() {
       if (isCurrent()) {
         // A tool may already have committed: preserve the partial answer and never silently resend it.
         setTurns((old) => old.map((turn) => turn.id === assistantId ? { ...turn, streaming: false } : turn));
-        setChatError(friendlyError(error));
+        setChatError(started ? friendlyError(error) : 'Chưa gửi được câu trả lời. Hãy thử lại hoặc mở lại lịch sử trò chuyện.');
       }
     } finally {
       sending.current = false;
       if (isCurrent()) {
         setBusy(false);
-        void client.invalidateQueries({ queryKey: mealPlanKeys.plannerThreads });
+        void client.invalidateQueries({ queryKey: mealPlanKeys.plannerHistory });
+        await refreshPlan().catch(() => undefined);
+      }
+    }
+  }
+
+  async function rewind(messageId: string) {
+    const index = turns.findIndex((turn) => turn.id === messageId && turn.role === 'user');
+    if (sending.current || opening.current || !isCurrent() || index < 0) return false;
+    sending.current = true;
+    setBusy(true);
+    setRewindingId(messageId);
+    setChatError('');
+    setRewindNotice('');
+    const request = new AbortController();
+    abort.current = request;
+    try {
+      const result = await rewindPlannerThread(threadId, messageId, request.signal);
+      if (!isCurrent()) return false;
+      setRestored(true);
+      setTurns(turns.slice(0, index));
+      setComposer(result.text);
+      setFormOpen(false);
+      setRewindNotice(rewindSummary(result));
+      return true;
+    } catch (error) {
+      if (isCurrent()) setChatError(error instanceof ApiError && error.status === 404
+        ? 'Không tìm thấy mốc hoàn tác. Hãy mở lại lịch sử để cập nhật trước khi thử lại.'
+        : 'Chưa xác nhận được kết quả hoàn tác. Hãy kiểm tra thực đơn và mở lại lịch sử trước khi thử lại.');
+      return false;
+    } finally {
+      sending.current = false;
+      if (isCurrent()) {
+        setBusy(false);
+        setRewindingId(null);
+        void client.invalidateQueries({ queryKey: mealPlanKeys.plannerHistory });
         await refreshPlan().catch(() => undefined);
       }
     }
@@ -205,6 +264,11 @@ function useMealPlannerState() {
     selectedDay, setSelectedDay, formOpen, setFormOpen, formKey, preset, days, activeDay,
     weekStart, weeks, weekend, changeWeek, showSavedWeek,
     threadId, startForm, requestReplacement, sendMessage, startNewChat, openThread,
+    rewindingId, rewindNotice, rewind,
+    interaction: busy ? null : openPlannerInteraction(turns),
+    webSearchAllowed: plannerWebAllowed(turns),
+    answerQuestion: (callId: string, answer: string) => sendMessage(answer, { callId, output: { answer } }),
+    answerWebSearch: (callId: string, approved: boolean) => sendMessage(approved ? WEB_APPROVED_TEXT : WEB_DECLINED_TEXT, { callId, output: { approved } }),
   };
 }
 
