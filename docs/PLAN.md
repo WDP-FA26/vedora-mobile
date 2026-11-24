@@ -1,5 +1,24 @@
 # Kế hoạch và kết quả công việc
 
+## 2026-11-25 — Chuẩn bị PR báo cáo bình luận bằng tiếng Anh
+
+- Kết quả đã làm: Xác nhận PR #52 đã merge, tạo nhánh `feat/comment-reporting-notifications` và fast-forward lên main `0f9c496`. Tập hợp code, kiểm thử, báo cáo backlog cập nhật và PLAN để commit/push, tạo PR mới có tiêu đề/mô tả tiếng Anh; giữ các báo cáo đối chiếu cũ ngoài phạm vi.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện trên thiết bị): (1) Mở bình luận/phản hồi người khác, báo cáo và kiểm tra tiếp nhận hoặc lỗi trùng. (2) Nhận từng loại thông báo gỡ/bỏ qua, nhấn để mở trang xem bài/Blog, thiếu bài thì giữ màn thông báo. (3) Thử mạng gián đoạn, đưa app ra nền rồi mở lại và kiểm tra số bình luận được cập nhật.
+- Người thực hiện: Codex.
+
+## 2026-11-25 — Báo cáo bình luận và thông báo xử lý
+
+- Kết quả đã làm: Thêm nút Báo cáo cho bình luận gốc/phản hồi của người khác khi hồ sơ đăng nhập đã tải; bình luận của mình không có nút. Form có trích đoạn, bảy lý do, mô tả tối đa 500 ký tự và xác nhận tiếp nhận. Service/hook gọi `POST /posts/:postId/comments/:commentId/report`, kiểm tra UUID/input/receipt bằng Zod; không gửi ảnh/evidenceIds. Mô tả là tùy chọn kể cả OTHER theo DTO BE. Chặn gửi lặp/đóng khi gửi, giữ nội dung sau lỗi, nhận ALREADY_REPORTED như đã tiếp nhận và kiểm tra phiên trước/sau request. Bổ sung đủ COMMENT_REMOVED, COMMENT_REMOVED_BY_POST_OWNER, COMMENT_THREAD_REMOVED, COMMENT_REPORT_RESOLVED, COMMENT_REPORT_DISMISSED; hiển thị trích đoạn, không quy kết vi phạm cho chủ bài xóa/xóa theo luồng. Thông báo bình luận mở trang xem bài/Blog khi còn postId; không điều hướng nếu thiếu postId và không gắn commentId đã xóa. SSE và reconnect làm mới cache bình luận/các bề mặt có số lượng. Không đổi BE, chưa tự commit/push thay đổi này.
+- Kiểm tra kỹ thuật: Lint, TypeScript và export Android/web đạt; 39/39 kiểm thử liên quan đạt, gồm 6 ca mới cho hợp đồng text-only, OTHER tùy chọn, phản hồi, phiên, form lỗi/trùng/chống gửi lặp, năm thông báo/điều hướng và cache SSE/reconnect. Chưa kiểm tra tài khoản thật, admin xử lý thực tế hoặc UI/bàn phím trên thiết bị.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện trên thiết bị): (1) Đăng nhập, mở bài/Blog công khai và bình luận người khác; kiểm tra Báo cáo hiện trên bình luận gốc/phản hồi và ẩn ở bình luận của mình. (2) Nhấn Báo cáo, đọc trích đoạn, thử gửi chưa chọn lý do; chọn từng lý do, nhập mô tả, thử OTHER không mô tả và kiểm tra giới hạn 500 ký tự. (3) Gửi, kiểm tra tiếp nhận; mở lại gửi cùng bình luận để kiểm tra báo cáo trùng không thành lỗi. (4) Ngắt mạng khi gửi để kiểm tra giữ lựa chọn/nội dung; thử gửi liên tiếp, đóng trong lúc gửi và đổi phiên. (5) Admin gỡ bình luận/bỏ qua báo cáo, hoặc chủ bài xóa bình luận gốc có phản hồi; kiểm tra đúng câu thông báo cho tác giả và người báo cáo, số lượng/hội thoại được làm mới. (6) Nhấn thông báo của bài và Blog để mở trang xem; khi postId null giữ màn thông báo và đánh dấu đã đọc. (7) Thử sáng/tối, màn nhỏ, chữ lớn, bàn phím và trình đọc màn hình; đưa app nền rồi mở lại để kiểm tra đồng bộ sau khi lỡ SSE.
+- Người thực hiện: Codex.
+
+## 2026-11-25 — Rà phần BE còn thiếu trên mobile sau PR #52
+
+- Kết quả đã làm: Fetch BE main `db7da97`, đối chiếu lại với mobile `d507900`, ghi [BE_MOBILE_REMAINING_AFTER_PR52.md](BE_MOBILE_REMAINING_AFTER_PR52.md). Loại ticket/khiếu nại/thông báo ticket và ảnh báo cáo bài đã code trong PR #52 khỏi backlog. Xác nhận lỗi hợp đồng chat `messages[]`/`message`; liệt kê 14 nhóm thiếu/chưa hoàn chỉnh còn lại, tách Workspace theo vai trò và public-config/copy/summary khỏi yêu cầu UI mặc định. Không sửa source, không tự commit/push báo cáo mới.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Mở Trợ lý thử gửi tin với BE main để xác nhận lỗi hợp đồng. (2) Mở bình luận và Blog để kiểm tra thiếu báo cáo bình luận/bìa khác nội dung. (3) Mở hồ sơ ăn uống, lịch và nhật ký tìm ghi chú/đi chợ/tuần cũ/sửa mục/dinh dưỡng. (4) Đối chiếu feed/theo dõi, tạo/nháp/sửa POST và tìm người dùng. (5) Đối chiếu upload video Blog, thống kê, nhà hàng/Trang; kiểm tra hồi quy ticket và ảnh báo cáo đã có. Checklist và bằng chứng chi tiết trong báo cáo.
+- Người thực hiện: Codex.
+
 ## 2026-11-25 — Chuẩn bị PR hỗ trợ và ảnh báo cáo bài viết
 
 - Kết quả đã làm: Tập hợp module hỗ trợ/khiếu nại, điều hướng thông báo ticket, UI hỗ trợ và ảnh minh chứng báo cáo bài viết vào nhánh `feat/mobile-support-report-evidence` để commit/push và mở PR về main. Giữ các báo cáo đối chiếu repo ngoài phạm vi thay đổi tính năng.

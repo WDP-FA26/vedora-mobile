@@ -19,6 +19,16 @@ function quoted(note: string | null | undefined) {
 /** What the actor (or Vedora, when `actor` is null) did, worded for "<name> <text>". */
 export function notificationText(item: AppNotification): string {
   switch (item.type) {
+    case "COMMENT_REMOVED":
+      return `đã gỡ bình luận${quoted(item.note)} của bạn${reportReason(item.reason)}`;
+    case "COMMENT_REMOVED_BY_POST_OWNER":
+      return `thông báo chủ bài viết đã xóa bình luận${quoted(item.note)} của bạn`;
+    case "COMMENT_THREAD_REMOVED":
+      return `thông báo phản hồi${quoted(item.note)} của bạn đã bị xóa theo luồng bình luận gốc`;
+    case "COMMENT_REPORT_RESOLVED":
+      return `đã xử lý báo cáo: bình luận${quoted(item.note)} không còn hiển thị${reportReason(item.reason)}`;
+    case "COMMENT_REPORT_DISMISSED":
+      return `đã xem xét báo cáo và giữ lại bình luận${quoted(item.note)}${reportReason(item.reason)}`;
     case "SUPPORT_TICKET_REPLIED":
       return "đã phản hồi yêu cầu hỗ trợ của bạn";
     case "SUPPORT_TICKET_RESOLVED":

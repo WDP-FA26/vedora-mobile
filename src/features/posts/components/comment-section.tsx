@@ -15,6 +15,7 @@ import { COMMENT_REJECTED_MESSAGE, type CommentDraft } from '../hooks/use-commen
 import { useComment, useComments, useReplies } from '../hooks/use-posts';
 import { includeComment } from '../utils/comment-thread';
 import { MAX_COMMENT_LENGTH, type Comment } from '../types/posts.schema';
+import { CommentReportButton } from './comment-report-button';
 
 /** "Vừa xong", "5 phút", "3 giờ", "2 ngày", then the date. */
 function relativeTime(value: string, now = Date.now()) {
@@ -123,8 +124,8 @@ export function CommentList({ postId, postAuthorId, commentCount, draft, targetI
   );
 }
 
-function CommentRow({ comment, postAuthorId, meId, draft, onReply, highlighted }: {
-  comment: Comment; postAuthorId: string; meId?: string; draft: CommentDraft;
+function CommentRow({ comment, postId, postAuthorId, meId, draft, onReply, highlighted }: {
+  comment: Comment; postId: string; postAuthorId: string; meId?: string; draft: CommentDraft;
   onReply: (comment: Comment) => void; highlighted?: boolean;
 }) {
   const theme = useTheme();
@@ -159,6 +160,7 @@ function CommentRow({ comment, postAuthorId, meId, draft, onReply, highlighted }
           </Text>
         </View>
         <View style={styles.metaRow}>
+          {meId && !mine ? <CommentReportButton key={`${draft.token}:${comment.id}`} postId={postId} commentId={comment.id} body={comment.body} /> : null}
           <Text style={[styles.meta, { color: theme.mutedForeground }]}>{relativeTime(comment.createdAt)}{edited ? ' · Đã sửa' : ''}</Text>
           <Pressable accessibilityRole="button" accessibilityLabel={`Trả lời ${comment.author.fullName}`} disabled={draft.pending} hitSlop={8} onPress={() => onReply(comment)}>
             <Text style={[styles.action, { color: theme.primary }]}>Trả lời</Text>
@@ -196,7 +198,7 @@ function CommentThread({ comment, postId, postAuthorId, meId, draft, expanded, o
   const items = includeComment(replies.data?.pages.flatMap((page) => page.items) ?? [], pinnedReply);
   return (
     <View style={{ gap: Spacing.two }}>
-      <CommentRow comment={comment} postAuthorId={postAuthorId} meId={meId} draft={draft} onReply={onReply} highlighted={highlightedId === comment.id} />
+      <CommentRow comment={comment} postId={postId} postAuthorId={postAuthorId} meId={meId} draft={draft} onReply={onReply} highlighted={highlightedId === comment.id} />
       {comment.replyCount > 0 || expanded ? (
         <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={onToggle} style={{ marginLeft: 49, minHeight: 36, justifyContent: 'center' }}>
           <Text style={[styles.action, { color: theme.primary }]}>{expanded ? 'Ẩn phản hồi' : `Xem ${comment.replyCount} phản hồi`}</Text>
@@ -205,7 +207,7 @@ function CommentThread({ comment, postId, postAuthorId, meId, draft, expanded, o
       {expanded ? (
         <View style={{ marginLeft: Spacing.four, paddingLeft: Spacing.two, borderLeftWidth: 1, borderLeftColor: theme.border, gap: Spacing.three }}>
           {replies.isPending ? <ActivityIndicator color={theme.primary} /> : null}
-          {items.map((reply) => <CommentRow key={reply.id} comment={reply} postAuthorId={postAuthorId} meId={meId} draft={draft} onReply={onReply} highlighted={highlightedId === reply.id} />)}
+          {items.map((reply) => <CommentRow key={reply.id} comment={reply} postId={postId} postAuthorId={postAuthorId} meId={meId} draft={draft} onReply={onReply} highlighted={highlightedId === reply.id} />)}
           {replies.isError ? (
             <Pressable accessibilityRole="button" onPress={() => void replies.restart()}><Text style={[styles.noticeText, { color: theme.destructive }]}>Không tải được phản hồi. Nhấn để thử lại.</Text></Pressable>
           ) : null}
