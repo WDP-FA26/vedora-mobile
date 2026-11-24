@@ -46,6 +46,6 @@ export function useDeletePlannerThread() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: deletePlannerThread,
-    onSettled: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.plannerThreads }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: mealPlanKeys.plannerHistory }),
   });
 }

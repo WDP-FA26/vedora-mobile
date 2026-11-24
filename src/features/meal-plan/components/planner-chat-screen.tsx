@@ -18,6 +18,8 @@ import { PlannerTrace } from './planner-trace';
 import { weekRange } from '../utils/meal-week';
 import { traceSteps } from '../utils/planner-trace';
 import { savedPlanChanges } from '../utils/planner-changes';
+import { turnQuestions, turnWebRequests } from '../utils/planner-interactions';
+import { PlannerQuestionCard, PlannerRewindDialog, PlannerWebConsentCard } from './planner-interaction-cards';
 
 const QUICK_STARTS = [['Lên thực đơn 7 ngày', 'week'], ['Mỗi bữa nấu trong 30 phút', 'quick'], ['Tận dụng nguyên liệu đang có', 'pantry']] as const;
 const WELCOME =
@@ -30,6 +32,8 @@ export function PlannerChatScreen() {
   const { turns, composer, busy, chatError, formOpen } = planner;
   const scroll = useRef<ScrollViewInstance>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [rewindTarget, setRewindTarget] = useState<{ id: string; text: string; threadId: string } | null>(null);
+  const target = rewindTarget?.threadId === planner.threadId && turns.some((turn) => turn.id === rewindTarget.id) ? rewindTarget : null;
   const avatar = <SproutPet size={26} accessible={false} />;
 
   return (
@@ -43,6 +47,7 @@ export function PlannerChatScreen() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Lịch sử trò chuyện"
+              disabled={busy}
               onPress={() => setHistoryOpen(true)}
               hitSlop={8}
               style={({ pressed }) => [styles.newChat, { backgroundColor: theme.muted, opacity: pressed ? 0.7 : 1 }]}>
@@ -106,7 +111,7 @@ export function PlannerChatScreen() {
                   <QuickChip label="Hỏi về nguyên liệu và dinh dưỡng" onPress={() => planner.setComposer('Mình muốn hỏi về nguyên liệu và dinh dưỡng.')} />
                 </View>
               ) : null}
-              {turns.map((turn) => (
+              {turns.map((turn, index) => (
                 <ChatBubble
                   key={turn.id}
                   role={turn.role === 'user' ? 'user' : 'assistant'}
@@ -115,18 +120,30 @@ export function PlannerChatScreen() {
                   authorLabel="Trợ lý Vedora"
                   avatar={avatar}
                   header={turn.toolParts ? <TurnTrace turn={turn} /> : null}
-                  footer={
-                    [...new Set(savedPlanChanges((turn.toolParts ?? []).map((part) => ({ name: part.type, callId: part.toolCallId, output: part.output }))).map((change) => change.weekStart))].map((week) => (
+                  footer={<>
+                    {turn.role === 'user' ? <Pressable accessibilityRole="button" accessibilityLabel="Hoàn tác từ tin nhắn này" disabled={busy}
+                      onPress={() => { planner.setChatError(''); setRewindTarget({ id: turn.id, text: turn.text, threadId: planner.threadId }); }}
+                      style={[styles.undo, { opacity: busy ? 0.4 : 1 }]}>
+                      <Text style={[styles.link, { color: theme.mutedForeground }]}>Hoàn tác từ đây</Text>
+                    </Pressable> : null}
+                    {turn.refused ? null : turnQuestions(turn, turns[index + 1]?.role === 'user').map((question) => <PlannerQuestionCard key={question.callId}
+                      question={question} open={planner.interaction?.kind === 'question' && planner.interaction.callId === question.callId && index === turns.length - 1}
+                      onAnswer={(answer) => void planner.answerQuestion(question.callId, answer)} />)}
+                    {turn.refused ? null : turnWebRequests(turn, turns[index + 1]?.role === 'user').map((request) => <PlannerWebConsentCard key={request.callId}
+                      request={request} open={planner.interaction?.kind === 'web' && planner.interaction.callId === request.callId && index === turns.length - 1}
+                      onAnswer={(approved) => void planner.answerWebSearch(request.callId, approved)} />)}
+                    {[...new Set(savedPlanChanges((turn.toolParts ?? []).map((part) => ({ name: part.type, callId: part.toolCallId, output: part.output }))).map((change) => change.weekStart))].map((week) => (
                       <Pressable key={week} accessibilityRole="button" onPress={() => planner.showSavedWeek(week)}
                         disabled={!planner.weeks.includes(week)}
                         style={({ pressed }) => [styles.proposal, { backgroundColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>
                         <Text style={[styles.proposalText, { color: theme.primary }]}>Đã lưu · Xem thực đơn {weekRange(week)}</Text>
                       </Pressable>
-                    ))
-                  }
+                    ))}
+                  </>}
                 />
               ))}
-              {busy && !turns.some((turn) => turn.streaming) ? <ChatStatus>Đang suy nghĩ…</ChatStatus> : null}
+              {busy && !turns.some((turn) => turn.streaming) ? <ChatStatus>{planner.rewindingId ? 'Đang hoàn tác…' : 'Đang suy nghĩ…'}</ChatStatus> : null}
+              {planner.rewindNotice ? <Text accessibilityRole="alert" style={[styles.error, { color: theme.primary }]}>{planner.rewindNotice}</Text> : null}
               {chatError ? (
                 <Text accessibilityRole="alert" style={[styles.error, { color: theme.destructive }]}>
                   {chatError}
@@ -151,11 +168,13 @@ export function PlannerChatScreen() {
           sendLabel="Gửi yêu cầu"
           sendDisabled={busy}
           maxLength={4000}
-          hint="Yêu cầu thêm hoặc đổi món sẽ được lưu trực tiếp vào thực đơn."
+          hint={`Thêm/đổi món được lưu trực tiếp. Tìm web: ${planner.webSearchAllowed ? 'đã cho phép trong cuộc trò chuyện này' : 'chưa cho phép'}.`}
             />
           </>
         )}
       </KeyboardAvoidingView>
+      <PlannerRewindDialog text={target?.text ?? null} hasComposer={!!composer.trim()} busy={!!planner.rewindingId} error={chatError}
+        onCancel={() => setRewindTarget(null)} onConfirm={() => { if (target) void planner.rewind(target.id).then((ok) => { if (ok) setRewindTarget(null); }); }} />
     </SafeAreaView>
   );
 }
@@ -183,6 +202,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   headerActions: { flexDirection: 'row', gap: Spacing.two },
   newChat: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  undo: { minHeight: 44, paddingHorizontal: Spacing.two, justifyContent: 'center' },
   banner: {
     minHeight: 44,
     flexDirection: 'row',

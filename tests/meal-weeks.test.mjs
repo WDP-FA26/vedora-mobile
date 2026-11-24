@@ -61,12 +61,16 @@ mock.module('react', { namedExports: {
   useMemo: (factory) => factory(), createContext: () => 'context', use: () => {},
 } });
 const jsx = (type, props) => ({ type, props });
-mock.module('react/jsx-runtime', { namedExports: { jsx, jsxs: jsx } });
+mock.module('react/jsx-runtime', { namedExports: { jsx, jsxs: jsx, Fragment: 'Fragment' } });
+mock.module('react-native', { namedExports: { View: 'View', Text: 'Text', Pressable: 'Pressable', Modal: 'Modal', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (styles) => styles } } });
+mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({}) } });
 
 const schema = await import('../src/features/meal-plan/types/meal-plan.schema.ts');
 const { addCalendarDays, planningWeeks, isPlanningWeekend } = await import('../src/features/meal-plan/utils/meal-week.ts');
 const { displayDays, avoidedIngredientsForRecipe } = await import('../src/features/meal-plan/utils/meal-plan.ts');
 const { savedPlanChanges } = await import('../src/features/meal-plan/utils/planner-changes.ts');
+const interactions = await import('../src/features/meal-plan/utils/planner-interactions.ts');
+const { PlannerQuestionCard, PlannerWebConsentCard, PlannerRewindDialog } = await import('../src/features/meal-plan/components/planner-interaction-cards.tsx');
 const service = await import('../src/features/meal-plan/services/meal-plan.service.ts');
 const { mealPlanKeys } = await import('../src/features/meal-plan/data/meal-plan.keys.ts');
 const currentWeek = '2026-11-16', nextWeek = '2026-11-23';
@@ -85,7 +89,7 @@ mock.module(local('features/meal-plan/hooks/use-meal-plan.ts'), { namedExports: 
 const { MealPlannerProvider } = await import('../src/features/meal-plan/hooks/meal-planner-provider.tsx');
 const render = () => { slot = 0; return MealPlannerProvider({ children: null }).props.value; };
 function reset() {
-  slots = []; requests.length = 0; routes.length = 0; client.clear(); currentToken = 'session';
+  slots = []; requests.length = 0; routes.length = 0; client.clear(); currentToken = 'session'; holdRead = undefined;
   respond = (config) => plan(config.params?.weekStart); streamFailure = null; streamParts = [];
   streamResult = { text: '', tools: [], parts: [], refused: false };
 }
@@ -159,4 +163,192 @@ test('service carries request IDs and bounded context, with no draft endpoint', 
   reset(); const messages = Array.from({ length: 45 }, () => ({ role: 'user', text: 'hello' }));
   await service.askMealPlanner(nextWeek, 'thread', 'request-1', messages);
   assert.equal(requests.at(-1).data.messages.length, 40); assert.equal(requests.at(-1).data.requestId, 'request-1');
+});
+
+const questionPart = (multiple = false) => ({ type: 'tool-askUser', toolCallId: 'question', state: 'input-available', input: { question: 'Choose dinner', options: ['Soup', 'Tofu'], multiple } });
+const webPart = () => ({ type: 'tool-requestWebSearch', toolCallId: 'web', state: 'input-available', input: { reason: 'Look up a dish outside the catalog' } });
+function mockThread(parts) {
+  let saved = { id: 'history', messages: [{ id: 'server-assistant', role: 'assistant', text: '', parts }] };
+  respond = (config) => {
+    if (config.method === 'PATCH') saved = { ...saved, messages: config.data.messages };
+    return saved;
+  };
+  return saved;
+}
+
+test('interaction parsing rejects malformed inputs and enables only the last finished request', () => {
+  assert.equal(interactions.openPlannerInteraction([]), null);
+  assert.equal(interactions.openPlannerInteraction([{ role: 'assistant', text: '' }]), null);
+  const turn = { role: 'assistant', text: '', toolParts: [questionPart(), webPart()] };
+  assert.equal(interactions.openPlannerInteraction([turn]).kind, 'web');
+  assert.equal(interactions.openPlannerInteraction([{ ...turn, streaming: true }]), null);
+  assert.equal(interactions.openPlannerInteraction([{ ...turn, refused: true }]), null);
+  assert.equal(interactions.openPlannerInteraction([turn, { role: 'user', text: 'Skip' }]), null);
+  assert.deepEqual(interactions.turnQuestions({ ...turn, toolParts: [{ ...questionPart(), input: { options: [] } }] }), []);
+});
+
+test('a picked answer patches the canonical message once and carries the question and recipe IDs into the next turn', async () => {
+  reset();
+  const tools = [part('searchRecipes', [{ id: 'recipe-123', title: 'Soup' }], 'search'), questionPart()];
+  streamResult.parts = tools;
+  await render().sendMessage('Choose dinner');
+  mockThread(tools);
+  const planner = render();
+  assert.notEqual(planner.turns.at(-1).id, 'server-assistant');
+  await Promise.all([planner.answerQuestion('question', 'Soup'), planner.answerQuestion('question', 'Soup')]);
+  const patch = requests.find((request) => request.method === 'PATCH');
+  assert.equal(patch.data.messages.length, 1);
+  assert.equal(patch.data.messages[0].id, 'server-assistant');
+  assert.equal(patch.data.messages[0].parts.at(-1).output.answer, 'Soup');
+  assert.equal(requests.filter((request) => request.method === 'PATCH').length, 1);
+  const chat = requests.filter((request) => request.url === '/meal-plan/chat').at(-1);
+  assert.ok(chat.data.messages.at(-2).text.includes('Choose dinner'));
+  assert.ok(chat.data.messages.at(-2).text.includes('recipe-123'));
+  assert.equal(chat.data.messages.at(-1).text, 'Soup');
+  assert.equal(chat.data.allowWebSearch, false);
+});
+
+test('typing a custom answer resolves the current question; stale cards cannot send', async () => {
+  reset(); mockThread([questionPart(true)]);
+  await render().openThread('history');
+  await render().sendMessage('Something else');
+  assert.equal(requests.find((r) => r.method === 'PATCH').data.messages[0].parts[0].output.answer, 'Something else');
+  const before = requests.length;
+  await render().answerQuestion('old-call', 'Tofu');
+  assert.equal(requests.length, before);
+});
+
+test('web search requires an explicit approval, persists in its thread and resets in a new conversation', async () => {
+  reset(); mockThread([webPart()]);
+  await render().openThread('history');
+  assert.equal(render().webSearchAllowed, false);
+  await render().answerWebSearch('web', true);
+  assert.equal(requests.find((r) => r.url === '/meal-plan/chat').data.allowWebSearch, true);
+  assert.equal(render().webSearchAllowed, true);
+  await render().sendMessage('Continue');
+  assert.equal(requests.filter((r) => r.url === '/meal-plan/chat').at(-1).data.allowWebSearch, true);
+  render().startNewChat();
+  assert.equal(render().webSearchAllowed, false);
+  await render().sendMessage('New request');
+  assert.equal(requests.filter((r) => r.url === '/meal-plan/chat').at(-1).data.allowWebSearch, false);
+});
+
+test('reopening saved history restores the consent decision and rewind before its reply removes the permission', async () => {
+  reset();
+  const messages = [
+    { id: 'server-assistant', role: 'assistant', text: '', parts: [{ ...webPart(), state: 'output-available', output: { approved: true } }] },
+    { id: 'approval-user', role: 'user', text: interactions.WEB_APPROVED_TEXT, parts: [] },
+  ];
+  respond = (config) => config.url.endsWith('/rewind') ? { text: interactions.WEB_APPROVED_TEXT, weeks: [] } : { id: 'history', messages };
+  await render().openThread('history');
+  assert.equal(render().webSearchAllowed, true);
+  client.setQueryData(mealPlanKeys.plannerThread, { id: 'history', messages });
+  assert.equal(await render().rewind('approval-user'), true);
+  assert.equal(render().webSearchAllowed, false);
+  assert.equal(render().interaction.kind, 'web');
+  assert.equal(client.getQueryState(mealPlanKeys.plannerThread).isInvalidated, true);
+});
+
+test('declining or typing past a web request never grants consent, including a stale decision left after rewind', async () => {
+  for (const typed of [false, true]) {
+    reset(); mockThread([{ ...webPart(), state: 'output-available', output: { approved: true } }]);
+    await render().openThread('history');
+    assert.equal(render().webSearchAllowed, false);
+    if (typed) await render().sendMessage('Why do you need it?');
+    else await render().answerWebSearch('web', false);
+    assert.equal(requests.find((r) => r.url === '/meal-plan/chat').data.allowWebSearch, false);
+    assert.equal(render().webSearchAllowed, false);
+  }
+});
+
+test('a failed decision sync keeps the card and composer and sends no chat request', async () => {
+  reset(); mockThread([questionPart()]);
+  await render().openThread('history'); render().setComposer('Custom answer');
+  respond = (config) => { if (config.method === 'PATCH') throw new Error('offline'); return { id: 'history', messages: [{ id: 'server-assistant', role: 'assistant', text: '', parts: [questionPart()] }] }; };
+  await render().sendMessage();
+  const planner = render();
+  assert.equal(planner.composer, 'Custom answer'); assert.equal(planner.interaction.callId, 'question');
+  assert.equal(planner.turns.length, 1); assert.ok(planner.chatError);
+  assert.equal(requests.some((r) => r.url === '/meal-plan/chat'), false);
+});
+
+test('an unrecorded tool cannot create a duplicate assistant message when an answer is synced', async () => {
+  reset(); respond = () => ({ id: 'history', messages: [] });
+  await assert.rejects(service.answerPlannerTool('history', 'missing', { approved: true }));
+  assert.equal(requests.some((r) => r.method === 'PATCH'), false);
+  assert.equal(schema.plannerRewindSchema.safeParse({ text: '', weeks: [{ weekStart: nextWeek, restored: ['MON'], skipped: [], droppedDishes: -1 }] }).success, false);
+  respond = () => ({ id: 'history', messages: [
+    { id: 'a', role: 'assistant', text: '', parts: [webPart()] },
+    { id: 'b', role: 'user', text: 'Already answered on another device', parts: [] },
+  ] });
+  await assert.rejects(service.answerPlannerTool('history', 'web', { approved: true }));
+  assert.equal(requests.some((r) => r.method === 'PATCH'), false);
+});
+
+test('rewind trims only after server success, restores composer, refreshes all weeks and blocks concurrent sends', async () => {
+  reset();
+  await render().sendMessage('Add soup');
+  await render().sendMessage('Replace soup');
+  const planner = render(), target = planner.turns[0].id;
+  for (const key of [mealPlanKeys.week(), mealPlanKeys.week(nextWeek)]) client.setQueryData(key, plan());
+  let release;
+  const pending = new Promise((resolve) => { release = resolve; });
+  respond = async () => { await pending; return { text: 'Add soup', weeks: [{ weekStart: nextWeek, restored: ['MON'], skipped: ['SUN'], droppedDishes: 1 }] }; };
+  const operation = planner.rewind(target);
+  assert.equal(render().rewindingId, target);
+  assert.equal(render().turns.length, 4);
+  await render().sendMessage('Blocked');
+  await render().rewind(target);
+  assert.equal(requests.filter((r) => r.url.endsWith('/rewind')).length, 1);
+  release(); assert.equal(await operation, true);
+  const after = render();
+  assert.equal(after.turns.length, 0); assert.equal(after.composer, 'Add soup');
+  assert.ok(after.rewindNotice.includes('1')); assert.ok(after.rewindNotice.includes('2026-11-23'));
+  assert.equal(after.rewindingId, null); assert.equal(after.busy, false);
+  for (const key of [mealPlanKeys.week(), mealPlanKeys.week(nextWeek)]) assert.equal(client.getQueryState(key).isInvalidated, true);
+});
+
+test('rewind errors preserve chat/composer and refresh the calendar; late results from another session are ignored', async () => {
+  reset(); await render().sendMessage('Add soup'); render().setComposer('Keep this');
+  respond = () => { throw new Error('offline'); };
+  assert.equal(await render().rewind(render().turns[0].id), false);
+  assert.equal(render().turns.length, 2); assert.equal(render().composer, 'Keep this'); assert.ok(render().chatError);
+  let release; const pending = new Promise((resolve) => { release = resolve; });
+  respond = async () => { await pending; return { text: 'Add soup', weeks: [] }; };
+  const operation = render().rewind(render().turns[0].id); currentToken = 'other'; release();
+  assert.equal(await operation, false);
+  assert.equal(render().turns.length, 2); assert.equal(render().composer, 'Keep this');
+});
+
+function find(node, predicate) {
+  if (Array.isArray(node)) return node.flatMap((child) => find(child, predicate));
+  if (!node || typeof node !== 'object') return [];
+  return [...(predicate(node) ? [node] : []), ...find(node.props?.children, predicate)];
+}
+const textOf = (node) => find(node, (item) => item.type === 'Text').map((item) => item.props.children).flat(Infinity).join('');
+const buttons = (tree) => find(tree, (node) => node.type === 'Pressable');
+
+test('question UI supports single and multiple choice and prevents old cards from answering', () => {
+  reset(); const answers = [];
+  const draw = (multiple, open = true) => { slot = 0; return PlannerQuestionCard({ question: { ...questionPart(multiple).input, callId: 'q' }, open, onAnswer: (answer) => answers.push(answer) }); };
+  buttons(draw(false))[0].props.onPress(); assert.deepEqual(answers, ['Soup']);
+  buttons(draw(false, false))[1].props.onPress(); assert.equal(answers.length, 1);
+  reset(); answers.length = 0;
+  assert.equal(buttons(draw(true)).at(-1).props.disabled, true);
+  buttons(draw(true))[0].props.onPress(); buttons(draw(true))[1].props.onPress();
+  buttons(draw(true)).at(-1).props.onPress(); assert.deepEqual(answers, ['Soup, Tofu']);
+  assert.equal(buttons(draw(true))[0].props.accessibilityState.checked, true);
+});
+
+test('consent UI makes scope explicit and confirmation UI cancels without writing or closing during a rewind', () => {
+  reset(); const decisions = [];
+  const tree = PlannerWebConsentCard({ request: { callId: 'web', reason: 'Look up a dish' }, open: true, onAnswer: (approved) => decisions.push(approved) });
+  assert.ok(textOf(tree).includes('Look up a dish'));
+  buttons(tree)[0].props.onPress(); buttons(tree)[1].props.onPress(); assert.deepEqual(decisions, [true, false]);
+  let canceled = 0, confirmed = 0;
+  const draw = (busy) => PlannerRewindDialog({ text: 'Replace dinner', hasComposer: true, busy, error: '', onCancel: () => canceled++, onConfirm: () => confirmed++ });
+  buttons(draw(false)).at(-1).props.onPress(); assert.equal(canceled, 1); assert.equal(confirmed, 0);
+  draw(true).props.onRequestClose(); assert.equal(canceled, 1);
+  assert.equal(buttons(draw(true))[0].props.disabled, true);
+  assert.ok(textOf(draw(false)).includes('Replace dinner'));
 });
