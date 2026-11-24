@@ -141,6 +141,8 @@ export class AiStreamParser {
         && part.messageMetadata.refused === true);
     } else if (part.type === 'error') {
       const message = typeof part.errorText === 'string' ? part.errorText : 'Trợ lý chưa thể trả lời. Vui lòng thử lại.';
+      // The backend sends machine codes inside SSE even when the HTTP response was 200.
+      if (message === 'MODEL_ERROR' || message === 'RATE_LIMITED') throw new ApiError(null, message, 'Assistant stream failed');
       throw new Error(message);
     }
   }

@@ -31,6 +31,8 @@ export function assistantErrorText(error: unknown): string {
   const quotaText = aiQuotaMessage(error);
   if (quotaText) return quotaText;
   if (error instanceof ApiError) {
+    if (error.code === 'RATE_LIMITED') return 'Trợ lý đang quá tải. Hãy thử lại sau ít phút.';
+    if (error.code === 'MODEL_ERROR') return 'Trợ lý chưa trả lời được. Hãy thử lại.';
     if (error.status === 429) return 'Bạn gửi hơi nhanh. Hãy thử lại sau ít phút.';
     if (error.status === 503) return 'Trợ lý đang tạm nghỉ. Hãy thử lại sau.';
     if (error.status === 401) return 'Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.';
