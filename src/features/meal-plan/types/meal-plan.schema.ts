@@ -90,6 +90,8 @@ export const plannerThreadPageSchema = z.object({
 export const dietaryRestrictionsSchema = z.object({
   ingredients: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
   groups: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
+  allergyNote: z.string().nullable().optional(),
+  preferenceNote: z.string().nullable().optional(),
 });
 
 export type MealPlan = z.output<typeof mealPlanSchema>;

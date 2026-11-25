@@ -1,5 +1,23 @@
 # Kế hoạch và kết quả công việc
 
+## 2026-11-25 — Chuẩn bị PR ghi chú hồ sơ ăn uống
+
+- Kết quả đã làm: Xác nhận PR #53 đã merge, tạo nhánh `feat/dietary-profile-notes` từ main `94c401c`. Tập hợp form ghi chú dị ứng/khẩu vị, hợp đồng API, kiểm thử, PLAN và backlog cập nhật để commit/push và mở PR tiếng Anh. Lint, TypeScript và 32 kiểm thử liên quan đã đạt trên source này; giữ các báo cáo cũ chưa theo dõi ngoài PR.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện trên thiết bị): (1) Hồ sơ → Hồ sơ ăn uống → đọc/sửa hai ghi chú và lưu. (2) Rời màn rồi mở lại, kiểm tra nội dung và nhóm/nguyên liệu còn đúng. (3) Xóa một ghi chú rồi lưu; thử Hủy thay đổi. (4) Ngắt mạng khi lưu, kiểm tra giữ nội dung và thử lại; thử bàn phím, màn nhỏ và theme sáng/tối.
+- Người thực hiện: Codex.
+
+## 2026-11-25 — Đọc/sửa ghi chú dị ứng và khẩu vị trên mobile
+
+- Kết quả đã làm: Bổ sung `allergyNote` và `preferenceNote` vào schema đọc/cập nhật Hồ sơ ăn uống và schema đọc của Thực đơn theo DTO/service BE `8274a67`. Thêm hai ô nhập nhiều dòng có nhãn, ví dụ và bộ đếm tối đa 1.000 ký tự; dùng GET/PUT `/dietary/me` hiện có, trim khi lưu, gửi chuỗi rỗng để xóa ghi chú. Dùng chung Lưu/Hủy và cảnh báo thay đổi chưa lưu; khóa nhập khi lưu, chặn gửi lặp, giữ nội dung sau lỗi. Form lấy dữ liệu đã lưu từ Query cache để nhận cập nhật khi chưa chỉnh, không ghi đè bản đang sửa khi refetch. Cập nhật backlog đã nối. Lint/TypeScript đạt; 32/32 kiểm thử liên quan đạt (6 ca hồ sơ/ghi chú, 26 ca thực đơn/ảnh món). Đọc tài liệu Expo SDK 58, React Native TextInput/ScrollView trước khi sửa; không thêm thư viện, không commit/push.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện trên thiết bị): (1) Đăng nhập → Hồ sơ → Hồ sơ ăn uống → cuộn tới Ghi chú dị ứng và Khẩu vị và thói quen, kiểm tra nội dung đã lưu hoặc ô trống. (2) Nhập từng ghi chú, kiểm tra bộ đếm/giới hạn 1.000 ký tự, xuống dòng và cuộn khi bật bàn phím; thử sáng/tối, chữ lớn và màn nhỏ. (3) Chọn thêm nhóm/nguyên liệu → Lưu hồ sơ → kiểm tra thông báo thành công → rời màn và mở lại, xác nhận cả ghi chú lẫn lựa chọn còn đúng. (4) Xóa hết một ghi chú → lưu → mở lại, xác nhận ô trống và ghi chú kia còn nguyên. (5) Sửa nội dung → Hủy thay đổi hoặc nhấn Quay lại để thử giữ/bỏ thay đổi. (6) Ngắt mạng khi lưu, kiểm tra nội dung còn và có thể thử lại; nhấn lưu liên tiếp để kiểm tra chỉ gửi một lần, các ô bị khóa trong lúc lưu. (7) Khi chưa sửa, làm mới hồ sơ từ nguồn khác để kiểm tra cập nhật; khi đang sửa, kiểm tra refetch không mất nội dung. Chưa gọi BE bằng tài khoản thật hoặc kiểm tra UI/bàn phím Android/iOS trong task này.
+- Người thực hiện: Codex.
+
+## 2026-11-25 — Đọc lại BE main và liệt kê phần mobile chưa nối
+
+- Kết quả đã làm: Fetch và đọc BE main mới `8274a67` (thêm bốn commit so với `db7da97`), đối chiếu mobile HEAD `810a80a`; cập nhật [BE_MOBILE_REMAINING_AFTER_PR52.md](BE_MOBILE_REMAINING_AFTER_PR52.md). Xác nhận hai lỗi hợp đồng chat/bìa Blog, 13 nhóm chức năng thiếu hoặc nối một phần; bổ sung voice mới trên BE và API tổng unread chưa dùng (mobile chỉ cộng 50 cuộc trò chuyện mỗi ngăn). Tách public-config, Workspace, copy/summary, thao tác thực đơn trực tiếp và đổi tên hội thoại theo phạm vi UI; loại báo cáo bình luận/thông báo đã code khỏi backlog. Không sửa source tính năng, không commit/push. Lint và TypeScript đều đạt; chưa chạy hệ thống thật.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Đăng nhập → Trợ lý → gửi tin/trả lời lựa chọn/cấp quyền web → mở lịch sử/quay lại; tìm điểm vào voice. (2) Tạo Blog với bìa khác ảnh đầu nội dung → lưu/mở lại; tìm thêm video. (3) Mở hồ sơ ăn uống, Thực đơn, Nhật ký và Công thức để đối chiếu ghi chú, Đi chợ, tuần cũ, sửa mục và dinh dưỡng. (4) Cuộn Khám phá/Theo dõi nhiều trang → thử bài chỉ chữ/nhiều video/nháp POST/sửa bài → tìm người dùng. (5) Chuẩn bị hơn 50 hội thoại mỗi ngăn, có tin chưa đọc ngoài trang đầu → so huy hiệu với tổng BE. (6) Tìm thống kê/nhà hàng/Trang; hồi quy báo cáo bình luận, thông báo xử lý, ticket và ảnh báo cáo. Checklist chi tiết trong báo cáo.
+- Người thực hiện: Codex.
+
 ## 2026-11-25 — Chuẩn bị PR báo cáo bình luận bằng tiếng Anh
 
 - Kết quả đã làm: Xác nhận PR #52 đã merge, tạo nhánh `feat/comment-reporting-notifications` và fast-forward lên main `0f9c496`. Tập hợp code, kiểm thử, báo cáo backlog cập nhật và PLAN để commit/push, tạo PR mới có tiêu đề/mô tả tiếng Anh; giữ các báo cáo đối chiếu cũ ngoài phạm vi.
