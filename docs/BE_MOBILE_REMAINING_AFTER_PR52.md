@@ -1,67 +1,89 @@
-# BE và mobile: phần còn thiếu sau PR #52
+﻿# BE và mobile: các phần còn chưa nối — cập nhật 25/11/2026
 
-> Cập nhật sau lần rà: đã triển khai báo cáo bình luận và đủ năm thông báo xử lý trong workspace. Mục này ở bảng bên dưới là ảnh chụp backlog tại `d507900`, hiện không còn thuộc nhóm chưa code. Chưa kiểm thử với BE/admin thật; xem checklist mới trong PLAN.md.
+- Người thực hiện: Codex.
+- BE: đã fetch và đọc lại `origin/main` tại `8274a676cb26af1fdcf861f8a878ea9e44421e3a`. Bản tham khảo: `tmp/node_modules/vedora-api-review-20261125`.
+- Mobile: source workspace tại HEAD `810a80a` (`feat: add comment reporting and moderation notifications`).
+- So với báo cáo trước tại BE `db7da97`, BE có thêm bốn commit: voice planner, kiểm thử voice, đổi lớp provider AI và công cụ trả kcal. Báo cáo này thay thế backlog cũ trong tài liệu này.
+- Phương pháp: đối chiếu controller/DTO/service BE với toàn bộ caller HTTP, schema, hook và UI liên quan trên mobile. Đây là kết luận từ source; chưa nghiệm thu API/thiết bị thật. Không sửa source tính năng, không commit/push.
 
-- Ngày: 25/11/2026. Người thực hiện: Codex.
-- Đã fetch BE `WDP-FA26/vedora-api` origin/main: `db7da97202d724e6afd0283821b7cdfd9948862a`; không có cập nhật mới so với lần rà trước.
-- Mobile: `feat/mobile-support-report-evidence`, `d507900`, đã push và mở PR #52. Các kết luận dưới đây tính cả code của PR, chưa khẳng định đã merge vào main hay triển khai production.
-- Đối chiếu controller/DTO BE với service, schema, route và component mobile. Không thay đổi source; chưa chạy BE/DB hoặc kiểm tra API đăng nhập trên thiết bị. Không tính các màn admin là chức năng mobile thành viên còn thiếu.
+## 1. Đã nối nhưng sai hợp đồng
 
-## Lỗi tương thích cần sửa trước
+### P1 — Chat trợ lý thực đơn
 
-**Chat thực đơn: BE yêu cầu `message`, mobile vẫn gửi `messages[]`.**
+- BE `src/meal-plan/dto/meal-plan.dto.ts:MealPlannerChatDto` yêu cầu `message: string`, `weekStart`; nhận thêm `threadId`, `requestId`, `allowWebSearch`, `toolOutput` tùy chọn. `src/app.setup.ts` bật whitelist và forbidNonWhitelisted.
+- Mobile `src/features/meal-plan/services/meal-plan.service.ts:askMealPlanner` vẫn gửi `messages: messages.slice(-40)` và không gửi `message`. Request không khớp validation BE, dự kiến bị từ chối trước khi stream.
+- Caller dự phòng `src/features/nutrition-chat/services/nutrition-chat.service.ts:askAccountAssistant` cũng gửi `messages[]`, thiếu `message`/`weekStart`. Không áp dụng kết luận này cho chat khách `/nutrition-chat`, vốn có hợp đồng riêng.
+- UI lịch sử, trả lời câu hỏi, cho phép tìm web, quay lại mốc chat đã có. Cần sửa request và kiểm tra các nhánh tiếp tục hội thoại, không tính cả module chat là chưa làm.
 
-- BE: `src/meal-plan/dto/meal-plan.dto.ts:MealPlannerChatDto` bắt buộc `message: string`; `src/meal-plan/meal-plan.controller.ts` truyền message vào service. Lịch sử do BE đọc từ server. `src/app.setup.ts` bật whitelist và forbidNonWhitelisted.
-- Mobile: `src/features/meal-plan/services/meal-plan.service.ts:askMealPlanner` vẫn gửi `messages: messages.slice(-40)`. Vì vậy request hiện tại không khớp validation của BE main. Chưa gửi request thật; kết luận dựa trên hợp đồng source.
-- UI chat/lịch sử/câu hỏi lựa chọn/quyền tìm web/quay lại yêu cầu đã có. Cần sửa request và kiểm tra lại toàn luồng, không cần xây lại toàn bộ chat. Caller dự phòng `nutrition-chat/services/nutrition-chat.service.ts` cũng cần rà đồng bộ.
+### P1 — Bìa Blog không đồng bộ với nội dung
 
-## Tính năng chưa có hoặc mới có một phần
+- BE `src/posts/blogs/blog-cover.ts:coverFromContent` và `blogs.service.ts` lấy ảnh đầu tiên hợp lệ trong nội dung làm bìa; không lưu `coverImageUrl` như FE gửi.
+- Mobile `src/features/blogs/components/blog-editor-screen.tsx:addImage(true)` chỉ `setCover(url)`; chưa thêm/chuyển ảnh đó thành ảnh đầu nội dung. Chọn bìa A nhưng nội dung có ảnh B đầu tiên thì lưu/mở lại có thể thành B hoặc null.
+- Cần đồng bộ thao tác chọn/đổi/gỡ bìa với nội dung.
 
-Đường dẫn BE bắt đầu từ `src/` trong repo BE; đường dẫn mobile bắt đầu từ `src/features/`.
+## 2. Chức năng chưa nối hoặc mới nối một phần
 
-| Ưu tiên | Chức năng | BE đã có | Mobile còn thiếu / bằng chứng |
+Đường dẫn BE trong bảng bắt đầu từ `src/` của repo BE. Đường dẫn mobile bắt đầu từ `src/features/`.
+
+| Ưu tiên | Chức năng | BE hiện có | Mobile còn thiếu / bằng chứng |
 | --- | --- | --- | --- |
-| P1 | Báo cáo bình luận và thông báo xử lý | `posts/interactions/comment-reports.controller.ts`: POST `/posts/:postId/comments/:commentId/report`; service phát COMMENT_REPORT_RESOLVED/DISMISSED | `posts/services/posts.service.ts`, `posts/components/comment-section.tsx` chưa có caller/hành động báo cáo bình luận; `notifications/utils/notification-text.ts` chưa có câu riêng cho hai loại thông báo này. |
-| P1 | Ghi chú dị ứng/khẩu vị | `recipes/dto/dietary.dto.ts`: `allergyNote`, `preferenceNote` ở đọc và cập nhật | `dietary-profile/types/dietary-profile.schema.ts`, dietary trong `meal-plan/types/meal-plan.schema.ts` chưa nhận hai trường; UI chưa cho nhập. Chọn nguyên liệu/nhóm tránh đã có. |
-| P1 | Danh sách đi chợ | `meal-plan/shopping-list.controller.ts`: GET `/meal-plan/shopping-list` | Chưa có caller/route/màn shopping-list trong `src`. Cần chọn ngày, tổng hợp nguyên liệu và nguồn món; BE chưa có lưu trạng thái đã mua trong controller này. |
-| P1 | Feed cá nhân hóa và feed theo dõi | `posts/posts.controller.ts`: GET `/posts/feed`, `/posts/following` | `feed/services/feed.service.ts` gọi `/posts`; `following/services/following.service.ts` lấy tối đa 20 bài/tác giả rồi ghép, chưa dùng nguồn/phân trang chung BE. |
-| P1 | Bài POST chỉ chữ/nhiều media và nháp POST | `posts/dto/create-post.dto.ts`, `posts/post-drafts.controller.ts` | `feed/services/compose.service.ts` lọc nháp `kind === 'VIDEO'`, tạo nháp VIDEO; `feed/hooks/use-compose-actions.ts` yêu cầu một video và xóa media khác. Chưa có luồng bài POST tổng quát. |
-| P1 | Sửa bài POST đã đăng | `posts/posts.controller.ts`: PATCH `/posts/:id` | `posts/services/posts.service.ts`, `posts/components/post-menu.tsx` chưa có caller/UI sửa bài. Sửa Blog và sửa nháp video đã có, là hai luồng khác. |
-| P1 | Đồng bộ bìa Blog | `posts/blogs/blog-cover.ts` suy ra bìa từ ảnh đầu nội dung | `blogs/components/blog-editor-screen.tsx:addImage(true)` chỉ setCover; gửi coverImageUrl riêng nhưng chưa đồng bộ ảnh đầu nội dung khi chọn/đổi/gỡ bìa. Đây là tính năng có UI nhưng sai hợp đồng. |
-| P2 | Sửa mục nhật ký ăn uống | `meal-plan/meal-log/meal-log.controller.ts`: PATCH `:id` | `meal-log/services/meal-log.service.ts` chỉ có đọc/thêm/xóa/ước tính kcal, chưa update; UI chưa có sửa. |
-| P2 | Kcal và nhóm dinh dưỡng công thức/thực đơn | `recipes/dto/recipe.dto.ts`, `meal-plan/dto/meal-plan.dto.ts`: `caloriesPerServing`, `nutritionPillars` | `recipes/types/recipe.schema.ts` và schema recipe trong `meal-plan/types/meal-plan.schema.ts` chưa nhận/hiển thị. Không tính kcal nhật ký và BMI đã có thành thiếu. |
-| P2 | Xem thực đơn tuần cũ | GET `/meal-plan`, dữ liệu `minWeekStart` | `meal-plan/utils/meal-week.ts:planningWeeks` bắt đầu từ currentWeekStart dù schema nhận minWeekStart. Cần cho xem tuần trước và tách quyền sửa ngày quá khứ. |
-| P2 | Chọn/upload video Blog | `posts/blogs/blogs.controller.ts`: POST `/blogs/videos/uploads` | `blogs/services/blogs.service.ts` mới upload ảnh; editor nhận diện video có sẵn nhưng chưa có luồng chọn/upload video mới. |
-| P2 | Thống kê bài của người đăng | `posts/analytics/post-analytics.controller.ts`: GET `/analytics/posts`, `/summary` | Chưa có caller/route/UI analytics. Ghi nhận lượt xem bài đã có. |
-| P2 | Tìm người dùng | `profiles/profiles.controller.ts`: GET `/profiles/search` | `posts/components/search-screen.tsx` chỉ có tab bài viết/công thức, chưa có caller tìm người. Gợi ý theo dõi/hồ sơ công khai đã có. |
-| P2 | Khám phá nhà hàng/menu/đánh giá | `workspaces/workspaces.controller.ts:RestaurantsController`: danh sách, menu/search, menu/reviews, PUT/DELETE reviews/me | Chưa có feature/caller/route restaurants. Tách khỏi quản lý Trang. |
+| P1 | Trợ lý giọng nói — mới trên BE | POST `/meal-plan/voice/session`, POST `/meal-plan/voice/turns`; `meal-plan/voice/meal-planner-voice.controller.ts`, `docs/docs-for-FE/meal-plan-voice.md` | Chưa có caller, schema, mic, phiên realtime hoặc UI voice. Chưa xử lý tool để mở công thức/nhật ký/BMI, ghi bữa, cập nhật chỉ số, hoàn tác và làm mới cache. Đây là nhóm voice; các tool đặc thù này không mặc định có trong chat chữ. BE cần cấu hình gateway để session hoạt động. |
+| P1 | Danh sách đi chợ | GET `/meal-plan/shopping-list`; `meal-plan/shopping-list.controller.ts` | Chưa có service/hook/route/UI: chọn ngày, xem nguyên liệu tổng hợp và nguồn món. Endpoint này không lưu trạng thái đã mua. |
+| P1 | Feed cá nhân hóa và feed theo dõi | GET `/posts/feed`, GET `/posts/following`; `posts/posts.controller.ts` | `feed/services/feed.service.ts` gọi `/posts` nên chưa dùng nguồn cá nhân hóa. `following/services/following.service.ts` lấy tối đa 20 bài mỗi tác giả rồi ghép, chưa dùng phân trang chung `/posts/following`; có thể bỏ sót bài cũ và tăng số request. |
+| P1 | Tạo bài POST chỉ chữ/nhiều video và nháp POST | POST `/posts`; CRUD/publish `/posts/drafts` với kind POST/VIDEO; `posts/dto/create-post.dto.ts`, `post-draft.dto.ts`, `post-drafts.service.ts` | `feed/services/compose.service.ts` chỉ tạo kind VIDEO, lọc bỏ nháp POST. `feed/hooks/use-compose-actions.ts` bắt buộc một video và loại media khác. Chưa có composer POST tổng quát. Upload nháp BE hiện tạo MediaType.VIDEO; không suy ra đã có upload ảnh POST. |
+| P1 | Sửa bài POST đã đăng | PATCH `/posts/:id`; `posts/posts.controller.ts` | `posts/services/posts.service.ts` và menu chưa có caller/UI sửa bài. Sửa Blog và sửa nháp video là các luồng đã có riêng. |
+| P2 | Sửa mục nhật ký ăn uống | PATCH `/meal-plan/log/:id`; `meal-plan/meal-log/meal-log.controller.ts` | `meal-log/services/meal-log.service.ts` có đọc/thêm/xóa/ước tính kcal, chưa có update hoặc form sửa mục đã lưu. |
+| P2 | Kcal và nhóm dinh dưỡng công thức/thực đơn | `caloriesPerServing`, `nutritionPillars`; `recipes/dto/recipe.dto.ts`, `meal-plan/dto/meal-plan.dto.ts` | `recipes/types/recipe.schema.ts` và recipe trong `meal-plan/types/meal-plan.schema.ts` chưa nhận/hiển thị. Kcal nhật ký và BMI đã có, không thuộc thiếu sót này. |
+| P2 | Xem thực đơn tuần cũ | GET `/meal-plan?weekStart=...`, `minWeekStart` trong response | Schema mobile nhận minWeekStart nhưng `meal-plan/utils/meal-week.ts:planningWeeks` chỉ tạo lựa chọn từ currentWeekStart đến maxWeekStart. Chưa có chọn tuần trước; cần giữ quyền sửa theo ngày/tuần BE. |
+| P2 | Chọn/upload video Blog | POST `/blogs/videos/uploads`; `posts/blogs/blogs.controller.ts` | `blogs/services/blogs.service.ts` mới có upload ảnh; editor nhận diện video có sẵn nhưng chưa có bộ chọn/upload video mới. |
+| P2 | Thống kê bài của người đăng | GET `/analytics/posts`, GET `/analytics/posts/summary`; `posts/analytics/post-analytics.controller.ts` | Chưa có caller/route/UI thống kê và chọn khoảng ngày. Gửi lượt xem `/posts/views` đã có. |
+| P2 | Tìm người dùng | GET `/profiles/search`; `profiles/profiles.controller.ts` | Chưa có caller; `posts/components/search-screen.tsx` chỉ có tab bài viết/công thức. Gợi ý theo dõi và hồ sơ công khai đã có. |
+| P2 | Khám phá nhà hàng, menu và đánh giá | GET `/restaurants`, `/restaurants/menu/search`, `/restaurants/:pageUserId/menu`, `/reviews`; PUT/DELETE `/restaurants/:pageUserId/reviews/me`; `workspaces/workspaces.controller.ts:RestaurantsController` | Chưa có feature/service/route/UI: danh sách hoặc bản đồ, tìm món, xem menu, xem/viết/sửa/xóa đánh giá. Tách khỏi quản lý Trang. |
 
-## Cần chốt phạm vi hoặc hoàn thiện nền
+## 3. API nền chưa dùng và phạm vi cần chọn
 
-- **Workspace/Trang:** BE có đăng ký/gửi lại hồ sơ, thành viên/menu/thông tin và POST `/auth/switch`; mobile chưa có. Chỉ ưu tiên nếu mobile phục vụ chủ/quản lý Trang.
-- **Public config:** BE GET `/public-config` công bố giới hạn upload, gồm ảnh báo cáo; mobile chưa đọc. Ảnh báo cáo đã code theo mặc định 3 ảnh/5 MB nên chưa tự thích ứng khi BE đổi cấu hình.
-- **Sao chép tuần và tóm tắt bài riêng:** BE POST `/meal-plan/copy`, GET `/posts/:postId/summary`; chưa có caller mobile. Chốt nhu cầu UI trước khi coi là yêu cầu bắt buộc; không suy ra chat không thể tạo thực đơn.
-- Các API admin, quản lý knowledge, webhook, health và media tổng quát không mặc định cần màn tương ứng trên mobile thành viên.
+| Nhóm | API BE | Tình trạng mobile / tác động |
+| --- | --- | --- |
+| Tổng tin nhắn chưa đọc | GET `/messaging/unread-count`; `messaging/messaging.controller.ts` | Chưa gọi API tổng. `messaging/hooks/use-messaging.ts:useMessagingUnread` tải 50 conversation đầu mỗi ngăn friends/requests rồi cộng unreadCount. Số huy hiệu có thể thiếu khi tin chưa đọc nằm ngoài hai trang đầu; nên nối endpoint BE. |
+| Giới hạn cấu hình runtime | GET `/public-config`; `config/public-config.controller.ts` | Chưa có caller/schema/cache. Mobile dùng hằng số riêng; ví dụ ảnh báo cáo 3 ảnh/5 MB. Nếu BE đổi giới hạn, form mobile chưa tự thích ứng. API này còn có giới hạn auth, nội dung, AI, phân trang và thanh toán, không chỉ upload. |
+| Workspace/Trang | `/workspaces/mine`, đăng ký/proofs/resubmit, thông tin/thành viên/menu; POST `/auth/switch` | Chưa có module quản lý Trang hoặc chuyển phiên Trang. Chỉ lên kế hoạch nếu mobile phục vụ chủ/quản lý Trang. |
+| Sao chép thực đơn | POST `/meal-plan/copy` | Chưa có nút/caller sao chép tuần trực tiếp. Chốt nhu cầu trước khi làm; không coi đây là bằng chứng chat không tạo được thực đơn. |
+| Tóm tắt AI riêng của bài | GET `/posts/:postId/summary`; `posts/summaries/post-summaries.controller.ts` | Chưa gọi endpoint riêng. Xem bài/công thức liên kết hiện có không tương đương màn xem trạng thái/nội dung summary từ API này. |
+| Thao tác thực đơn trực tiếp | POST `/meal-plan/preview`, `/generate`, PUT `/meal-plan/days` | Không có caller trực tiếp hiện tại; mobile đi qua planner chat và tool ghi thực đơn. Chỉ bổ sung khi cần màn preview/tự sửa/lưu ngoài chat, không mặc định là thiếu toàn bộ chức năng tạo/lưu thực đơn. |
+| Quản lý tên hội thoại | POST `/meal-plan/chat/threads`, PATCH thread với title | Mobile có tạo thread qua chat, đọc/xóa/quay lại lịch sử; chưa có đổi tên hội thoại trong UI. Tạo thread bằng endpoint riêng không bắt buộc khi đã dùng cơ chế tạo trong chat. |
 
-## Đã loại khỏi backlog sau PR #52
+Không đưa API admin/moderation/knowledge, webhook, health, CRUD người dùng quản trị hay media nội bộ vào backlog bắt buộc của mobile thành viên.
 
-- Danh sách/chi tiết/tạo/trả lời/rút ticket, ảnh hỗ trợ, khiếu nại từ bài và mở lại ticket thường theo hạn BE: `support/` và routes `/support`.
-- Thông báo ticket nhận ticketId, nội dung riêng và mở đúng ticket; cache cập nhật qua SSE.
-- Ảnh minh chứng báo cáo bài/Blog: multipart endpoint riêng, evidenceIds, chọn/xem/gỡ ảnh, giữ ID khi gửi lỗi và kiểm tra phiên; UI thùng rác/lưới ảnh đã có. Chưa xác nhận upload thật trên thiết bị.
+## 4. Đã nối — bỏ khỏi backlog cũ
 
-## Thứ tự đề nghị
+- Ghi chú dị ứng/khẩu vị: đã bổ sung đọc/sửa/xóa trong Hồ sơ ăn uống, giới hạn 1.000 ký tự mỗi trường, cập nhật schema/cache hồ sơ và Thực đơn; giữ nội dung sau lỗi. Đã kiểm thử mock, chưa kiểm tra API/thiết bị thật.
 
-1. Sửa hợp đồng chat trước khi ghép mobile với BE main.
-2. Báo cáo bình luận + thông báo; sửa bìa Blog.
-3. Ghi chú dị ứng/khẩu vị → đi chợ → sửa nhật ký → dinh dưỡng/tuần cũ.
-4. Feed đúng nguồn → tạo/nháp/sửa POST → tìm người dùng.
-5. Video Blog → thống kê → nhà hàng; Workspace theo phạm vi sản phẩm.
+- Báo cáo bình luận/phản hồi: `posts/services/comment-report.service.ts`, `posts/components/comment-report-button.tsx` và `comment-section.tsx`.
+- Đủ năm loại thông báo COMMENT_REMOVED, COMMENT_REMOVED_BY_POST_OWNER, COMMENT_THREAD_REMOVED, COMMENT_REPORT_RESOLVED, COMMENT_REPORT_DISMISSED: nội dung, điều hướng và cache liên quan đã code.
+- Hỗ trợ/khiếu nại: tạo/list/detail/trả lời/rút, ảnh, mở lại ticket thường theo hạn và thông báo mở đúng ticket.
+- Ảnh minh chứng báo cáo bài/Blog: endpoint multipart riêng, evidenceIds và UI chọn/xem/gỡ.
+- Gửi lượt xem bài; nhắn tin/chia sẻ bài, chấp nhận/xóa lời mời; auth, billing/SSE, xác minh, hồ sơ, tương tác bài/công thức đã có caller. Danh sách này xác nhận có code kết nối, không chứng minh mọi nhánh đã chạy đúng trên hệ thống thật.
 
-## Checklist UI đối chiếu — chưa thực hiện trên thiết bị
+## 5. Thứ tự đề nghị
 
-1. Mở Trợ lý, gửi tin và trả lời lựa chọn/quyền tìm web; xem lỗi validation nếu dùng BE main hiện tại. Sau sửa request, thử lịch sử và quay lại yêu cầu.
-2. Mở bình luận người khác để đối chiếu thiếu báo cáo; tạo Blog có bìa khác ảnh đầu nội dung, lưu/mở lại để kiểm tra bìa.
-3. Mở hồ sơ ăn uống tìm ghi chú; mở thực đơn tìm Đi chợ và tuần trước; mở nhật ký tìm sửa mục; mở công thức đối chiếu kcal/nhóm chất.
-4. Mở feed/theo dõi nhiều trang; thử tạo bài chỉ chữ/nhiều media, mở nháp POST và sửa bài đã đăng; vào tìm kiếm đối chiếu thiếu tab người dùng.
-5. Mở editor Blog tìm thêm video; tìm thống kê/nhà hàng/Trang để xác nhận phạm vi còn thiếu. Không coi việc chưa có đường dẫn trên mobile là hướng dẫn mở màn đã tồn tại.
-6. Kiểm tra hồi quy phần đã làm: ticket có ảnh và thông báo mở đúng ticket; báo cáo bài kèm 3 ảnh, gỡ ảnh và thử lại sau lỗi.
+1. Sửa request chat và đồng bộ bìa Blog.
+2. Nối API tổng unread và public-config.
+3. Đi chợ → sửa nhật ký → dinh dưỡng → tuần cũ.
+4. Feed đúng nguồn → POST tổng quát/nháp/sửa → tìm người dùng.
+5. Voice → video Blog → thống kê → nhà hàng; Trang theo phạm vi sản phẩm.
+
+## 6. Checklist UI trên màn hình — đề nghị, chưa thực hiện
+
+1. Đăng nhập → Trợ lý → gửi tin → trả lời câu hỏi lựa chọn → cấp/từ chối tìm web → mở lịch sử → quay lại mốc cũ; xác minh lỗi request hiện tại trước khi sửa và hồi quy sau khi sửa.
+2. Blog → tạo bài → chọn bìa A → thêm ảnh B trong nội dung → lưu nháp → đóng/mở lại; kiểm tra bìa thực tế. Tìm thao tác thêm video mới.
+3. Hồ sơ ăn uống → tìm ghi chú dị ứng/khẩu vị; Thực đơn → mở bộ chọn tuần → tìm tuần cũ/Đi chợ; Nhật ký → mở mục đã lưu → tìm sửa; Công thức → xem kcal/nhóm chất.
+4. Khám phá/Theo dõi → cuộn nhiều trang; Tạo bài → thử chỉ chữ và nhiều video; Nháp → tìm nháp POST; bài của mình → menu → tìm sửa. Tìm kiếm → đối chiếu tab người dùng.
+5. Hộp thư → chuẩn bị hơn 50 cuộc trò chuyện ở một ngăn, có tin chưa đọc ngoài trang đầu → so huy hiệu mobile với tổng BE; đánh dấu đã đọc và kiểm tra cập nhật.
+6. Trợ lý → tìm thao tác voice; Hồ sơ → tìm thống kê/Trang; tìm Nhà hàng/menu/đánh giá. Đây là đối chiếu điểm vào còn thiếu, không phải hướng dẫn mở màn đã tồn tại.
+7. Hồi quy phần đã có: báo cáo bình luận người khác → nhận thông báo xử lý; gửi ticket kèm ảnh → mở qua thông báo; báo cáo bài kèm ảnh → gỡ và thử gửi lại sau lỗi.
+
+## 7. Kiểm chứng và giới hạn
+
+- Đã fetch BE main thành công, đọc thay đổi mới và đối chiếu source liên quan.
+- Chưa chạy BE/DB/storage/gateway, gọi API bằng tài khoản thật, kiểm tra mic/realtime hoặc thao tác Android/iOS/web. Cần xác minh tương thích native riêng khi triển khai voice; tài liệu FE BE hiện mô tả tích hợp trình duyệt.
+- Không thay đổi source tính năng hoặc thêm dependency. Kết quả lint/TypeScript của lượt rà này được ghi trong PLAN.md.

@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,14 +11,16 @@ import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useDietaryProfile, useSaveDietaryProfile } from '../hooks/use-dietary-profile';
 import { NutritionSection } from './nutrition-section';
-import type { DietaryRestrictions, DietaryUpdate } from '../types/dietary-profile.schema';
+import { dietaryUpdateSchema, MAX_DIETARY_NOTE_LENGTH, type DietaryRestrictions, type DietaryUpdate } from '../types/dietary-profile.schema';
 
-type Selection = DietaryUpdate;
+type Selection = DietaryUpdate & { allergyNote: string; preferenceNote: string };
 
 function fromRestrictions(value: DietaryRestrictions): Selection {
   return {
     groupIds: value.groups.map(({ id }) => id),
     ingredientIds: value.ingredients.map(({ id }) => id),
+    allergyNote: value.allergyNote ?? '',
+    preferenceNote: value.preferenceNote ?? '',
   };
 }
 
@@ -44,7 +46,7 @@ export function DietaryProfileScreen() {
   const { options, mine } = useDietaryProfile(token);
   const save = useSaveDietaryProfile(token);
   const [selection, setSelection] = useState<Selection | null>(null);
-  const [saved, setSaved] = useState<Selection | null>(null);
+  const saving = useRef(false);
   const [groupSearch, setGroupSearch] = useState('');
   const [ingredientSearch, setIngredientSearch] = useState('');
   const [groupOpen, setGroupOpen] = useState(false);
@@ -52,9 +54,10 @@ export function DietaryProfileScreen() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const savedSelection = saved ?? (mine.data ? fromRestrictions(mine.data) : null);
-  const current = selection ?? savedSelection ?? { groupIds: [], ingredientIds: [] };
-  const dirty = !!savedSelection && (!sameIds(current.groupIds, savedSelection.groupIds) || !sameIds(current.ingredientIds, savedSelection.ingredientIds));
+  const savedSelection = mine.data ? fromRestrictions(mine.data) : null;
+  const current = selection ?? savedSelection ?? { groupIds: [], ingredientIds: [], allergyNote: '', preferenceNote: '' };
+  const dirty = !!savedSelection && (!sameIds(current.groupIds, savedSelection.groupIds) || !sameIds(current.ingredientIds, savedSelection.ingredientIds)
+    || current.allergyNote.trim() !== savedSelection.allergyNote || current.preferenceNote.trim() !== savedSelection.preferenceNote);
   const ingredientNames = useMemo(() => new Map(options.data?.ingredients.map(({ id, name }) => [id, name]) ?? []), [options.data]);
   const groupNames = useMemo(() => new Map(options.data?.groups.map(({ id, name }) => [id, name]) ?? []), [options.data]);
   const selectedGroups = current.groupIds.map((id) => ({ id, name: groupNames.get(id) ?? mine.data?.groups.find((item) => item.id === id)?.name ?? id }));
@@ -62,8 +65,8 @@ export function DietaryProfileScreen() {
   const groupResults = options.data?.groups.filter((item) => matches(item.name, groupSearch.trim())).slice(0, 40) ?? [];
   const ingredientResults = options.data?.ingredients.filter((item) => matches(item.name, ingredientSearch.trim()) || item.aliases.some((alias) => matches(alias, ingredientSearch.trim()))).slice(0, 50) ?? [];
 
-  function toggle(kind: keyof Selection, id: string) {
-    if (save.isPending) return;
+  function toggle(kind: 'groupIds' | 'ingredientIds', id: string) {
+    if (saving.current || save.isPending) return;
     const ids = current[kind];
     const limit = kind === 'groupIds' ? 50 : 200;
     if (!ids.includes(id) && ids.length >= limit) {
@@ -75,8 +78,15 @@ export function DietaryProfileScreen() {
     setNotice('');
   }
 
+  function editNote(kind: 'allergyNote' | 'preferenceNote', text: string) {
+    if (saving.current) return;
+    setSelection({ ...current, [kind]: text });
+    setError('');
+    setNotice('');
+  }
+
   function goBack() {
-    if (save.isPending) return;
+    if (saving.current || save.isPending) return;
     if (!dirty) { router.back(); return; }
     Alert.alert('Bỏ thay đổi chưa lưu?', 'Các lựa chọn vừa chỉnh sẽ không được lưu.', [
       { text: 'Tiếp tục chỉnh sửa', style: 'cancel' },
@@ -85,18 +95,19 @@ export function DietaryProfileScreen() {
   }
 
   async function submit() {
-    if (!dirty || !options.data || !mine.data || !token || save.isPending) return;
+    if (!dirty || !options.data || !mine.data || !token || saving.current || save.isPending) return;
     setError('');
     setNotice('');
+    const input = dietaryUpdateSchema.safeParse(current);
+    if (!input.success) { setError(input.error.issues[0]?.message ?? 'Kiểm tra lại hồ sơ ăn uống.'); return; }
+    saving.current = true;
     try {
-      const result = await save.mutateAsync(current);
-      const next = fromRestrictions(result);
-      setSelection(next);
-      setSaved(next);
-      setNotice('Đã lưu thực phẩm cần tránh.');
+      await save.mutateAsync(input.data);
+      setSelection(null);
+      setNotice('Đã lưu hồ sơ ăn uống.');
     } catch {
-      setError('Không lưu được hồ sơ ăn uống. Các lựa chọn vẫn còn để bạn thử lại.');
-    }
+      setError('Không lưu được hồ sơ ăn uống. Nội dung vẫn còn để bạn thử lại.');
+    } finally { saving.current = false; }
   }
 
   if (!hydrated) return <SafeAreaView edges={['top']} style={[styles.screen, styles.center, { backgroundColor: theme.background }]}><ActivityIndicator color={theme.primary} /></SafeAreaView>;
@@ -112,7 +123,7 @@ export function DietaryProfileScreen() {
       <Pressable accessibilityRole="button" accessibilityLabel="Quay lại hồ sơ" disabled={save.isPending} onPress={goBack} style={[styles.back, { backgroundColor: theme.muted }]}><SymbolView name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }} size={20} tintColor={theme.foreground} /></Pressable>
       <View style={styles.flex}><Text style={[styles.headerTitle, { color: theme.foreground }]}>Hồ sơ ăn uống</Text><Text style={[styles.helper, { color: theme.mutedForeground }]}>Một chút riêng, đúng vị bạn</Text></View>
     </View>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <ScrollView keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentContainerStyle={styles.content}>
       <View style={[styles.intro, { backgroundColor: theme.secondary }]}>
         <View style={styles.heroRow}>
           <View style={styles.heroCopy}>
@@ -133,6 +144,18 @@ export function DietaryProfileScreen() {
 
       {mine.data && options.data ? <>
         <View style={styles.sectionHeading}><View style={[styles.sectionIcon, { backgroundColor: theme.muted }]}><Image source={require('@/assets/branding/avocado-sticker.png')} contentFit="contain" style={styles.sectionSticker} accessible={false} /></View><View style={styles.heroCopy}><Text style={[styles.sectionTitle, { color: theme.foreground }]}>Những món mình tránh</Text><Text style={[styles.helper, { color: theme.mutedForeground }]}>Để mỗi gợi ý đều phù hợp với bạn.</Text></View></View>
+
+        {([
+          { key: 'allergyNote', label: 'Ghi chú dị ứng', hint: 'Mô tả dị ứng, thực phẩm không dung nạp hoặc quy tắc ăn uống cần tuân theo.', placeholder: 'Ví dụ: dị ứng đậu phộng, không dùng sữa bò.' },
+          { key: 'preferenceNote', label: 'Khẩu vị và thói quen', hint: 'Món thích hoặc không thích, độ cay, ngân sách hay số người ăn.', placeholder: 'Ví dụ: ăn ít cay, nấu cho 2 người, thích món luộc.' },
+        ] as const).map(({ key, label, hint, placeholder }) => <View key={key} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.fieldTitle, { color: theme.foreground }]}>{label}</Text>
+          <Text style={[styles.helper, { color: theme.mutedForeground }]}>{hint} Không bắt buộc; xóa nội dung rồi lưu để bỏ ghi chú.</Text>
+          <TextInput accessibilityLabel={label} value={current[key]} onChangeText={(text) => editNote(key, text)} editable={!save.isPending}
+            multiline maxLength={MAX_DIETARY_NOTE_LENGTH} textAlignVertical="top" placeholder={placeholder} placeholderTextColor={theme.mutedForeground}
+            style={[styles.input, styles.noteInput, { color: theme.foreground, borderColor: theme.border, backgroundColor: theme.background }]} />
+          <Text style={[styles.noteCount, { color: theme.mutedForeground }]}>{current[key].length}/{MAX_DIETARY_NOTE_LENGTH}</Text>
+        </View>)}
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.fieldHeading}><Text style={[styles.fieldTitle, styles.flex, { color: theme.foreground }]}>Nhóm thực phẩm</Text><Text style={[styles.count, { color: theme.primary, backgroundColor: theme.secondary }]}>{current.groupIds.length}/50</Text></View>
@@ -159,7 +182,7 @@ export function DietaryProfileScreen() {
       <Text style={[styles.footerStatus, { color: dirty ? theme.primary : theme.mutedForeground }]}>{dirty ? 'Bạn có thay đổi chưa lưu' : 'Khẩu vị của bạn, Vedora ghi nhớ'}</Text>
       {error ? <Text accessibilityRole="alert" style={[styles.helper, { color: theme.destructive }]}>{error}</Text> : null}
       {notice ? <Text accessibilityRole="alert" style={[styles.helper, { color: theme.primary }]}>{notice}</Text> : null}
-      <View style={styles.actions}><Pressable accessibilityRole="button" disabled={!dirty || save.isPending} onPress={() => { setSelection(savedSelection); setError(''); setNotice(''); }} style={[styles.secondaryButton, { borderColor: theme.border, opacity: !dirty ? 0.5 : 1 }]}><Text style={[styles.secondaryText, { color: theme.foreground }]}>Hủy thay đổi</Text></Pressable><Pressable accessibilityRole="button" disabled={!dirty || save.isPending} onPress={() => void submit()} style={[styles.button, styles.flex, { backgroundColor: theme.primary, opacity: !dirty || save.isPending ? 0.55 : 1 }]}><Text style={[styles.buttonText, { color: theme.primaryForeground }]}>{save.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}</Text></Pressable></View>
+      <View style={styles.actions}><Pressable accessibilityRole="button" disabled={!dirty || save.isPending} onPress={() => { setSelection(null); setError(''); setNotice(''); }} style={[styles.secondaryButton, { borderColor: theme.border, opacity: !dirty ? 0.5 : 1 }]}><Text style={[styles.secondaryText, { color: theme.foreground }]}>Hủy thay đổi</Text></Pressable><Pressable accessibilityRole="button" disabled={!dirty || save.isPending} onPress={() => void submit()} style={[styles.button, styles.flex, { backgroundColor: theme.primary, opacity: !dirty || save.isPending ? 0.55 : 1 }]}><Text style={[styles.buttonText, { color: theme.primaryForeground }]}>{save.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}</Text></Pressable></View>
     </View> : null}
   </SafeAreaView>;
 }
@@ -204,6 +227,8 @@ const styles = StyleSheet.create({
   disclosure: { borderWidth: 1, borderRadius: Radius.xl, minHeight: 48, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'space-between' },
   disclosureText: { flex: 1, fontFamily: Fonts.sansSemibold, fontSize: 14, lineHeight: 21 },
   input: { minHeight: 48, borderWidth: 1, borderRadius: Radius.xl, paddingHorizontal: 14, paddingVertical: 10, fontFamily: Fonts.sans, fontSize: 15 },
+  noteInput: { minHeight: 112, maxHeight: 220, lineHeight: 22 },
+  noteCount: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 18, textAlign: 'right' },
   options: { gap: 0 },
   option: { borderBottomWidth: StyleSheet.hairlineWidth, minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   checkbox: { width: 24, height: 24, borderWidth: 1.5, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
