@@ -58,7 +58,8 @@ mock.module('react-native', { namedExports: Object.fromEntries([
   ...['Modal', 'Pressable', 'ScrollView', 'Text', 'TextInput', 'View'].map((name) => [name, name]),
   ['StyleSheet', { create: (styles) => styles }], ['Share', { share: async () => {} }],
 ]) });
-mock.module('expo-router', { namedExports: { router: { push: () => {} } } });
+const editRoutes = [];
+mock.module('expo-router', { namedExports: { router: { push: (route) => editRoutes.push(route) } } });
 mock.module('expo-symbols', { namedExports: { SymbolView: 'SymbolView' } });
 mock.module('expo-image', { namedExports: { Image: 'Image' } });
 mock.module('react-native-safe-area-context', { namedExports: { useSafeAreaInsets: () => ({ bottom: 24 }) } });
@@ -88,6 +89,19 @@ function find(node, predicate) {
 const button = (tree, label) => find(tree, (node) => node.type === 'Pressable' && node.props.accessibilityLabel === label)[0];
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 function reset() { slots = []; requests.length = 0; sentReports.length = 0; token = 'session'; memberId = 'owner'; client.clear(); respond = async () => undefined; reportResponse = async () => {}; uploadResponse = async () => null; }
+
+test('edit action is visible only for the owner of an editable POST and opens its editor', () => {
+  reset(); editRoutes.length = 0;
+  const edit = button(render({ editable: true }), 'Sửa bài viết');
+  assert.ok(edit); edit.props.onPress();
+  assert.deepEqual(editRoutes, [{ pathname: '/posts/[id]/edit', params: { id: 'post-id' } }]);
+  assert.equal(requests.length, 0);
+  for (const overrides of [{ editable: false }, { editable: true, deletionLocked: true }, { editable: true, postType: 'BLOG' }, { editable: true, variant: 'share' }]) {
+    assert.equal(button(render(overrides), 'Sửa bài viết'), undefined);
+  }
+  token = null; assert.equal(button(render({ editable: true }), 'Sửa bài viết'), undefined);
+  token = 'session'; memberId = 'other'; assert.equal(button(render({ editable: true }), 'Sửa bài viết'), undefined);
+});
 
 test('post and Blog use their own DELETE endpoints and accept an empty 204 response', async () => {
   reset();

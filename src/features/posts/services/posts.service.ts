@@ -1,11 +1,19 @@
 import { feedPageSchema, feedPostSchema, type FeedPost } from '@/features/feed/types/feed.schema';
 import { apiClient } from '@/shared/api/api-client';
 import { requestJson } from '@/shared/api/request-json';
+import { z } from 'zod';
 
+import { postUpdateSchema, type PostUpdate } from '../types/post-edit.schema';
 import { MAX_SEARCH_QUERY_LENGTH, commentFormSchema, commentPageSchema, commentSchema, reportFormSchema, type ReportInput } from '../types/posts.schema';
 
 export function getPost(postId: string, signal?: AbortSignal) {
   return requestJson(feedPostSchema, { method: 'GET', url: `/posts/${postId}`, signal });
+}
+
+export function updatePost(postId: string, input: PostUpdate) {
+  return requestJson(feedPostSchema, {
+    method: 'PATCH', url: `/posts/${z.uuidv4().parse(postId)}`, data: postUpdateSchema.parse(input),
+  });
 }
 
 export async function deletePost(postId: string, type: FeedPost['type']) {

@@ -12,3 +12,8 @@ export function isPostProcessing(status: PostModeration['status']) {
 export function isPostEditLocked(post: PostModeration) {
   return post.status === 'REMOVED' || !!post.appeal?.activeTicket;
 }
+
+export function canEditPost(post: PostModeration & { type: string }) {
+  return post.type === 'POST' && !isPostEditLocked(post) &&
+    ['PUBLISHED', 'PENDING_REVIEW', 'REJECTED', 'FAILED'].includes(post.status);
+}

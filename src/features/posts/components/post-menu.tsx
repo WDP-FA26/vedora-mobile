@@ -31,7 +31,7 @@ import {
 type Step = 'menu' | 'report' | 'done' | 'delete' | 'share';
 
 /** Readers can report; only the signed-in author can confirm deletion. */
-export function PostMenu({ postId, authorId, returnTo, postType, title, canShare = true, deletionLocked = false, onDeleted, variant = 'menu' }: { postId: string; authorId: string; returnTo: string; postType: FeedPost['type']; title?: string; canShare?: boolean; deletionLocked?: boolean; onDeleted?: () => void; variant?: 'menu' | 'share' }) {
+export function PostMenu({ postId, authorId, returnTo, postType, title, canShare = true, deletionLocked = false, editable = false, onDeleted, variant = 'menu' }: { postId: string; authorId: string; returnTo: string; postType: FeedPost['type']; title?: string; canShare?: boolean; deletionLocked?: boolean; editable?: boolean; onDeleted?: () => void; variant?: 'menu' | 'share' }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const token = useSessionStore((state) => state.accessToken);
@@ -144,6 +144,12 @@ export function PostMenu({ postId, authorId, returnTo, postType, title, canShare
           <Pressable style={[styles.sheet, { backgroundColor: theme.card, borderColor: theme.border, paddingBottom: Math.max(Spacing.three, insets.bottom) }]} onPress={() => undefined}>
             {step === 'menu' ? (
               <>
+                {variant === 'menu' && isOwn && postType === 'POST' && editable && !deletionLocked ? (
+                  <Pressable accessibilityRole="button" accessibilityLabel="Sửa bài viết" onPress={() => { close(); router.push({ pathname: '/posts/[id]/edit', params: { id: postId } }); }} style={styles.option}>
+                    <SymbolView name={{ ios: 'square.and.pencil', android: 'edit', web: 'edit' }} size={20} tintColor={theme.foreground} />
+                    <Text style={[styles.optionText, { color: theme.foreground }]}>Sửa bài viết</Text>
+                  </Pressable>
+                ) : null}
                 {canShare ? <Pressable accessibilityRole="button" accessibilityLabel="Gửi bài viết qua tin nhắn" onPress={openShare} style={styles.option}>
                   <SymbolView name={{ ios: 'paperplane', android: 'send', web: 'send' }} size={20} tintColor={theme.foreground} />
                   <Text style={[styles.optionText, { color: theme.foreground }]}>Gửi qua tin nhắn</Text>
