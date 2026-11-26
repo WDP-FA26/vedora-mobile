@@ -1299,3 +1299,26 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Kiểm tra kỹ thuật: Lint và TypeScript đạt. Đối chiếu source/DTO/caller, chưa chạy BE/DB, API đăng nhập hoặc UI trên thiết bị; không dùng kết quả đọc code để kết luận production hoặc BE đã hoàn thiện.
 - Các bước kiểm tra luồng UI trên màn hình (checklist đối chiếu, chưa thực hiện): (1) Mở hồ sơ ăn uống hai bên, lưu ghi chú dị ứng/khẩu vị trên web rồi đối chiếu mobile. (2) Lưu thực đơn, mở Đi chợ trên web và kiểm tra điểm vào còn thiếu ở mobile. (3) Từ bài bị xử lý, tạo khiếu nại/đính kèm/trả lời/rút ticket và mở từ thông báo trên web, đối chiếu mobile. (4) So Dành cho bạn/Đang theo dõi, bài chỉ chữ/nhiều video, nháp POST, sửa bài và báo cáo bình luận. (5) Trên mobile đổi ảnh bìa Blog riêng, lưu/mở lại và đối chiếu ảnh đầu nội dung; xem luồng upload video Blog trên web. (6) Ghi món rồi đối chiếu sửa/nhận xét tuần; mở công thức/lịch để so kcal, nhóm dưỡng chất và xem tuần thực đơn cũ. (7) Mở thống kê, nhà hàng/menu/đánh giá và quản lý Trang trên web để chốt màn mobile cần bổ sung theo vai trò. (8) Thử refresh phiên khi đang nhập, đổi tài khoản khi upload video và tài khoản bị khóa để xác nhận các rủi ro đọc từ source. Checklist chi tiết ở báo cáo, không khẳng định các màn chưa làm đã có trên mobile.
 - Người thực hiện: Codex.
+
+## 2026-11-27 — Sửa bài POST đã đăng
+
+- Kết quả đã làm: Đối chiếu PATCH `/posts/:id` trên BE main `82c3f31`; thêm service/schema, mutation và route `/posts/[id]/edit`. Menu chủ bài có “Sửa bài viết”; màn sửa nạp nội dung/video cũ, sửa chữ, gỡ/đổi thứ tự/khôi phục video hiện có và chỉ gửi trường đã thay đổi. Giới hạn theo mặc định BE: 2.000 ký tự, 250 từ, 4 video. Chưa thêm upload video mới trong màn sửa.
+- Bảo vệ luồng: chỉ chủ bài POST có trạng thái cho phép mới sửa; khóa khi đang xử lý, bị gỡ hoặc có khiếu nại đang mở. Xác nhận bỏ thay đổi, chặn nhấn lưu lặp, giữ nội dung khi lỗi mạng/API, thông báo lỗi theo mã; kiểm tra phiên trước/sau request để tránh ghi cache khác tài khoản. Sau lưu cập nhật chi tiết, xóa snapshot/phân trang danh sách cũ và mở chi tiết để theo dõi kiểm duyệt lại.
+- Kiểm tra kỹ thuật: 28/28 kiểm thử service/schema/mutation/form/menu/moderation, lint và TypeScript đạt. Export Android/web thành công, có route `/posts/[id]/edit`; Expo báo phải tự kết thúc tiến trình sau khi export, exit code 0. Chưa gọi PATCH bằng tài khoản thật và chưa thao tác trên iPhone/Android thật; các bước UI dưới đây là checklist đề nghị, chưa nghiệm thu thiết bị.
+- Các bước kiểm tra luồng UI trên màn hình:
+  1. Mở app, đăng nhập chủ bài, vào Hồ sơ hoặc chi tiết một bài POST đã đăng, nhấn dấu ba chấm → Sửa bài viết. Kiểm tra nội dung và video ban đầu đúng; nút Lưu chưa bật nếu chưa thay đổi.
+  2. Đổi nội dung rồi nhấn Lưu thay đổi. Kiểm tra trở về chi tiết, nội dung mới và trạng thái xử lý/kiểm duyệt lại. Sau khi duyệt xong, quay lại bảng tin và kéo làm mới để kiểm tra kết quả; sửa chữ không làm mất video.
+  3. Dùng bài có hai video: đổi thứ tự, gỡ một video rồi Khôi phục danh sách video. Đổi lại và lưu; mở lại để kiểm tra đúng thứ tự/video còn giữ. Video bị gỡ sẽ bị xóa khi lưu.
+  4. Sửa nội dung rồi nhấn Hủy hoặc vuốt quay lại: chọn Tiếp tục chỉnh sửa để giữ bản nhập, sau đó thử Bỏ thay đổi; mở lại để xác nhận bài cũ còn nguyên khi chưa lưu.
+  5. Thử xóa hết chữ khi còn video (được phép), rồi gỡ hết video và xóa hết chữ (bị chặn). Nhập hơn 250 từ để kiểm tra thông báo; kiểm tra bộ đếm và giới hạn ký tự.
+  6. Tải màn sửa xong rồi ngắt mạng, sửa và nhấn lưu: phải giữ bản nhập và báo lỗi. Bật mạng và thử lại; nhấn lưu nhanh nhiều lần chỉ gửi một lần trong khi chờ.
+  7. Đổi sang tài khoản khác/khách: không thấy mục sửa bài của người khác; mở trực tiếp đường dẫn sửa phải bị chặn. Kiểm tra bài đang xử lý/bị gỡ/có khiếu nại mở không sửa được, còn bài bị từ chối hoặc xử lý thất bại cho phép sửa khi không bị khóa.
+  8. Trên iPhone, kiểm tra bàn phím không che nút lưu, cuộn danh sách video và xác nhận khi vuốt quay lại; thử theme sáng/tối và màn hình nhỏ.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Bàn giao sửa bài POST qua PR
+
+- Kết quả đã làm: Tách tính năng sửa bài POST thành branch feat/edit-published-posts từ main đã có PR #54; chuẩn bị commit và PR chỉ gồm source, kiểm thử và tài liệu liên quan. Giữ thay đổi đăng nhập/domain và báo cáo cũ ngoài commit.
+- Kiểm tra: Kế thừa kết quả 28/28 kiểm thử liên quan, lint, TypeScript và export Android/web của cùng source; chưa nghiệm thu thiết bị hoặc PATCH có đăng nhập thật.
+- Các bước kiểm tra luồng UI trên màn hình: (1) Mở app từ branch PR, đăng nhập chủ bài. (2) Mở bài → dấu ba chấm → Sửa bài viết, sửa chữ/video rồi lưu. (3) Kiểm tra chi tiết và trạng thái kiểm duyệt lại; kéo làm mới bảng tin sau khi duyệt. (4) Thử hủy bản sửa, mất mạng khi lưu và tài khoản khác theo checklist ngay phía trên.
+- Người thực hiện: Codex.

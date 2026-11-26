@@ -12,7 +12,7 @@ import { useSessionStore } from "@/shared/stores/session-store";
 
 import { PostMenu } from "@/features/posts/components/post-menu";
 import { PostModerationNotice } from '@/features/posts/components/post-moderation-notice';
-import { isPostEditLocked } from '@/features/posts/utils/post-status';
+import { canEditPost, isPostEditLocked } from '@/features/posts/utils/post-status';
 import { ProfessionalName } from '@/shared/components/professional-name';
 
 import { useFeedActions } from "../hooks/use-feed";
@@ -152,7 +152,7 @@ export function PostCard({
             <Text style={[styles.typeText, { color: theme.primary }]}>Blog</Text>
           </View>
         ) : null}
-        <PostMenu postId={post.id} authorId={post.author.id} postType={post.type} title={post.blog?.title ?? body} canShare={published} deletionLocked={isPostEditLocked(post)} returnTo="/explore" onDeleted={detail ? () => router.replace('/explore') : undefined} />
+        <PostMenu postId={post.id} authorId={post.author.id} postType={post.type} title={post.blog?.title ?? body} canShare={published} deletionLocked={isPostEditLocked(post)} editable={canEditPost(post)} returnTo="/explore" onDeleted={detail ? () => router.replace('/explore') : undefined} />
         {!saveOnImage ? saveButton() : null}
       </View>
 

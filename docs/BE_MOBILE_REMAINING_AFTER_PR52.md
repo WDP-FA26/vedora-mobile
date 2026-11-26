@@ -31,7 +31,6 @@
 | P1 | Danh sách đi chợ | GET `/meal-plan/shopping-list`; `meal-plan/shopping-list.controller.ts` | Chưa có service/hook/route/UI: chọn ngày, xem nguyên liệu tổng hợp và nguồn món. Endpoint này không lưu trạng thái đã mua. |
 | P1 | Feed cá nhân hóa và feed theo dõi | GET `/posts/feed`, GET `/posts/following`; `posts/posts.controller.ts` | `feed/services/feed.service.ts` gọi `/posts` nên chưa dùng nguồn cá nhân hóa. `following/services/following.service.ts` lấy tối đa 20 bài mỗi tác giả rồi ghép, chưa dùng phân trang chung `/posts/following`; có thể bỏ sót bài cũ và tăng số request. |
 | P1 | Tạo bài POST chỉ chữ/nhiều video và nháp POST | POST `/posts`; CRUD/publish `/posts/drafts` với kind POST/VIDEO; `posts/dto/create-post.dto.ts`, `post-draft.dto.ts`, `post-drafts.service.ts` | `feed/services/compose.service.ts` chỉ tạo kind VIDEO, lọc bỏ nháp POST. `feed/hooks/use-compose-actions.ts` bắt buộc một video và loại media khác. Chưa có composer POST tổng quát. Upload nháp BE hiện tạo MediaType.VIDEO; không suy ra đã có upload ảnh POST. |
-| P1 | Sửa bài POST đã đăng | PATCH `/posts/:id`; `posts/posts.controller.ts` | `posts/services/posts.service.ts` và menu chưa có caller/UI sửa bài. Sửa Blog và sửa nháp video là các luồng đã có riêng. |
 | P2 | Sửa mục nhật ký ăn uống | PATCH `/meal-plan/log/:id`; `meal-plan/meal-log/meal-log.controller.ts` | `meal-log/services/meal-log.service.ts` có đọc/thêm/xóa/ước tính kcal, chưa có update hoặc form sửa mục đã lưu. |
 | P2 | Kcal và nhóm dinh dưỡng công thức/thực đơn | `caloriesPerServing`, `nutritionPillars`; `recipes/dto/recipe.dto.ts`, `meal-plan/dto/meal-plan.dto.ts` | `recipes/types/recipe.schema.ts` và recipe trong `meal-plan/types/meal-plan.schema.ts` chưa nhận/hiển thị. Kcal nhật ký và BMI đã có, không thuộc thiếu sót này. |
 | P2 | Xem thực đơn tuần cũ | GET `/meal-plan?weekStart=...`, `minWeekStart` trong response | Schema mobile nhận minWeekStart nhưng `meal-plan/utils/meal-week.ts:planningWeeks` chỉ tạo lựa chọn từ currentWeekStart đến maxWeekStart. Chưa có chọn tuần trước; cần giữ quyền sửa theo ngày/tuần BE. |
@@ -56,6 +55,8 @@ Không đưa API admin/moderation/knowledge, webhook, health, CRUD người dùn
 
 ## 4. Đã nối — bỏ khỏi backlog cũ
 
+- Cập nhật 27/11/2026: đã nối PATCH `/posts/:id`, menu chủ bài và màn `/posts/[id]/edit`; sửa chữ, giữ/gỡ/đổi thứ tự video hiện có, xác nhận bỏ thay đổi và làm mới cache sau kiểm duyệt. Đối chiếu BE main `82c3f31`. Chưa thêm upload video mới trong màn sửa, chưa nghiệm thu trên thiết bị/API có đăng nhập.
+
 - Ghi chú dị ứng/khẩu vị: đã bổ sung đọc/sửa/xóa trong Hồ sơ ăn uống, giới hạn 1.000 ký tự mỗi trường, cập nhật schema/cache hồ sơ và Thực đơn; giữ nội dung sau lỗi. Đã kiểm thử mock, chưa kiểm tra API/thiết bị thật.
 
 - Báo cáo bình luận/phản hồi: `posts/services/comment-report.service.ts`, `posts/components/comment-report-button.tsx` và `comment-section.tsx`.
@@ -69,7 +70,7 @@ Không đưa API admin/moderation/knowledge, webhook, health, CRUD người dùn
 1. Sửa request chat và đồng bộ bìa Blog.
 2. Nối API tổng unread và public-config.
 3. Đi chợ → sửa nhật ký → dinh dưỡng → tuần cũ.
-4. Feed đúng nguồn → POST tổng quát/nháp/sửa → tìm người dùng.
+4. Feed đúng nguồn → POST tổng quát/nháp → tìm người dùng.
 5. Voice → video Blog → thống kê → nhà hàng; Trang theo phạm vi sản phẩm.
 
 ## 6. Checklist UI trên màn hình — đề nghị, chưa thực hiện
