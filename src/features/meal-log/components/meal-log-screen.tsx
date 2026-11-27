@@ -1,7 +1,8 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, type ScrollViewProps, type ScrollViewInstance } from 'react-native';
+import type { RefObject } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -35,12 +36,16 @@ function DayTotal({ day, target }: { day: MealLogDay; target: number | null }) {
 }
 
 /** What you actually ate each day of a week, with kcal against the daily target. */
-export function MealLogScreen() {
+export function MealLogScreen({ initialDate, onClose, scrollRef, scrollProps, onDateChange }: { initialDate?: string; onClose?: () => void; scrollRef?: RefObject<ScrollViewInstance | null>; scrollProps?: ScrollViewProps; onDateChange?: (date: string) => void } = {}) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
   const hydrated = useSessionStore((state) => state.isHydrated);
-  const [weekStart, setWeekStart] = useState<string | undefined>();
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [weekStart, setWeekStart] = useState<string | undefined>(() => {
+    if (!initialDate) return undefined;
+    const date = new Date(`${initialDate}T00:00:00Z`);
+    return addCalendarDays(initialDate, -((date.getUTCDay() + 6) % 7));
+  });
+  const [selectedDate, setSelectedDate] = useState<string | null>(initialDate ?? null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const log = useMealLog(token, weekStart);
@@ -48,6 +53,7 @@ export function MealLogScreen() {
   const remove = useDeleteMealLogEntry(token);
   const week = log.data;
   const day = week ? week.days.find((item) => item.date === selectedDate) ?? week.days.find((item) => item.date === week.today) ?? week.days[0] : undefined;
+  useEffect(() => { if (day) onDateChange?.(day.date); }, [day, onDateChange]);
   const isCurrentWeek = !!week?.days.some((item) => item.date === week.today);
   const planned: PlannedRecipe[] = plan.data?.days.find((item) => item.date === day?.date)?.sections.flatMap(({ section, recipes }) => recipes.map(({ id, title }) => ({ section, id, title }))) ?? [];
 
@@ -74,18 +80,18 @@ export function MealLogScreen() {
 
   return <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.screen, { backgroundColor: theme.background }]}>
     <View style={[styles.header, { borderBottomColor: theme.border }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={() => router.back()} style={[styles.back, { backgroundColor: theme.muted }]}><SymbolView name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }} size={20} tintColor={theme.foreground} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={onClose ?? (() => router.back())} style={[styles.back, { backgroundColor: theme.muted }]}><SymbolView name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }} size={20} tintColor={theme.foreground} /></Pressable>
       <View style={styles.flex}><Text style={[styles.title, { color: theme.foreground }]}>Nhật ký ăn uống</Text><Text style={[styles.helper, { color: theme.mutedForeground }]}>{week ? weekRange(week.weekStart) : 'Món bạn đã thực sự ăn'}</Text></View>
       <Pressable accessibilityRole="button" accessibilityLabel="Tuần trước" disabled={!week} onPress={() => move(-7)} style={[styles.back, { backgroundColor: theme.muted, opacity: week ? 1 : 0.5 }]}><SymbolView name={{ ios: 'chevron.left', android: 'chevron_left', web: 'chevron_left' }} size={18} tintColor={theme.foreground} /></Pressable>
       <Pressable accessibilityRole="button" accessibilityLabel="Tuần sau" disabled={!week || isCurrentWeek} onPress={() => move(7)} style={[styles.back, { backgroundColor: theme.muted, opacity: !week || isCurrentWeek ? 0.4 : 1 }]}><SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={18} tintColor={theme.foreground} /></Pressable>
     </View>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={log.isRefetching} onRefresh={() => void log.refetch()} />}>
+    <ScrollView ref={scrollRef} {...scrollProps} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={log.isRefetching} onRefresh={() => void log.refetch()} />}>
       {log.isPending ? <View style={styles.row}><ActivityIndicator color={theme.primary} /><Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải nhật ký…</Text></View> : null}
       {log.isError ? <Pressable accessibilityRole="button" onPress={() => void log.refetch()} style={[styles.card, { borderColor: theme.destructive, backgroundColor: theme.card }]}><Text style={[styles.helper, { color: theme.destructive }]}>Không tải được nhật ký. Chạm để thử lại.</Text></Pressable> : null}
       {week && day ? <>
         <View accessibilityRole="tablist" style={styles.row}>{week.days.map((item) => {
           const selected = item.date === day.date;
-          return <Pressable key={item.date} accessibilityRole="tab" accessibilityLabel={dayLabels[item.day]} accessibilityState={{ selected }} onPress={() => { setSelectedDate(item.date); setError(''); }} style={[styles.dayChip, { borderColor: selected ? theme.primary : theme.border, backgroundColor: selected ? theme.primary : theme.card }]}>
+          return <Pressable key={item.date} accessibilityRole="tab" accessibilityLabel={dayLabels[item.day]} accessibilityState={{ selected }} onPress={() => { setSelectedDate(item.date); onDateChange?.(item.date); setError(''); }} style={[styles.dayChip, { borderColor: selected ? theme.primary : theme.border, backgroundColor: selected ? theme.primary : theme.card }]}>
             <Text style={[styles.dayText, { color: selected ? theme.primaryForeground : theme.foreground }]}>{SHORT_DAY[item.day]}</Text>
             <View style={[styles.dot, { backgroundColor: item.entries.length ? (selected ? theme.primaryForeground : theme.primary) : 'transparent' }]} />
           </Pressable>;

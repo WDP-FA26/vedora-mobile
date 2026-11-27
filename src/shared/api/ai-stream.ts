@@ -67,6 +67,8 @@ export class AiStreamParser {
   constructor(
     private readonly onText?: (text: string) => void,
     private readonly onParts?: (parts: AiPart[]) => void,
+    private readonly onEvent?: (event: Record<string, unknown> & { type: string }) => void,
+    private readonly allowEmpty = false,
   ) {}
 
   push(chunk: string) {
@@ -82,7 +84,7 @@ export class AiStreamParser {
   finish(): AiStreamResult {
     if (this.buffer) this.line(this.buffer);
     this.buffer = '';
-    if (!this.sawEvent || (!this.text.trim() && this.tools.length === 0 && this.parts.length === 0)) {
+    if (!this.sawEvent || (!this.allowEmpty && !this.text.trim() && this.tools.length === 0 && this.parts.length === 0)) {
       throw new Error('Trợ lý chưa trả lời được. Vui lòng thử lại.');
     }
     return { text: this.text.trim(), tools: this.tools, parts: this.parts.map((part) => ({ ...part })), refused: this.refused };
@@ -100,6 +102,7 @@ export class AiStreamParser {
     if (!parsed.success) throw new Error(INVALID_RESPONSE);
     const part = parsed.data;
     this.sawEvent = true;
+    this.onEvent?.(part);
 
     if (part.type === 'text-delta') {
       const delta = textDeltaSchema.safeParse(part);
@@ -169,6 +172,9 @@ export type AiStreamRequest = {
   onText?: (text: string) => void;
   /** Called with every part so far (text and tool calls, in order) whenever one changes. */
   onParts?: (parts: AiPart[]) => void;
+  /** Transient commands in voice streams are not conversation parts. */
+  onEvent?: (event: Record<string, unknown> & { type: string }) => void;
+  allowEmpty?: boolean;
 };
 
 function withTimeout(signal: AbortSignal | undefined, timeoutMs: number) {
@@ -226,7 +232,7 @@ export async function requestAiStream(request: AiStreamRequest): Promise<AiStrea
       throw new ApiError(response.status, body.success ? body.data.code : undefined, message);
     }
 
-    const parser = new AiStreamParser(request.onText, request.onParts);
+    const parser = new AiStreamParser(request.onText, request.onParts, request.onEvent, request.allowEmpty);
     if (!response.body) {
       parser.push(await response.text());
       return parser.finish();

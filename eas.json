@@ -4,13 +4,18 @@
     "appVersionSource": "local"
   },
   "build": {
+    "development": {
+      "extends": "preview",
+      "developmentClient": true,
+      "distribution": "internal"
+    },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://vedora-api.quanphungg.me/api/v1",
+        "EXPO_PUBLIC_API_URL": "https://vedora-api.quanphung.dev/api/v1",
         "EXPO_PUBLIC_TURNSTILE_SITE_KEY": "0x4AAAAAAFQdAwNYLN_ffbKp",
         "EXPO_PUBLIC_TURNSTILE_ORIGIN": "https://vedora-opal.vercel.app",
         "EXPO_PUBLIC_WEB_URL": "https://vedora.app"

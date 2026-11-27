@@ -8,7 +8,8 @@ import { authReturnTo } from '../utils/return-to';
 /** Auth pages are for signed-out users: a signed-in user is sent to where they were going. */
 export function GuestOnly({ children }: PropsWithChildren) {
   const { returnTo } = useLocalSearchParams<{ returnTo?: string }>();
-  const signedIn = useSessionStore((state) => !!state.accessToken || !!state.refreshToken);
+  // A restored refresh token alone does not mean startup recovered the session.
+  const signedIn = useSessionStore((state) => !!state.accessToken);
   if (signedIn) return <Redirect href={authReturnTo(returnTo)} />;
   return children;
 }

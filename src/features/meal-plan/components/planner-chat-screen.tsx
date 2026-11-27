@@ -46,6 +46,9 @@ export function PlannerChatScreen() {
         subtitle="Hỏi về dinh dưỡng thực vật và lên thực đơn"
         action={
           <View style={styles.headerActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Gọi trợ lý giọng nói" disabled={busy || !planner.plan.data} onPress={() => planner.setVoiceOpen(true)} style={[styles.newChat, { backgroundColor: theme.secondary, opacity: busy || !planner.plan.data ? 0.4 : 1 }]}>
+              <SymbolView name={{ ios: 'waveform', android: 'graphic_eq', web: 'graphic_eq' }} size={20} tintColor={theme.primary} />
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Lịch sử trò chuyện"

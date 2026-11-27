@@ -14,7 +14,9 @@ import { type PlannerThread, type Weekday, type MealSection } from '../types/mea
 import { dayLabels, displayDays, sectionLabels } from '../utils/meal-plan';
 import { isPlanningWeekend, planningWeeks } from '../utils/meal-week';
 import { PLAN_CHANGE_TOOLS, savedPlanChanges } from '../utils/planner-changes';
-import { openPlannerInteraction, plannerContextText, plannerWebAllowed, rewindSummary, WEB_APPROVED_TEXT, WEB_DECLINED_TEXT } from '../utils/planner-interactions';
+import { openPlannerInteraction, plannerWebAllowed, rewindSummary, WEB_APPROVED_TEXT, WEB_DECLINED_TEXT } from '../utils/planner-interactions';
+import { savedMemoryUpdates } from '../utils/planner-memory';
+import { VoiceCallSheet } from '../components/voice-call-sheet';
 import { isToolPart, savedToolParts, type ToolPart } from '../utils/planner-trace';
 import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan } from './use-meal-plan';
 
@@ -62,6 +64,7 @@ function useMealPlannerState() {
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [composer, setComposer] = useState('');
   const [busy, setBusy] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const [chatError, setChatError] = useState('');
   const [rewindingId, setRewindingId] = useState<string | null>(null);
   const [rewindNotice, setRewindNotice] = useState('');
@@ -174,6 +177,7 @@ function useMealPlannerState() {
     let started = false;
     let planWriteSeen = false;
     const seen = new Set<string>();
+    const seenMemory = new Set<string>();
     const update = (parts: AiPart[], streaming: boolean) => {
       if (!isCurrent()) return;
       const toolParts = parts.filter(isToolPart);
@@ -183,7 +187,9 @@ function useMealPlannerState() {
         changes.forEach((change) => seen.add(change.id));
         void refreshPlan().catch(() => undefined);
       }
-      if (toolParts.some((part) => part.state === 'output-available' && ['tool-updatePreferences', 'tool-updateAllergyNote'].includes(part.type))) {
+      const memories = savedMemoryUpdates(toolParts).filter((item) => !seenMemory.has(item.id));
+      if (memories.length) {
+        memories.forEach((item) => seenMemory.add(item.id));
         void client.invalidateQueries({ queryKey: mealPlanKeys.dietary }).catch(() => undefined);
       }
       const answer: ChatTurn = { id: assistantId, role: 'assistant', text: parts.flatMap((part) => part.type === 'text' ? [part.text] : []).join(''), toolParts, streaming };
@@ -204,17 +210,12 @@ function useMealPlannerState() {
       }
       const withUser = [...nextTurns, { id: userId, role: 'user' as const, text }];
       const allowWebSearch = plannerWebAllowed(withUser);
-      const context = nextTurns.flatMap((turn, index) => {
-        if (turn.refused) return [];
-        const content = plannerContextText(turn, withUser[index + 1]?.role === 'user');
-        return content.trim() ? [{ role: turn.role, text: content }] : [];
-      });
       setTurns(withUser);
       setComposer('');
       started = true;
       const targetWeek = weekStart ?? (await getMealPlan(undefined, request.signal)).weekStart;
       if (!isCurrent()) return;
-      const result = await askMealPlanner(targetWeek, threadId, userId, [...context, { role: 'user', text }], (parts) => update(parts, true), request.signal, allowWebSearch);
+      const result = await askMealPlanner(targetWeek, threadId, userId, text, (parts) => update(parts, true), request.signal, allowWebSearch);
       if (!isCurrent()) return;
       update(result.parts, false);
       setTurns((old) => old.map((turn) => turn.id === userId || turn.id === assistantId ? { ...turn, refused: result.refused } : turn));
@@ -270,7 +271,7 @@ function useMealPlannerState() {
   }
 
   return {
-    token, plan, dietary, turns, composer, setComposer, busy, chatError, setChatError,
+    token, plan, dietary, turns, composer, setComposer, busy, chatError, setChatError, voiceOpen, setVoiceOpen,
     selectedDay, setSelectedDay, formOpen, setFormOpen, formKey, preset, days, activeDay,
     weekStart, weeks, weekend, changeWeek, showSavedWeek,
     threadId, startForm, requestReplacement, sendMessage, startNewChat, openThread,
@@ -282,12 +283,12 @@ function useMealPlannerState() {
   };
 }
 
-type MealPlanner = ReturnType<typeof useMealPlannerState>;
+export type MealPlanner = ReturnType<typeof useMealPlannerState>;
 const MealPlannerContext = createContext<MealPlanner | null>(null);
 
 export function MealPlannerProvider({ children }: { children: ReactNode }) {
   const value = useMealPlannerState();
-  return <MealPlannerContext value={value}>{children}</MealPlannerContext>;
+  return <MealPlannerContext value={value}>{children}{value.voiceOpen && value.token && value.weekStart ? <VoiceCallSheet planner={value} onClose={() => value.setVoiceOpen(false)} /> : null}</MealPlannerContext>;
 }
 
 export function useMealPlanner() {

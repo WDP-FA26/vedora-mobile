@@ -1,10 +1,6 @@
 import { requestJson } from '@/shared/api/request-json';
 
-import { dietaryOptionsSchema, dietaryRestrictionsSchema, dietaryUpdateSchema, type DietaryUpdate } from '../types/dietary-profile.schema';
-
-export function getDietaryOptions(signal?: AbortSignal) {
-  return requestJson(dietaryOptionsSchema, { method: 'GET', url: '/dietary/options', signal });
-}
+import { dietaryRestrictionsSchema, dietaryUpdateSchema, type DietaryUpdate } from '../types/dietary-profile.schema';
 
 export function getMyDietary(signal?: AbortSignal) {
   return requestJson(dietaryRestrictionsSchema, { method: 'GET', url: '/dietary/me', signal });

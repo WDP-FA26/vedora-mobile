@@ -102,6 +102,9 @@ export function traceSteps(parts: ToolPart[], finished: boolean): TraceStep[] {
     if (name === 'getPlan') {
       return { key, icon: 'calendar', status, title: pick('Đang xem thực đơn hiện tại…', 'Đã xem thực đơn hiện tại', 'Không xem được thực đơn hiện tại') };
     }
+    if (name === 'updateMemory') {
+      return { key, icon: 'book', status, title: pick('Đang cập nhật ghi nhớ…', 'Đã cập nhật ghi nhớ của trợ lý', 'Không cập nhật được ghi nhớ') };
+    }
     if (name === 'getRecipe') {
       return { key, icon: 'book', status, title: pick('Đang xem chi tiết công thức…', 'Đã xem chi tiết công thức', 'Không xem được công thức') };
     }
