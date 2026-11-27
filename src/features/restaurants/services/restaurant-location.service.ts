@@ -5,7 +5,7 @@ async function locationModule() {
   try {
     return await import('expo-location');
   } catch {
-    throw new Error('Hãy cài development build mới để dùng tính năng vị trí.');
+    throw new Error('Chưa mở được tính năng vị trí. Hãy cập nhật Expo Go hoặc chọn ghim trên bản đồ.');
   }
 }
 async function withDeadline<T>(operation: () => Promise<T>): Promise<T> {

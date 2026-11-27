@@ -28,7 +28,7 @@ export function GoogleButton({ returnTo, disabled, onBusyChange }: {
       if (destination) router.replace(destination);
     } catch (cause) {
       setError(cause instanceof Error && cause.message === 'GOOGLE_NATIVE_BUILD_REQUIRED'
-        ? 'Đăng nhập Google cần bản cài Vedora trên điện thoại (development build hoặc bản phát hành). Hãy dùng email khi đang thử bằng Expo Go hoặc trình duyệt.'
+        ? 'Đăng nhập Google chưa hỗ trợ trên Expo Go hoặc trình duyệt. Hãy đăng nhập bằng email.'
         : cause instanceof ApiError && cause.status === 503
           ? 'Đăng nhập Google chưa được bật trên máy chủ. Vui lòng dùng email hoặc thử lại sau.'
           : cause instanceof ApiError && cause.status === null

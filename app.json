@@ -53,15 +53,11 @@
       "expo-status-bar",
       "expo-web-browser",
       [
-        "react-native-audio-api",
+        "expo-audio",
         {
-          "iosMicrophonePermission": "Vedora cần dùng mic để bạn trò chuyện với trợ lý giọng nói.",
-          "iosBackgroundMode": false,
-          "androidPermissions": [
-            "android.permission.RECORD_AUDIO",
-            "android.permission.MODIFY_AUDIO_SETTINGS"
-          ],
-          "androidForegroundService": false
+          "microphonePermission": "Vedora cần dùng mic để bạn trò chuyện với trợ lý giọng nói.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
         }
       ],
       [

@@ -1,93 +1,62 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { Image } from 'expo-image';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
 import { SproutPet } from '@/features/nutrition-chat/components/sprout-pet';
 import { useTheme } from '@/hooks/use-theme';
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { NutritionSection } from '@/features/dietary-profile/components/nutrition-section';
 import { MealLogScreen } from '@/features/meal-log/components/meal-log-screen';
 import { useRecipe } from '@/features/recipes/hooks/use-recipes';
-import { formatIngredient } from '@/features/recipes/utils/recipe-format';
+import { formatIngredient, recipeMinutes } from '@/features/recipes/utils/recipe-format';
 import type { MealPlanner } from '../hooks/meal-planner-provider';
-import { useMealPlan } from '../hooks/use-meal-plan';
-import type { VoiceStatus } from '../services/voice-call';
 import { useMealPlannerVoice } from '../hooks/use-meal-planner-voice';
-import type { VoiceFocus, VoiceScreen } from '../types/voice.schema';
-import { dayLabels, sectionLabels } from '../utils/meal-plan';
-import { weekRange } from '../utils/meal-week';
-
-const STATUS: Record<VoiceStatus, string> = { connecting: 'Đang kết nối…', listening: 'Mình đang nghe bạn', speaking: 'Vedora đang nói', thinking: 'Đang xử lý yêu cầu…', muted: 'Mic đang tắt', ending: 'Đang chào tạm biệt…', ended: 'Cuộc gọi đã kết thúc', error: 'Chưa thể tiếp tục cuộc gọi' };
+import type { VoiceFocus } from '../types/voice.schema';
+import { VoiceCallControls } from './voice-call-controls';
+import { VoiceCalendar } from './voice-calendar';
+import { VoiceScreenGlow } from './voice-screen-glow';
 
 export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onClose: () => void }) {
   const theme = useTheme();
-  const { screen, focus, status, error, reply, heard, elapsed, finished, sendContext, scrollRef, scrollProps, closePanel, end, toggleMute, applyScreen, selectDay, setLogDate, retry } = useMealPlannerVoice(planner);
+  const { screen, focus, status, error, reply, heard, elapsed, highlight, glowing, sendContext, scrollRef, scrollProps, closePanel, end, toggleMute, interrupt, applyScreen, selectDay, setLogDate, retry } = useMealPlannerVoice(planner);
   const token = planner.token;
   const close = () => { end(); onClose(); };
   return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
-        <View style={[styles.callAvatar, { backgroundColor: theme.secondary }]}><SproutPet size={38} accessible={false} /></View>
-        <View style={styles.flex}>
-          <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Vedora Voice</Text>
-          <Text style={[styles.caption, { color: theme.mutedForeground }]}>Trợ lý món chay của bạn</Text>
+        <View style={styles.headerInner}>
+          <View style={[styles.callAvatar, { backgroundColor: theme.secondary }]}><SproutPet size={38} accessible={false} /></View>
+          <View style={styles.flex}>
+            <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Vedora Voice</Text>
+            <Text style={[styles.caption, { color: theme.mutedForeground }]}>Trò chuyện cùng trợ lý món chay</Text>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Đóng cuộc gọi" onPress={close} style={({ pressed }) => [styles.control, { backgroundColor: theme.muted, opacity: pressed ? 0.7 : 1 }]}><SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={22} tintColor={theme.foreground} /></Pressable>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Đóng cuộc gọi" onPress={close} style={styles.control}><SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={22} tintColor={theme.foreground} /></Pressable>
       </View>
       {screen.panel === 'eatingLog' ? <MealLogScreen key={focus?.kind === 'eatingLog' ? focus.date : 'log'} initialDate={screen.eatingLogDate} onClose={closePanel} scrollRef={scrollRef} scrollProps={scrollProps} onDateChange={setLogDate} />
-        : <ScrollView key={screen.panel === 'recipe' ? screen.recipeId : screen.panel} ref={scrollRef} {...scrollProps} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          {screen.panel !== 'none' ? <Pressable accessibilityRole="button" onPress={closePanel} style={[styles.closePanel, { borderColor: theme.border }]}><Text style={[styles.label, { color: theme.primary }]}>Về thực đơn</Text></Pressable> : null}
+        : <ScrollView key={screen.panel === 'recipe' ? screen.recipeId : screen.panel} ref={scrollRef} {...scrollProps} style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+          {screen.panel === 'none' ? <View style={styles.hero}>
+            <View style={styles.heroCopy}>
+              <View style={styles.heroTag}><Text style={styles.eyebrow}>TRỢ LÝ MÓN CHAY</Text></View>
+              <Text style={styles.heroTitle}>Cùng trò chuyện,{'\n'}bữa ăn thêm xanh.</Text>
+              <Text style={styles.heroSub}>Thử nói: “Gợi ý bữa tối hôm nay”.</Text>
+            </View>
+            <View style={styles.stickerFrame} pointerEvents="none">
+              <Image source={require('@/assets/branding/avocado-sticker.png')} style={styles.heroSticker} contentFit="contain" accessible={false} />
+            </View>
+          </View> : <Pressable accessibilityRole="button" onPress={closePanel} style={[styles.closePanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <SymbolView name={{ ios: 'arrow.left', android: 'arrow_back', web: 'arrow_back' }} size={18} tintColor={theme.primary} />
+            <Text style={[styles.label, { color: theme.primary }]}>Về thực đơn</Text>
+          </Pressable>}
           {screen.panel === 'recipe' && focus?.kind === 'recipe' ? <VoiceRecipe focus={focus} scrollRef={scrollRef} onContext={sendContext} onStep={(step) => applyScreen({ close: null, focus: { ...focus, step, section: 'steps' } })} />
             : screen.panel === 'bodyMetrics' && token ? <NutritionSection token={token} />
-              : <VoiceCalendar screen={screen} token={token} onDay={selectDay} onRecipe={(id, title) => applyScreen({ close: null, focus: { kind: 'recipe', recipeId: id, title, section: 'top' } })} />}
+              : <VoiceCalendar key={screen.weekStart} screen={screen} token={token} highlight={highlight} scrollRef={scrollRef} onDay={selectDay} onRecipe={(id, title) => applyScreen({ close: null, focus: { kind: 'recipe', recipeId: id, title, section: 'top' } })} />}
         </ScrollView>}
-      <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-        <View style={styles.callStatus}>
-          <View style={[styles.statusPill, { backgroundColor: theme.secondary }]}>
-            {status === 'connecting' ? <ActivityIndicator size="small" color={theme.primary} /> : <SymbolView name={status === 'muted' ? { ios: 'mic.slash', android: 'mic_off', web: 'mic_off' } : { ios: 'waveform', android: 'graphic_eq', web: 'graphic_eq' }} size={18} tintColor={theme.primary} />}
-            <Text accessibilityLiveRegion="polite" style={[styles.label, { color: theme.secondaryForeground }]}>{STATUS[status]}</Text>
-          </View>
-          <Text accessibilityLabel={`Thời gian cuộc gọi ${Math.floor(elapsed / 60)} phút ${elapsed % 60} giây`} style={[styles.timer, { color: theme.mutedForeground }]}>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</Text>
-        </View>
-        {error ? <Text accessibilityRole="alert" style={[styles.text, { color: theme.destructive }]}>{error}</Text> : null}
-        {(heard || reply) ? <View style={[styles.transcript, { backgroundColor: theme.muted }]}>
-          {heard ? <Text numberOfLines={2} style={[styles.text, { color: theme.mutedForeground }]}>Bạn: {heard}</Text> : null}
-          {reply ? <Text numberOfLines={3} accessibilityLiveRegion="polite" style={[styles.text, { color: theme.foreground }]}>{reply}</Text> : null}
-        </View> : null}
-        <View style={styles.callActions}>
-          <View style={styles.callAction}>
-          {finished ? <Pressable accessibilityRole="button" accessibilityLabel="Gọi lại" onPress={retry} style={[styles.roundButton, { backgroundColor: theme.primary }]}><SymbolView name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }} size={25} tintColor={theme.primaryForeground} /></Pressable>
-            : <Pressable accessibilityRole="button" accessibilityLabel={status === 'muted' ? 'Bật mic' : 'Tắt mic'} accessibilityState={{ disabled: status === 'connecting' }} disabled={status === 'connecting'} onPress={toggleMute} style={[styles.roundButton, { backgroundColor: status === 'muted' ? theme.muted : theme.secondary, opacity: status === 'connecting' ? 0.4 : 1 }]}><SymbolView name={status === 'muted' ? { ios: 'mic.slash.fill', android: 'mic_off', web: 'mic_off' } : { ios: 'mic.fill', android: 'mic', web: 'mic' }} size={25} tintColor={theme.primary} /></Pressable>}
-          <Text style={[styles.caption, { color: theme.foreground }]}>{finished ? 'Gọi lại' : status === 'muted' ? 'Bật mic' : 'Tắt mic'}</Text>
-          </View>
-          <View style={styles.callAction}>
-          <Pressable accessibilityRole="button" accessibilityLabel={finished ? 'Đóng cuộc gọi' : 'Kết thúc cuộc gọi'} onPress={close} style={[styles.roundButton, { backgroundColor: theme.destructive }]}><SymbolView name={finished ? { ios: 'xmark', android: 'close', web: 'close' } : { ios: 'phone.down.fill', android: 'call_end', web: 'call_end' }} size={25} tintColor="#fff" /></Pressable>
-          <Text style={[styles.caption, { color: theme.foreground }]}>{finished ? 'Đóng' : 'Kết thúc'}</Text>
-          </View>
-        </View>
-        <Text style={[styles.caption, styles.callHint, { color: theme.mutedForeground }]}>Tối đa 5 phút · Thay đổi được lưu như khi chat</Text>
-      </View>
+      <VoiceCallControls status={status} error={error} reply={reply} heard={heard} elapsed={elapsed} onClose={close} onRetry={retry} onToggleMute={toggleMute} onInterrupt={interrupt} />
+      <VoiceScreenGlow active={glowing} />
     </SafeAreaView>
   </Modal>;
-}
-
-function VoiceCalendar({ screen, token, onDay, onRecipe }: { screen: VoiceScreen; token: string | null; onDay: (day: NonNullable<VoiceScreen['day']>) => void; onRecipe: (id: string, title: string) => void }) {
-  const theme = useTheme();
-  const plan = useMealPlan(token, screen.weekStart);
-  return <>
-    <Text style={[styles.title, { color: theme.foreground }]}>{weekRange(screen.weekStart)}</Text>
-    {plan.isPending ? <ActivityIndicator color={theme.primary} /> : null}
-    {plan.isError ? <Pressable accessibilityRole="button" onPress={() => void plan.refetch()}><Text style={[styles.text, { color: theme.destructive }]}>Chưa tải được thực đơn. Chạm để thử lại.</Text></Pressable> : null}
-    {plan.data?.days.filter((day) => !screen.day || day.day === screen.day).map((day) => <View key={day.day} style={[styles.card, { borderColor: theme.border }]}>
-      <Text style={[styles.title, { color: theme.foreground }]}>{dayLabels[day.day]}</Text>
-      {day.sections.map((section) => <View key={section.section} style={styles.section}>
-        <Text style={[styles.label, { color: theme.mutedForeground }]}>{sectionLabels[section.section]}</Text>
-        {section.recipes.map((recipe) => <Pressable key={recipe.id} accessibilityRole="button" onPress={() => onRecipe(recipe.id, recipe.title)}><Text style={[styles.text, { color: theme.primary }]}>{recipe.title}</Text></Pressable>)}
-        {!section.recipes.length ? <Text style={[styles.text, { color: theme.mutedForeground }]}>Chưa có món</Text> : null}
-      </View>)}
-    </View>)}
-    <View style={styles.actions}>{plan.data?.days.map((day) => <Pressable key={day.day} accessibilityRole="button" accessibilityLabel={dayLabels[day.day]} onPress={() => onDay(day.day)} style={styles.control}><Text style={[styles.label, { color: theme.primary }]}>{dayLabels[day.day].replace('Thứ ', 'T')}</Text></Pressable>)}</View>
-  </>;
 }
 
 function VoiceRecipe({ focus, scrollRef, onContext, onStep }: { focus: Extract<VoiceFocus, { kind: 'recipe' }>; scrollRef: RefObject<ScrollViewInstance | null>; onContext: (text: string) => void; onStep: (step: number) => void }) {
@@ -104,32 +73,82 @@ function VoiceRecipe({ focus, scrollRef, onContext, onStep }: { focus: Extract<V
   if (recipe.isPending) return <ActivityIndicator color={theme.primary} />;
   if (!recipe.data) return <Pressable accessibilityRole="button" onPress={() => void recipe.refetch()}><Text style={[styles.text, { color: theme.destructive }]}>Chưa tải được công thức. Chạm để thử lại.</Text></Pressable>;
   const data = recipe.data;
-  return <View style={styles.section} onLayout={(event) => { contentOffset.current = event.nativeEvent.layout.y; go(); }}>
-    <Text style={[styles.title, { color: theme.foreground }]}>{data.title}</Text>
-    <Text style={[styles.text, { color: theme.mutedForeground }]}>{data.servings} khẩu phần</Text>
-    <Text onLayout={(event) => { offsets.current.ingredients = event.nativeEvent.layout.y; go(); }} style={[styles.title, { color: theme.foreground }]}>Nguyên liệu</Text>
-    {data.ingredients.map((item) => <Text key={item.ingredientId} style={[styles.text, { color: theme.foreground }]}>• {formatIngredient(item)}</Text>)}
-    <Text onLayout={(event) => { offsets.current.steps = event.nativeEvent.layout.y; go(); }} style={[styles.title, { color: theme.foreground }]}>Từng bước vào bếp</Text>
-    {data.steps.map((step, index) => <View key={index} onLayout={(event) => { offsets.current[`step-${index + 1}`] = event.nativeEvent.layout.y; go(); }} style={[styles.card, { borderColor: focus.step === index + 1 ? theme.primary : theme.border, backgroundColor: focus.step === index + 1 ? theme.secondary : theme.card }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Xem bước ${index + 1}`} onPress={() => onStep(index + 1)}><Text style={[styles.label, { color: theme.primary }]}>Bước {index + 1}</Text></Pressable>
-      <Text style={[styles.text, { color: theme.foreground }]}>{step}</Text>
-    </View>)}
+  const minutes = recipeMinutes(data);
+  return <View style={styles.recipeContent} onLayout={(event) => { contentOffset.current = event.nativeEvent.layout.y; go(); }}>
+    <View style={[styles.recipeIntro, { backgroundColor: theme.secondary }]}>
+      <View style={[styles.flex, styles.section]}>
+        <Text style={[styles.kicker, { color: theme.primary }]}>CÙNG VÀO BẾP</Text>
+        <Text accessibilityRole="header" style={[styles.recipeTitle, { color: theme.foreground }]}>{data.title}</Text>
+        <Text style={[styles.caption, { color: theme.mutedForeground }]}>{[minutes !== null ? `${minutes} phút` : null, `${data.servings} khẩu phần`].filter(Boolean).join(' · ')}</Text>
+      </View>
+      <Image source={require('@/assets/branding/carrot-sticker.png')} style={styles.recipeSticker} contentFit="contain" accessible={false} />
+    </View>
+    {data.conflicts.length ? <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.destructive }]}>
+      <Text style={[styles.label, { color: theme.destructive }]}>Lưu ý kết hợp nguyên liệu</Text>
+      {data.conflicts.map((conflict) => <Text key={conflict.ruleId} style={[styles.text, { color: theme.foreground }]}>{conflict.a.name} + {conflict.b.name}: {conflict.reason}</Text>)}
+    </View> : null}
+    <View onLayout={(event) => { offsets.current.ingredients = event.nativeEvent.layout.y; go(); }} style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={styles.dayHeading}>
+        <Text accessibilityRole="header" style={[styles.title, styles.flex, { color: theme.foreground }]}>Nguyên liệu</Text>
+        <View style={[styles.countBadge, { backgroundColor: theme.secondary }]}><Text style={[styles.smallLabel, { color: theme.primary }]}>{data.ingredients.length} loại</Text></View>
+      </View>
+      {data.ingredients.map((item, index) => <View key={`${item.ingredientId}-${item.name}`} style={[styles.ingredientRow, { borderTopColor: theme.border, borderTopWidth: index === 0 ? 0 : StyleSheet.hairlineWidth }]}>
+        <View style={[styles.ingredientDot, { backgroundColor: theme.primary }]} />
+        <Text style={[styles.text, styles.flex, { color: theme.foreground }]}>{formatIngredient(item)}</Text>
+      </View>)}
+      {!data.ingredients.length ? <Text style={[styles.text, { color: theme.mutedForeground }]}>Công thức chưa cập nhật nguyên liệu.</Text> : null}
+    </View>
+    <View style={styles.stepsHeading} onLayout={(event) => { offsets.current.steps = event.nativeEvent.layout.y; go(); }}>
+      <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Từng bước vào bếp</Text>
+      <Text style={[styles.caption, { color: theme.mutedForeground }]}>{data.steps.length} bước thực hiện · Chạm để chọn bước</Text>
+    </View>
+    {data.steps.map((step, index) => <Pressable key={index} accessibilityRole="button" accessibilityLabel={`Xem bước ${index + 1}`} accessibilityState={{ selected: focus.step === index + 1 }} onPress={() => onStep(index + 1)}
+      onLayout={(event) => { offsets.current[`step-${index + 1}`] = event.nativeEvent.layout.y; go(); }}
+      style={[styles.step, { borderColor: focus.step === index + 1 ? theme.primary : theme.border, backgroundColor: focus.step === index + 1 ? theme.secondary : theme.card }]}>
+      <View style={[styles.stepNumber, { backgroundColor: focus.step === index + 1 ? theme.primary : theme.secondary }]}><Text style={[styles.label, { color: focus.step === index + 1 ? theme.primaryForeground : theme.primary }]}>{String(index + 1).padStart(2, '0')}</Text></View>
+      <View style={[styles.flex, styles.section]}>
+        <Text style={[styles.smallLabel, { color: theme.primary }]}>{focus.step === index + 1 ? `Bước ${index + 1} · Đang xem` : `Bước ${index + 1}`}</Text>
+        <Text style={[styles.text, { color: theme.foreground }]}>{step}</Text>
+      </View>
+    </Pressable>)}
+    {!data.steps.length ? <Text style={[styles.text, { color: theme.mutedForeground }]}>Công thức chưa cập nhật cách nấu.</Text> : null}
   </View>;
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 }, flex: { flex: 1 }, header: { flexDirection: 'row', alignItems: 'center', padding: Spacing.three, gap: Spacing.two, borderBottomWidth: StyleSheet.hairlineWidth },
-  title: { fontFamily: Fonts.headingBold, fontSize: 18, lineHeight: 26 }, text: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 }, label: { fontFamily: Fonts.sansBold, fontSize: 14 }, caption: { fontFamily: Fonts.sans, fontSize: 11, lineHeight: 16 },
-  content: { padding: Spacing.three, gap: Spacing.three }, section: { gap: Spacing.two }, card: { borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.three, gap: Spacing.two },
-  control: { minWidth: 40, minHeight: 44, alignItems: 'center', justifyContent: 'center' }, closePanel: { borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.three, alignItems: 'center' },
-  footer: { padding: Spacing.three, gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopLeftRadius: 24, borderTopRightRadius: 24 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, alignItems: 'center' },
-  callAvatar: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  callStatus: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, flexShrink: 1 },
-  timer: { fontFamily: Fonts.mono, fontSize: 13 },
-  transcript: { padding: 14, borderRadius: 16, gap: 8 },
-  callActions: { flexDirection: 'row', justifyContent: 'center', gap: 40, paddingVertical: 4 },
-  callAction: { alignItems: 'center', gap: 7 },
-  roundButton: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
-  callHint: { textAlign: 'center' },
+  screen: { flex: 1 },
+  flex: { flex: 1 },
+  header: { paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  headerInner: { width: '100%', maxWidth: 680, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.three, gap: 12 },
+  callAvatar: { width: 48, height: 48, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
+  control: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  title: { fontFamily: Fonts.headingBold, fontSize: 18, lineHeight: 27 },
+  text: { fontFamily: Fonts.sans, fontSize: 15, lineHeight: 24 },
+  label: { fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 21 },
+  caption: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 20 },
+  smallLabel: { fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 18 },
+  content: { width: '100%', maxWidth: 680, alignSelf: 'center', padding: Spacing.three, paddingBottom: Spacing.four, gap: Spacing.three },
+  section: { gap: Spacing.two },
+  hero: { backgroundColor: BrandColors.forest, borderRadius: Radius['4xl'], padding: 20, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: Spacing.two, overflow: 'hidden' },
+  heroCopy: { flexBasis: 155, flexGrow: 1, flexShrink: 1, gap: 12 },
+  heroTag: { alignSelf: 'flex-start', backgroundColor: BrandColors.cream, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
+  eyebrow: { fontFamily: Fonts.sansBold, fontSize: 10, lineHeight: 16, letterSpacing: 1, color: BrandColors.forest },
+  heroTitle: { fontFamily: Fonts.headingBold, fontSize: 22, lineHeight: 33, color: '#fffefa' },
+  heroSub: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 22, color: '#e4f1dc' },
+  stickerFrame: { width: 82, height: 108, justifyContent: 'center', alignItems: 'center', borderRadius: 41, backgroundColor: '#ffffff12', transform: [{ rotate: '8deg' }] },
+  heroSticker: { width: 84, height: 108 },
+  closePanel: { alignSelf: 'flex-start', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two, borderWidth: 1, borderRadius: Radius['4xl'] },
+  dayHeading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  countBadge: { borderRadius: Radius['4xl'], paddingHorizontal: 12, paddingVertical: 6, flexShrink: 1 },
+  card: { borderWidth: 1, borderRadius: Radius['3xl'], padding: Spacing.three, gap: Spacing.three },
+  recipeContent: { gap: Spacing.three },
+  recipeIntro: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, padding: Spacing.three, borderRadius: Radius['3xl'] },
+  recipeTitle: { fontFamily: Fonts.headingBold, fontSize: 22, lineHeight: 32 },
+  kicker: { fontFamily: Fonts.sansBold, fontSize: 10, lineHeight: 16, letterSpacing: 1 },
+  recipeSticker: { width: 50, height: 72, transform: [{ rotate: '10deg' }] },
+  ingredientRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingTop: 12 },
+  ingredientDot: { width: 6, height: 6, borderRadius: 3, marginTop: 9 },
+  stepsHeading: { gap: 4, paddingTop: Spacing.two },
+  step: { flexDirection: 'row', gap: 12, borderWidth: 1, borderRadius: Radius['3xl'], padding: Spacing.three, minHeight: 64 },
+  stepNumber: { minWidth: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
 });

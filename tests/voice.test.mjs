@@ -56,14 +56,14 @@ const { pcm16Base64 } = await import('../src/features/meal-plan/utils/voice-audi
 const { VoiceNoiseGate } = await import('../src/features/meal-plan/utils/voice-noise-gate.ts');
 const { voiceScreenCommandSchema, voiceTurnSchema } = await import('../src/features/meal-plan/types/voice.schema.ts');
 const tick = () => new Promise((resolve) => setImmediate(resolve));
-function fixture(t) {
+function fixture(t, overrides = {}) {
   FakeSocket.all = [];
   setupResponse = session;
-  audio = { stopCount: 0, interrupted: 0, played: [], start: async (send) => { audio.send = send; }, stop: async () => { audio.stopCount++; }, play: (chunk) => audio.played.push(chunk), interrupt: () => audio.interrupted++, isPlaying: () => false };
-  const events = { statuses: [], errors: [], screens: [], refreshes: [], texts: [], ended: 0, requests: [] };
+  audio = { canListenWhileSpeaking: true, stopCount: 0, interrupted: 0, played: [], start: async (send) => { audio.send = send; }, stop: async () => { audio.stopCount++; }, play: (chunk) => audio.played.push(chunk), interrupt: () => audio.interrupted++, isPlaying: () => false };
+  const events = { statuses: [], errors: [], screens: [], refreshes: [], texts: [], changes: [], started: 0, ended: 0, requests: [] };
   turnHandler = async (input, signal, onEvent) => { events.requests.push(input); onEvent({ type: 'text-delta', delta: 'Đã ghi món.' }); onEvent({ type: 'finish' }); };
   const call = new PlannerVoiceCall({ threadId: 'e509dd5c-6cd6-4c2b-8848-b45dbe003561', fullName: 'An', today: '2026-11-27', screen, getScreen: () => screen,
-    onStatus: (s) => events.statuses.push(s), onText: (s) => events.texts.push(s), onHeard: () => {}, onError: (s) => events.errors.push(s), onScreen: (s) => events.screens.push(s), onRefresh: (s) => events.refreshes.push(s), onTurnEnd: () => events.ended++ });
+    onStatus: (s) => events.statuses.push(s), onText: (s) => events.texts.push(s), onHeard: () => {}, onError: (s) => events.errors.push(s), onScreen: (s) => { events.screens.push(s); }, onRefresh: (s) => events.refreshes.push(s), onTurnStart: () => events.started++, onPlanChange: (change) => events.changes.push(change), onTurnEnd: () => events.ended++, ...overrides });
   t.after(() => call.end());
   return { call, events };
 }
@@ -134,6 +134,13 @@ test('mute blocks capture; unmute resumes it; audio chunks play through the same
   socket.emit({ type: 'audio-chunk', delta: 'reply-pcm' });
   assert.deepEqual(audio.played, ['reply-pcm']);
 });
+test('native alternating audio asks the assistant to wait instead of cutting off user speech with backchannels', async (t) => {
+  const { call } = fixture(t);
+  audio.canListenWhileSpeaking = false;
+  const socket = await connect(call);
+  assert.match(socket.sent[0].config.instructions, /Native turn-taking overrides backchannel policy/);
+  assert.match(socket.sent[0].config.instructions, /wait for their complete utterance/);
+});
 test('delegation submits spoken text and current screen once, then sends commentary on finish', async (t) => {
   const { call, events } = fixture(t);
   const socket = await connect(call);
@@ -145,6 +152,75 @@ test('delegation submits spoken text and current screen once, then sends comment
   assert.deepEqual(events.requests[0].screen, screen);
   assert.equal(socket.sent.at(-1).providerOptions.openai.channel, 'commentary');
   assert.equal(socket.sent.at(-1).content, 'Đã ghi món.');
+});
+
+test('each Planner request includes a fresh UI snapshot after the user changes views', async (t) => {
+  let visible = screen;
+  const { call, events } = fixture(t, { getScreen: () => ({ ...visible }) });
+  const socket = await connect(call);
+  visible = { ...screen, panel: 'recipe', recipeId: 'tofu', recipeSection: 'steps', recipeStep: 3,
+    scrollState: { percent: 62, atTop: false, atBottom: false } };
+  delegate(socket); await tick();
+  assert.deepEqual(events.requests[0].screen, visible);
+  const first = events.requests[0].screen;
+  visible = { weekStart: '2026-11-30', day: 'SAT', panel: 'eatingLog', eatingLogDate: '2026-12-05',
+    scrollState: { percent: 100, atTop: false, atBottom: true } };
+  socket.emit({ type: 'transcript-fragment', speaker: 'user', delta: 'Ghi món vào ngày này.', startMs: 3500, endMs: 4000 });
+  socket.emit({ type: 'delegation-created', delegationId: 'delegation-2', offsetMs: 3600 });
+  await tick();
+  assert.equal(events.requests.length, 2);
+  assert.equal(events.requests[1].weekStart, visible.weekStart);
+  assert.deepEqual(events.requests[1].screen, visible);
+  assert.equal(first.recipeStep, 3);
+  assert.equal(first.panel, 'recipe');
+});
+test('manual interruption drops late speaker chunks until the user starts another utterance', async (t) => {
+  const { call, events } = fixture(t);
+  const socket = await connect(call);
+  socket.emit({ type: 'audio-chunk', delta: 'first' });
+  call.toggleMute(); call.interrupt();
+  assert.equal(events.statuses.at(-1), 'listening');
+  assert.equal(socket.sent.at(-1).type, 'input-audio-unmute');
+  socket.emit({ type: 'audio-cleared' });
+  socket.emit({ type: 'audio-chunk', delta: 'stale' });
+  assert.deepEqual(audio.played, ['first']);
+  audio.send('new-speech');
+  assert.equal(socket.sent.at(-1).audio, 'new-speech');
+  socket.emit({ type: 'speech-started' });
+  socket.emit({ type: 'audio-chunk', delta: 'next' });
+  assert.deepEqual(audio.played, ['first', 'next']);
+});
+test('latest BE data-state invalidates changed domains, including patch-only dietary updates', async (t) => {
+  const { call, events } = fixture(t);
+  turnHandler = async (_, __, emit) => {
+    emit({ type: 'data-state', data: { seq: 1, invalidate: ['plan', 'shoppingList', 'mealLog', 'nutrition'] } });
+    emit({ type: 'data-state', data: { seq: 2, patch: { dietary: { section: 'allergies', lines: ['Đậu phộng'] } } } });
+    emit({ type: 'finish' });
+  };
+  const socket = await connect(call); delegate(socket); await tick();
+  assert.deepEqual(events.refreshes[0], { plan: true, log: true, nutrition: true });
+  assert.deepEqual(events.refreshes[1], { dietary: true });
+});
+test('a disconnected speaker during manual interruption ends the call and releases capture', async (t) => {
+  const { call, events } = fixture(t);
+  await connect(call);
+  audio.interrupt = () => { throw Error('device disconnected'); };
+  assert.doesNotThrow(() => call.interrupt());
+  assert.equal(events.statuses.at(-1), 'error');
+  assert.equal(audio.stopCount, 1);
+});
+test('new web screen commands remain valid and unavailable mobile panels never announce a false success', async (t) => {
+  const unavailable = 'Danh sách đi chợ hiện chưa có trên mobile.';
+  const { call, events } = fixture(t, { onScreen: () => unavailable });
+  turnHandler = async (_, __, emit) => {
+    emit({ type: 'data-screen', data: { focus: { kind: 'shoppingList', weekStart: screen.weekStart, people: 2, checkItems: ['Đậu hũ'] }, close: null } });
+    emit({ type: 'text-delta', delta: 'Đã mở danh sách đi chợ.' });
+    emit({ type: 'finish' });
+  };
+  const socket = await connect(call); delegate(socket); await tick();
+  assert.equal(events.texts.at(-1), unavailable);
+  assert.equal(socket.sent.at(-1).content, unavailable);
+  assert.equal(voiceScreenCommandSchema.parse({ focus: { kind: 'bodyMetrics', tab: 'weekly', weekStart: screen.weekStart }, close: 'shoppingList' }).focus.tab, 'weekly');
 });
 test('transient screen/refresh and summary-only responses are handled without tool output assumptions', async (t) => {
   const { call, events } = fixture(t);
@@ -168,9 +244,31 @@ test('ending a pending call aborts mutations, releases mic and ignores late scre
   assert.equal(activeSignal.aborted, true);
   assert.equal(audio.stopCount, 1);
   emitLater({ type: 'data-screen', data: { focus: { kind: 'bodyMetrics' }, close: null } });
+  emitLater({ type: 'tool-output-available', toolName: 'editPlan', toolCallId: 'late', output: { weekStart: screen.weekStart, applied: true, problems: [], days: [{ day: 'MON', sections: [{ section: 'LUNCH', recipes: [{ id: 'new', title: 'New' }], previous: [] }] }] } });
   resolveTurn(); await tick();
   assert.equal(events.screens.length, 0);
+  assert.equal(events.changes.length, 0);
   assert.equal(socket.sent.at(-1).type, 'session-close');
+});
+
+test('validated saved plan outputs reach the highlight callback once, while rejected or malformed outputs do not', async (t) => {
+  const { call, events } = fixture(t);
+  const output = { weekStart: screen.weekStart, applied: true, problems: [], days: [{ day: 'FRI', sections: [{
+    section: 'LUNCH', recipes: [{ id: 'new', title: 'Đậu hũ sốt nấm' }], previous: [{ id: 'old', title: 'Món cũ' }],
+  }] }] };
+  turnHandler = async (_, __, emit) => {
+    emit({ type: 'tool-input-available', toolCallId: 'edit-1', toolName: 'editPlan', input: {} });
+    emit({ type: 'tool-output-available', toolCallId: 'edit-1', output });
+    emit({ type: 'tool-output-available', toolCallId: 'edit-1', output });
+    emit({ type: 'tool-output-available', toolCallId: 'denied', toolName: 'editPlan', output: { ...output, applied: false } });
+    emit({ type: 'tool-output-available', toolCallId: 'invalid', toolName: 'fillSlots', output: { ...output, days: [{ day: 'FRI' }] } });
+    emit({ type: 'tool-output-available', toolCallId: 'read', toolName: 'getPlan', output });
+    emit({ type: 'finish' });
+  };
+  const socket = await connect(call); delegate(socket); await tick();
+  assert.equal(events.started, 1);
+  assert.equal(events.changes.length, 1);
+  assert.deepEqual(events.changes[0].days, output.days);
 });
 test('closing during session setup never creates a socket after the response arrives', async (t) => {
   const { call } = fixture(t);
@@ -221,7 +319,7 @@ test('backend endCall speaks its summary before closing, with a safety timeout',
   assert.equal(events.statuses.at(-1), 'ended');
   assert.equal(audio.stopCount, 1);
 });
-test('a new delegation cancels the old turn and ignores its late screen commands', async (t) => {
+test('a new delegation cancels the old turn and ignores its late screen commands and highlights', async (t) => {
   const { call, events } = fixture(t);
   let oldSignal, emitOld, finishOld;
   turnHandler = (_, signal, emit) => {
@@ -236,8 +334,10 @@ test('a new delegation cancels the old turn and ignores its late screen commands
   await tick();
   assert.equal(oldSignal.aborted, true);
   emitOld({ type: 'data-screen', data: { focus: { kind: 'bodyMetrics' }, close: null } });
+  emitOld({ type: 'tool-output-available', toolName: 'editPlan', toolCallId: 'late-edit', output: { weekStart: screen.weekStart, applied: true, problems: [], days: [{ day: 'MON', sections: [{ section: 'LUNCH', recipes: [{ id: 'new', title: 'New' }], previous: [] }] }] } });
   finishOld(); await tick();
   assert.equal(secondMessage, 'Đổi sang bún chay.');
   assert.equal(events.screens.length, 0);
+  assert.equal(events.changes.length, 0);
   assert.equal(events.refreshes.some((change) => change.plan && change.log), true);
 });

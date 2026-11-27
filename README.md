@@ -6,8 +6,12 @@ Expo Router app using the visual system from `vedora-frontend`.
 
 ```bash
 npm install
-npx expo start --clear
+npm start
 ```
+
+Scan the QR code with Expo Go (SDK 58). The start, Android and iOS scripts always target Expo Go. If LAN access is blocked, use `npx expo start --go --tunnel` and scan the new QR code.
+
+Assistant voice calls use `expo-audio` included in Expo Go SDK 58. Open Trợ lý or Thực đơn, tap Gọi and grant microphone access. Native calls listen between assistant replies to avoid speaker echo; tap Nói tiếp to interrupt. Temporary playback files are deleted when playback finishes or the call closes. No development build is required. Google sign-in is unavailable in Expo Go; use email sign-in.
 
 Run `npx tsc --noEmit` and `npx expo lint` before merging changes.
 
@@ -35,7 +39,7 @@ Use `BrandColors`, `SemanticColors`, `Radius`, and `Spacing` from `src/constants
 
 Fonts match the frontend: Source Sans 3 for body text, Be Vietnam Pro for headings, Figtree for Latin display text, and Geist Mono for code. The root layout loads only the font weights listed in `src/global.css`. For a bold heading use `font-heading-bold`; React Native does not automatically select the correct font file from `font-bold`.
 
-NativeWind v5 is currently a release candidate. Its `nativewind` and `react-native-css` versions are pinned together for Expo SDK 57. After changing its config, restart Metro with `npx expo start --clear`. Native dependency changes also require a new development build.
+NativeWind v5 is currently a release candidate. The project uses Expo SDK 58. After changing its config, restart Metro with `npx expo start --go --clear`. Keep native dependencies compatible with Expo Go.
 
 ## API and state
 
@@ -46,7 +50,7 @@ Copy `.env.example` to `.env.local`, then set `EXPO_PUBLIC_API_URL` to the API a
 - `src/shared/query/`: one TanStack Query provider per app root; native foreground and network events drive refetching. Changing the session token clears cached responses.
 - `src/shared/stores/session-store.ts`: in-memory session for UI and API requests. On Android/iOS, `src/shared/session/` stores only the refresh token in Expo SecureStore and rotates it when the app starts, on 401, or when the app returns to the foreground near token expiry. Web sessions remain in memory.
 - `src/features/auth/`: login, registration, email verification, resend code and sign-out. Routes live at `/login`, `/register` and `/verify-email`; the guest home screen links to them. Successful login or email verification opens `/explore`, and a restored session skips the guest home screen. The API must be reachable through `EXPO_PUBLIC_API_URL` on the device.
-- `src/features/feed/`: public Explore feed at `/explore`. `GET /posts` uses cursor pagination and separate filters for all posts, short posts and blogs. Cards show author, text, blog preview and Mux videos; signed-in viewers can like and bookmark. Video playback uses `expo-video`, so make a new development build after adding this native package.
+- `src/features/feed/`: public Explore feed at `/explore`. `GET /posts` uses cursor pagination and separate filters for all posts, short posts and blogs. Cards show author, text, blog preview and Mux videos; signed-in viewers can like and bookmark. Video playback uses `expo-video`, which is included in Expo Go.
 - `src/features/app-info/`: small reference module showing `types` (Zod), `data` (query key), `services` (Axios) and `hooks` (TanStack Query) for the existing `GET /api/v1` endpoint.
 
 See `docs/AGENT_RULES.md` for the required module layout and dependency direction when adding features.

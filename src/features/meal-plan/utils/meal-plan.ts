@@ -10,6 +10,9 @@ export const dayLabels: Record<Weekday, string> = {
   MON: 'Thứ Hai', TUE: 'Thứ Ba', WED: 'Thứ Tư', THU: 'Thứ Năm',
   FRI: 'Thứ Sáu', SAT: 'Thứ Bảy', SUN: 'Chủ nhật',
 };
+export const shortDayLabels: Record<Weekday, string> = {
+  MON: 'T2', TUE: 'T3', WED: 'T4', THU: 'T5', FRI: 'T6', SAT: 'T7', SUN: 'CN',
+};
 export const sectionLabels: Record<MealSection, string> = {
   BREAKFAST: 'Sáng', LUNCH: 'Trưa', DINNER: 'Tối', OTHER: 'Khác',
 };

@@ -5,15 +5,18 @@ import { createVoiceAudio } from './voice-audio';
 import type { VoiceAudio } from '../utils/voice-audio';
 import { FarewellTracker, TurnQueue, UtteranceAssembler } from './voice-call-state';
 import { VOICE_INSTRUCTIONS } from '../utils/voice-config';
-import { delegationSchema, realtimeEventSchema, transcriptSchema, voiceRefreshSchema, voiceScreenCommandSchema, VOICE_MAX_SECONDS, type VoiceRefresh, type VoiceScreen, type VoiceScreenCommand } from '../types/voice.schema';
+import { savedPlanChanges } from '../utils/planner-changes';
+import type { PlanChange } from '../types/meal-plan.schema';
+import { delegationSchema, realtimeEventSchema, transcriptSchema, voiceRefreshSchema, voiceStateSchema, voiceScreenCommandSchema, VOICE_MAX_SECONDS, type VoiceRefresh, type VoiceScreen, type VoiceScreenCommand } from '../types/voice.schema';
 
 export type VoiceStatus = 'connecting' | 'listening' | 'speaking' | 'thinking' | 'muted' | 'ending' | 'ended' | 'error';
 type CallOptions = {
   threadId: string; fullName: string | null; today: string; screen: VoiceScreen;
   getScreen: () => VoiceScreen;
   onStatus: (status: VoiceStatus) => void; onText: (text: string) => void; onHeard: (text: string) => void;
-  onError: (text: string) => void; onScreen: (command: VoiceScreenCommand) => void;
+  onError: (text: string) => void; onScreen: (command: VoiceScreenCommand) => string | void;
   onRefresh: (command: VoiceRefresh) => void; onTurnEnd: () => void;
+  onTurnStart?: () => void; onPlanChange?: (change: PlanChange) => void;
 };
 
 export function voiceFailureText(error: unknown) {
@@ -33,6 +36,7 @@ export class PlannerVoiceCall {
   private stopped = false;
   private ready = false;
   private muted = false;
+  private discardOutput = false;
   private status?: VoiceStatus;
   private setup = new AbortController();
   private socket?: WebSocket;
@@ -81,7 +85,7 @@ export class PlannerVoiceCall {
       this.socket = socket;
       this.startup = setTimeout(() => this.fail('Kết nối mất quá lâu. Hãy thử lại.'), 30_000);
       socket.onopen = () => this.send({ type: 'session-start', modelId: session.model, config: {
-        instructions: VOICE_INSTRUCTIONS,
+        instructions: this.audio?.canListenWhileSpeaking ? VOICE_INSTRUCTIONS : `${VOICE_INSTRUCTIONS}\nNative turn-taking overrides backchannel policy: microphone input is silenced during your playback to prevent speaker echo. Stay silent while the user speaks, never backchannel or interject, and wait for their complete utterance before replying. The user can tap Nói tiếp to interrupt you.`,
         inputAudioFormat: { type: 'audio/pcm', rate: 24_000 }, outputAudioFormat: { type: 'audio/pcm', rate: 24_000 },
         providerOptions: { openai: { delegation: { type: 'client' }, input: [{ type: 'message', role: 'developer', content: [{ type: 'input_text', text: `Greet the user right away in natural Vietnamese${this.options.fullName ? ` (name: ${this.options.fullName})` : ''}. Briefly introduce yourself as Vedora's assistant, then pause and listen.` }] }] } },
       } });
@@ -92,7 +96,7 @@ export class PlannerVoiceCall {
       socket.onerror = () => this.fail(voiceFailureText(null));
       socket.onclose = () => { if (!this.stopped) this.fail('Cuộc gọi bị ngắt kết nối. Những thay đổi đã lưu vẫn được giữ.'); };
     } catch (error) {
-      if (!this.stopped) this.fail(error instanceof Error && /mic|ghi âm|HTTPS/i.test(error.message) ? error.message : voiceFailureText(error));
+      if (!this.stopped) this.fail(error instanceof Error && /mic|ghi âm|HTTPS|Expo Go/i.test(error.message) ? error.message : voiceFailureText(error));
     }
   }
   private handle(raw: unknown) {
@@ -112,11 +116,15 @@ export class PlannerVoiceCall {
       }, 200);
       return;
     }
-    if (event.type === 'audio-chunk') { this.audio?.play(z.string().parse(event.delta)); return; }
-    if (event.type === 'speech-started' || event.type === 'audio-cleared') { this.audio?.interrupt(); return; }
+    if (event.type === 'audio-chunk') { if (!this.discardOutput) this.audio?.play(z.string().parse(event.delta)); return; }
+    if (event.type === 'speech-started' || event.type === 'audio-cleared') {
+      if (event.type === 'speech-started') this.discardOutput = false;
+      this.audio?.interrupt(); return;
+    }
     if (event.type === 'transcript-fragment') {
       const fragment = transcriptSchema.parse(event);
       if (fragment.speaker === 'user') {
+        this.discardOutput = false;
         this.utterances.addFragment({ text: fragment.delta, startMs: fragment.startMs, endMs: fragment.endMs });
         this.options.onHeard(fragment.delta);
         this.audio?.interrupt();
@@ -153,8 +161,12 @@ export class PlannerVoiceCall {
   private async runTurn(id: string, message: string) {
     if (this.stopped) return;
     const controller = this.turns.begin(id, message);
+    this.options.onTurnStart?.();
+    const toolNames = new Map<string, string>();
+    const seenChanges = new Set<string>();
     let reply = '';
     let summary = '';
+    let screenNotice = '';
     let ended = false;
     let complete = false;
     let progress: ReturnType<typeof setTimeout> | undefined;
@@ -162,7 +174,7 @@ export class PlannerVoiceCall {
       if (complete || controller.signal.aborted || this.stopped) return;
       complete = true;
       clearTimeout(progress);
-      const spoken = reply.trim() || summary || 'Đã xong.';
+      const spoken = screenNotice || reply.trim() || summary || 'Đã xong.';
       this.options.onText(spoken);
       if (ended) this.farewell.sent();
       this.context(spoken, id, 'commentary');
@@ -172,9 +184,33 @@ export class PlannerVoiceCall {
       const screen = this.options.getScreen();
       await sendVoiceTurn({ weekStart: screen.weekStart, screen, message, threadId: this.options.threadId, requestId: id }, controller.signal, (event) => {
         if (controller.signal.aborted || this.stopped) return;
+        if ((event.type === 'tool-input-available' || event.type === 'tool-input-start') && typeof event.toolCallId === 'string' && typeof event.toolName === 'string') {
+          toolNames.set(event.toolCallId, event.toolName);
+        }
+        if (event.type === 'tool-output-available' && typeof event.toolCallId === 'string' && !seenChanges.has(event.toolCallId)) {
+          const name = typeof event.toolName === 'string' ? event.toolName : toolNames.get(event.toolCallId) ?? '';
+          for (const change of savedPlanChanges([{ name, callId: event.toolCallId, output: event.output }])) {
+            seenChanges.add(change.id);
+            this.options.onPlanChange?.(change);
+          }
+        }
         if (event.type === 'text-delta') reply += z.string().parse(event.delta);
-        if (event.type === 'data-screen') this.options.onScreen(voiceScreenCommandSchema.parse(event.data));
+        if (event.type === 'data-screen') {
+          const notice = this.options.onScreen(voiceScreenCommandSchema.parse(event.data));
+          if (notice) screenNotice = notice;
+        }
         if (event.type === 'data-refresh') this.options.onRefresh(voiceRefreshSchema.parse(event.data));
+        if (event.type === 'data-state') {
+          const state = voiceStateSchema.parse(event.data);
+          const domains = new Set(state.invalidate);
+          // Re-fetch authoritative data, including patch-only events, instead of applying stale snapshots.
+          this.options.onRefresh({
+            ...(domains.has('plan') || domains.has('shoppingList') ? { plan: true } : {}),
+            ...(domains.has('mealLog') ? { log: true } : {}),
+            ...(domains.has('nutrition') || state.patch?.nutrition ? { nutrition: true } : {}),
+            ...(domains.has('dietary') || state.patch?.dietary ? { dietary: true } : {}),
+          });
+        }
         if (event.type === 'data-summary') summary = z.object({ text: z.string() }).parse(event.data).text;
         if (event.type === 'data-end-call') ended = true;
         if (event.type === 'data-progress') {
@@ -205,6 +241,15 @@ export class PlannerVoiceCall {
     if (!this.ready || this.stopped) return;
     this.muted = !this.muted;
     this.send({ type: this.muted ? 'input-audio-mute' : 'input-audio-unmute' });
+  }
+  interrupt() {
+    if (!this.ready || this.stopped) return;
+    this.discardOutput = true;
+    try { this.audio?.interrupt(); }
+    catch { this.fail('Âm thanh bị gián đoạn. Hãy kết nối lại cuộc gọi.'); return; }
+    this.farewell.reset();
+    if (this.muted) this.toggleMute();
+    if (!this.stopped) this.update('listening');
   }
   private refreshAll() { this.options.onRefresh({ plan: true, log: true, dietary: true, nutrition: true }); }
   private fail(message: string) { if (!this.stopped) { this.options.onError(message); this.end('error'); } }
