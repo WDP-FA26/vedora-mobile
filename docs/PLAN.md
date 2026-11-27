@@ -1427,6 +1427,12 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
   8. Trên iPhone, kiểm tra bàn phím không che nút lưu, cuộn danh sách video và xác nhận khi vuốt quay lại; thử theme sáng/tối và màn hình nhỏ.
 - Người thực hiện: Codex.
 
+## 2026-11-27 — Thu hồi stack và gom thành một PR
+
+- Kết quả đã làm: Theo yêu cầu mới nhất, thay stack 10 PR #57–#66 bằng một PR tổng hợp từ main trên nhánh feat/mobile-restaurants-and-voice-ui, giữ đầy đủ thay đổi nhà hàng và giao diện voice. Các PR cũ được đóng, không merge. Tiêu đề và mô tả PR tổng hợp dùng tiếng Anh. Các chỉ dẫn merge stack ở mục lịch sử bên dưới không còn áp dụng.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Mở Khám phá → Nhà hàng chay → chi tiết/menu/đánh giá. (2) Hồ sơ → Nhà hàng của tôi → đăng ký đủ ba bước; kiểm tra quản lý menu/thành viên và chuyển Trang. (3) Mở Trợ lý, kiểm tra thứ tự Voice → ô nhập → Gửi và thử cuộc gọi bằng development build. Checklist đầy đủ nằm trong các mục triển khai bên dưới.
+- Người thực hiện: Codex.
+
 ## 2026-11-27 — Chia thay đổi thành 10 PR tiếng Anh
 
 - Kết quả đã làm: Chia toàn bộ 56 file thành 10 commit/nhánh nối tiếp từ main: phiên Page, hợp đồng nhà hàng, bản đồ/vị trí, query/UI chung, đăng ký, quản lý, khám phá/chi tiết, điều hướng, voice UI và test/tài liệu. Tiêu đề commit và nội dung PR dùng tiếng Anh; các PR phụ thuộc nhau và cần merge từ 1 đến 10. Lint/TypeScript đạt; suite 207/209 với hai lỗi nền billing và recipe-favorite.
