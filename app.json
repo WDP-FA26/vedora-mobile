@@ -63,6 +63,14 @@
           ],
           "androidForegroundService": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Vedora dùng vị trí để tìm nhà hàng gần bạn và ghim vị trí quán.",
+          "isIosBackgroundLocationEnabled": false,
+          "isAndroidBackgroundLocationEnabled": false
+        }
       ]
     ],
     "experiments": {
