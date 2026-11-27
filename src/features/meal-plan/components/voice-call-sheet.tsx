@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
+import { SproutPet } from '@/features/nutrition-chat/components/sprout-pet';
 import { useTheme } from '@/hooks/use-theme';
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { NutritionSection } from '@/features/dietary-profile/components/nutrition-section';
@@ -26,9 +27,10 @@ export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onC
   return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <View style={[styles.callAvatar, { backgroundColor: theme.secondary }]}><SproutPet size={38} accessible={false} /></View>
         <View style={styles.flex}>
-          <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Trò chuyện với Vedora</Text>
-          <Text accessibilityLiveRegion="polite" style={[styles.text, { color: theme.primary }]}>{STATUS[status]} · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</Text>
+          <Text accessibilityRole="header" style={[styles.title, { color: theme.foreground }]}>Vedora Voice</Text>
+          <Text style={[styles.caption, { color: theme.mutedForeground }]}>Trợ lý món chay của bạn</Text>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Đóng cuộc gọi" onPress={close} style={styles.control}><SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={22} tintColor={theme.foreground} /></Pressable>
       </View>
@@ -40,16 +42,30 @@ export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onC
               : <VoiceCalendar screen={screen} token={token} onDay={selectDay} onRecipe={(id, title) => applyScreen({ close: null, focus: { kind: 'recipe', recipeId: id, title, section: 'top' } })} />}
         </ScrollView>}
       <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-        {error ? <Text accessibilityRole="alert" style={[styles.text, { color: theme.destructive }]}>{error}</Text> : null}
-        {heard ? <Text numberOfLines={2} style={[styles.text, { color: theme.mutedForeground }]}>Bạn: {heard}</Text> : null}
-        <Text numberOfLines={3} accessibilityLiveRegion="polite" style={[styles.text, { color: theme.foreground }]}>{reply}</Text>
-        <View style={styles.actions}>
-          {status === 'connecting' ? <ActivityIndicator color={theme.primary} /> : null}
-          {finished ? <Pressable accessibilityRole="button" onPress={retry} style={[styles.button, { backgroundColor: theme.primary }]}><Text style={[styles.label, { color: theme.primaryForeground }]}>Gọi lại</Text></Pressable>
-            : <Pressable accessibilityRole="button" accessibilityLabel={status === 'muted' ? 'Bật mic' : 'Tắt mic'} disabled={status === 'connecting'} onPress={toggleMute} style={[styles.button, { backgroundColor: theme.secondary }]}><Text style={[styles.label, { color: theme.secondaryForeground }]}>{status === 'muted' ? 'Bật mic' : 'Tắt mic'}</Text></Pressable>}
-          <Pressable accessibilityRole="button" onPress={close} style={[styles.button, { backgroundColor: theme.destructive }]}><Text style={[styles.label, { color: '#fff' }]}>{finished ? 'Đóng' : 'Kết thúc'}</Text></Pressable>
+        <View style={styles.callStatus}>
+          <View style={[styles.statusPill, { backgroundColor: theme.secondary }]}>
+            {status === 'connecting' ? <ActivityIndicator size="small" color={theme.primary} /> : <SymbolView name={status === 'muted' ? { ios: 'mic.slash', android: 'mic_off', web: 'mic_off' } : { ios: 'waveform', android: 'graphic_eq', web: 'graphic_eq' }} size={18} tintColor={theme.primary} />}
+            <Text accessibilityLiveRegion="polite" style={[styles.label, { color: theme.secondaryForeground }]}>{STATUS[status]}</Text>
+          </View>
+          <Text accessibilityLabel={`Thời gian cuộc gọi ${Math.floor(elapsed / 60)} phút ${elapsed % 60} giây`} style={[styles.timer, { color: theme.mutedForeground }]}>{Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')}</Text>
         </View>
-        <Text style={[styles.caption, { color: theme.mutedForeground }]}>Cuộc gọi tối đa 5 phút. Thay đổi được lưu vào tài khoản như chat chữ.</Text>
+        {error ? <Text accessibilityRole="alert" style={[styles.text, { color: theme.destructive }]}>{error}</Text> : null}
+        {(heard || reply) ? <View style={[styles.transcript, { backgroundColor: theme.muted }]}>
+          {heard ? <Text numberOfLines={2} style={[styles.text, { color: theme.mutedForeground }]}>Bạn: {heard}</Text> : null}
+          {reply ? <Text numberOfLines={3} accessibilityLiveRegion="polite" style={[styles.text, { color: theme.foreground }]}>{reply}</Text> : null}
+        </View> : null}
+        <View style={styles.callActions}>
+          <View style={styles.callAction}>
+          {finished ? <Pressable accessibilityRole="button" accessibilityLabel="Gọi lại" onPress={retry} style={[styles.roundButton, { backgroundColor: theme.primary }]}><SymbolView name={{ ios: 'arrow.clockwise', android: 'refresh', web: 'refresh' }} size={25} tintColor={theme.primaryForeground} /></Pressable>
+            : <Pressable accessibilityRole="button" accessibilityLabel={status === 'muted' ? 'Bật mic' : 'Tắt mic'} accessibilityState={{ disabled: status === 'connecting' }} disabled={status === 'connecting'} onPress={toggleMute} style={[styles.roundButton, { backgroundColor: status === 'muted' ? theme.muted : theme.secondary, opacity: status === 'connecting' ? 0.4 : 1 }]}><SymbolView name={status === 'muted' ? { ios: 'mic.slash.fill', android: 'mic_off', web: 'mic_off' } : { ios: 'mic.fill', android: 'mic', web: 'mic' }} size={25} tintColor={theme.primary} /></Pressable>}
+          <Text style={[styles.caption, { color: theme.foreground }]}>{finished ? 'Gọi lại' : status === 'muted' ? 'Bật mic' : 'Tắt mic'}</Text>
+          </View>
+          <View style={styles.callAction}>
+          <Pressable accessibilityRole="button" accessibilityLabel={finished ? 'Đóng cuộc gọi' : 'Kết thúc cuộc gọi'} onPress={close} style={[styles.roundButton, { backgroundColor: theme.destructive }]}><SymbolView name={finished ? { ios: 'xmark', android: 'close', web: 'close' } : { ios: 'phone.down.fill', android: 'call_end', web: 'call_end' }} size={25} tintColor="#fff" /></Pressable>
+          <Text style={[styles.caption, { color: theme.foreground }]}>{finished ? 'Đóng' : 'Kết thúc'}</Text>
+          </View>
+        </View>
+        <Text style={[styles.caption, styles.callHint, { color: theme.mutedForeground }]}>Tối đa 5 phút · Thay đổi được lưu như khi chat</Text>
       </View>
     </SafeAreaView>
   </Modal>;
@@ -106,5 +122,14 @@ const styles = StyleSheet.create({
   title: { fontFamily: Fonts.headingBold, fontSize: 18, lineHeight: 26 }, text: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 }, label: { fontFamily: Fonts.sansBold, fontSize: 14 }, caption: { fontFamily: Fonts.sans, fontSize: 11, lineHeight: 16 },
   content: { padding: Spacing.three, gap: Spacing.three }, section: { gap: Spacing.two }, card: { borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.three, gap: Spacing.two },
   control: { minWidth: 40, minHeight: 44, alignItems: 'center', justifyContent: 'center' }, closePanel: { borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.three, alignItems: 'center' },
-  footer: { padding: Spacing.three, gap: Spacing.two, borderTopWidth: StyleSheet.hairlineWidth }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, alignItems: 'center' }, button: { flex: 1, minHeight: 46, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.three },
+  footer: { padding: Spacing.three, gap: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopLeftRadius: 24, borderTopRightRadius: 24 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two, alignItems: 'center' },
+  callAvatar: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  callStatus: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  statusPill: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, flexShrink: 1 },
+  timer: { fontFamily: Fonts.mono, fontSize: 13 },
+  transcript: { padding: 14, borderRadius: 16, gap: 8 },
+  callActions: { flexDirection: 'row', justifyContent: 'center', gap: 40, paddingVertical: 4 },
+  callAction: { alignItems: 'center', gap: 7 },
+  roundButton: { width: 58, height: 58, borderRadius: 29, alignItems: 'center', justifyContent: 'center' },
+  callHint: { textAlign: 'center' },
 });
