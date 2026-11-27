@@ -70,14 +70,14 @@ export function FeedScreen() {
     { viewabilityConfig, onViewableItemsChanged },
     { viewabilityConfig: views.viewabilityConfig, onViewableItemsChanged: views.onViewableItemsChanged },
   ])[0];
-  const feed = useFeed(apiFilter, listed);
+  const feed = useFeed(apiFilter, listed, accessToken && filter === 'all' ? 'personalized' : 'public');
   const pull = usePullToRefresh(feed.restart);
   const staleCursor = feed.isFetchNextPageError && feed.error instanceof ApiError && feed.error.status === 400;
   const posts =
     feed.data?.pages.flatMap((page) =>
       page.items.filter((post) => post.status === "PUBLISHED"),
     ) ?? [];
-  const showcase = feed.data && posts.length === 0 && !feed.hasNextPage
+  const showcase = !accessToken && feed.data && posts.length === 0 && !feed.hasNextPage
     ? getShowcasePosts(apiFilter)
     : [];
   const items: FeedItem[] = [

@@ -2,6 +2,7 @@ import type { RecipeFilters } from '../types/recipe.schema';
 
 export const recipeKeys = {
   all: ['recipes'] as const,
+  categories: ['recipe-categories'] as const,
   favorites: ['recipes', 'favorites'] as const,
   favoriteMutation: (id: string) => ['recipe-favorite', id] as const,
   list: (filters: RecipeFilters) => [...recipeKeys.all, 'list', filters] as const,

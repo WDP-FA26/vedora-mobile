@@ -22,7 +22,13 @@ Các đường dẫn BE/Web dưới đây tính từ root repo tương ứng. C�
 
 ## A. Cần sửa hành vi đã có
 
+**Cập nhật Nội dung/Khám phá 28/11:** Đối chiếu lại BE `cea8876df3f7cca0ea9049d46e4e317f4ce7cd16` và web `2765c55e9d5eb2165d6afb6e78cce608de954793` (snapshot `tmp/node_modules/content-be-20261128`, `tmp/node_modules/content-web-20261128`). Đã triển khai mục 1, 11–14, 16–17: nguồn feed cá nhân hóa/cursor chung, POST chữ/nhiều video/nháp hai loại, upload khi sửa bài, video và autosave Blog, tìm người/món chung và danh mục công thức. Nội dung “thiếu” ở các mục này mô tả trạng thái trước cập nhật; nghiệm thu tài khoản thật và Expo Go còn theo checklist mới trong `docs/PLAN.md`. Mục 15 thống kê chưa thuộc lượt triển khai này.
+
+**Cập nhật Dinh dưỡng/Nhật ký 28/11:** Đã triển khai phần chính mục 8 và 9, đối chiếu lại BE `8e9d29d` và web `02d56dc`. Có kcal/suất, nhãn 5 nhóm chất, tổng hợp ngày/tuần, biểu đồ dự kiến/đã ăn, nút nhờ AI cân đối đúng tuần; PATCH khẩu phần/kcal và nút nhờ trợ lý xem lại nhật ký theo điều kiện của web. Voice mở được tab dinh dưỡng tuần và gửi đúng tab/tuần trong snapshot; tab hồ sơ ăn uống trong cuộc gọi vẫn chưa làm. Xem checklist nghiệm thu mới trong `docs/PLAN.md`.
+
 ### 1. P1 — Ảnh bìa Blog không theo lựa chọn đang hiển thị
+
+- **Trạng thái cập nhật:** Đã suy bìa từ ảnh đầu nội dung, bỏ state bìa độc lập. Chọn/đổi bìa chèn ảnh vào đầu bài; gỡ/di chuyển ảnh trong editor cập nhật bìa cùng nội dung. Video không được chọn làm bìa.
 
 - **Luồng:** Chọn bìa A, chèn ảnh B trong nội dung, lưu và mở lại.
 - **Vấn đề/hậu quả:** Mobile gửi `coverImageUrl: A`, nhưng BE lấy ảnh hợp lệ đầu tiên trong nội dung làm bìa. Kết quả mở lại có thể thành B hoặc không có bìa; thao tác Gỡ bìa cũng không có tác dụng nếu nội dung vẫn chứa ảnh đầu tiên.
@@ -81,12 +87,16 @@ Các đường dẫn BE/Web dưới đây tính từ root repo tương ứng. C�
 
 ### 8. P2 — Kcal và 5 nhóm chất của công thức/thực đơn
 
+- **Trạng thái sau triển khai:** Schema công thức và món trong lịch giữ `caloriesPerServing`/`nutritionPillars`. Thẻ món, chi tiết và lịch Voice hiện kcal/suất và nhóm chất. Thực đơn có tổng ngày, bảng tuần thu gọn/mở rộng với tổng kcal, trung bình ngày đủ 3 bữa và đủ dữ liệu, tần suất 5 nhóm chất, nhóm chưa xuất hiện và biểu đồ so kế hoạch/nhật ký/mục tiêu. Món thiếu kcal được ghi rõ, không xem là 0 khi tính trung bình. Nút nhờ AI dùng đúng tuần và chỉ các ngày còn được chỉnh; tuần cũ chỉ yêu cầu nhận xét. Bảng tuần cũng mở được trong Voice, giữ cuộc gọi.
+
 - **Web có:** Kcal mỗi suất, nhóm dưỡng chất trên món; tổng ngày/tuần, nhóm còn thiếu, biểu đồ và nút nhờ AI cân đối theo mục tiêu.
 - **Mobile thiếu/hậu quả:** Schema công thức và món trong lịch chưa nhận `caloriesPerServing`/`nutritionPillars`; Zod bỏ các trường này nên UI không có dữ liệu để hiện. Người dùng xem lịch nhưng chưa thấy độ cân đối như web.
 - **Bằng chứng:** BE `src/meal-plan/dto/meal-plan.dto.ts:301`, `:417`, DTO công thức; Web `features/recipes/components/recipe-card.tsx:128`, `features/meal-plan/components/calendar/recipe-sheet.tsx:206`, `features/meal-plan/components/nutrition/nutrition-companion-bar.tsx`, `features/meal-plan/lib/nutrition.ts`. Mobile `src/features/recipes/types/recipe.schema.ts:15`, `src/features/meal-plan/types/meal-plan.schema.ts:15`.
 - **Bổ sung nhỏ nhất:** Nhận các trường tùy chọn, hiện kcal/nhóm chất rồi thêm tổng tuần và nút cân đối. **BMI, mục tiêu kcal, check-in cân nặng và lịch sử cân nặng đã có**, không tính chúng là chưa làm.
 
 ### 9. P2 — Sửa nhật ký và nhờ trợ lý xem lại tuần
+
+- **Trạng thái sau triển khai:** Có form sửa ngay trên món với khẩu phần/kcal mỗi suất, Hủy/Lưu và thông báo lỗi; ngày khóa không có nút sửa. Gửi PATCH chỉ các trường thay đổi: chỉ sửa khẩu phần giữ nguồn kcal, xóa kcal gửi `null`, số 0 vẫn hợp lệ. Chờ làm mới dữ liệu tuần sau lưu. Nút xem lại tuần theo web: có ngày đã qua ghi đủ kcal, còn ngày để cân đối và thuộc tuần hiện tại; yêu cầu AI nhận xét trước, hỏi trước khi chỉnh, không đụng tuần khác. Khi trợ lý rảnh gửi ngay, khi bận điền sẵn nội dung chat; yêu cầu chuyển màn hình chỉ nằm trong bộ nhớ của phiên và tiêu thụ một lần, URL bên ngoài không tự gọi AI. Mở Nhật ký từ Thực đơn giữ tuần đang xem.
 
 - **Web có:** Sửa khẩu phần/kcal của mục đã ghi; nút nhận xét tuần tạo ngữ cảnh nhật ký và chuyển sang chat.
 - **Mobile thiếu/hậu quả:** Đã có xem/thêm/xóa, kcal ước tính, tổng kết tuần; chưa có PATCH hoặc form sửa. Muốn sửa một con số phải xóa rồi thêm lại, và chưa có điểm chuyển ngữ cảnh tuần sang trợ lý.
@@ -104,12 +114,16 @@ Các đường dẫn BE/Web dưới đây tính từ root repo tương ứng. C�
 
 ### 11. P1 — Nguồn feed Dành cho bạn và Đang theo dõi
 
+- **Trạng thái cập nhật:** Dành cho bạn dùng `/posts/feed` khi đăng nhập, `/posts` cho khách; Theo dõi dùng `/posts/following`, giữ nguyên cursor và thứ tự BE, loại trùng giữa trang. Cache tách theo nguồn; bỏ fan-out lấy bài từng tác giả. Tải thêm/thử lại/làm mới dùng cùng bảng tin.
+
 - **Web có:** Dành cho bạn lấy nguồn cá nhân hóa `/posts/feed`; Đang theo dõi lấy `/posts/following` với cursor chung của backend.
 - **Mobile thiếu/hậu quả:** Feed chính vẫn gọi `/posts`, chưa có thứ hạng cá nhân hóa. Đang theo dõi lấy danh sách tác giả rồi tối đa 20 bài/tác giả và ghép lại: vừa nhiều request, vừa không tải được các bài xa hơn của một tác giả đã tải.
 - **Bằng chứng:** BE `src/posts/posts.controller.ts:117`, `:147`; Web `features/posts/posts-cache.ts:5`, `hooks/use-feed-posts.ts`, mount `features/home/components/feed.tsx:85`. Mobile `src/features/feed/services/feed.service.ts:17`, `src/features/following/services/following.service.ts`, `hooks/use-following-feed.ts:16`.
 - **Bổ sung nhỏ nhất:** Giữ `/posts` cho khách/nguồn công khai cần thiết; dùng `/posts/feed` cho tài khoản và thay cách ghép tác giả bằng phân trang `/posts/following`. Giữ UI theo dõi và gợi ý đang có.
 
 ### 12. P1 — Bài ngắn POST và nháp POST dùng chung với web
+
+- **Trạng thái cập nhật:** Có `/posts/new` cho bài chữ hoặc tối đa 4 video, giới hạn 2.000 ký tự/250 từ và 3 phút/video khi đăng. Danh sách nhận cả POST/VIDEO, giữ body và toàn bộ video khi mở nháp POST từ web. Lưu/đăng dùng version, upload tuần tự, thử lại giữ video đã hoàn tất và nội dung lỗi. Luồng VIDEO hướng dẫn hiện tại được giữ.
 
 - **Web có:** Composer POST cho bài chữ hoặc đính kèm nhiều video, nháp bền trên server và mở lại theo loại bài.
 - **Mobile thiếu/hậu quả:** Composer hiện là video hướng dẫn, bắt buộc tiêu đề/mô tả và một video. `createDraft` luôn tạo `kind: VIDEO`, danh sách nháp lọc bỏ POST nên nháp bài chữ tạo trên web không hiện trên mobile.
@@ -118,12 +132,16 @@ Các đường dẫn BE/Web dưới đây tính từ root repo tương ứng. C�
 
 ### 13. P2 — Upload video mới khi sửa bài đã đăng
 
+- **Trạng thái cập nhật:** Màn sửa chọn thêm video trong tổng giới hạn 4; tải qua `/media/uploads` và uploader dùng chung trước PATCH. Có tiến độ/gỡ/thử lại khi lưu; không gửi media chưa upload xong. Hủy form dọn upload chưa gắn; upload đã lưu vào bài không bị dọn. Kiểm tra phiên trước/sau upload.
+
 - **Web có:** Thêm video mới và retry upload ngay trong hộp sửa bài.
 - **Mobile thiếu/hậu quả:** Chỉ sửa chữ, gỡ/đổi thứ tự video đã có; không có chọn file mới. Người dùng không thay video lỗi hoặc bổ sung video bằng màn sửa hiện tại.
 - **Bằng chứng:** BE POST `/media/uploads`, PATCH `/posts/:id`; Web `features/posts/components/edit-post-dialog.tsx:165` dùng `useMediaUploads`. Mobile `src/features/posts/components/post-edit-screen.tsx` mô tả rõ chỉ gỡ/đổi thứ tự video hiện có; không có caller picker/uploader trong luồng này.
 - **Bổ sung nhỏ nhất:** Nối uploader hiện có vào màn sửa và chỉ gửi các media ID đã sẵn sàng khi lưu. Không liệt kê toàn bộ chức năng sửa bài là chưa làm.
 
 ### 14. P2 — Editor Blog: video và tự lưu nháp
+
+- **Trạng thái cập nhật:** Chọn video tối đa 100 MB, lấy signed target `/blogs/videos/uploads`, chèn Markdown media đúng web, phát ngay trong editor/bản đọc với điều khiển video. Có tiến độ/dừng/gỡ/thử lại. Autosave sau 2.500 ms ở DRAFT/REJECTED, khóa request chồng nhau, dùng cùng ID sau lần tạo đầu; chỉ đánh dấu snapshot đã gửi là đã lưu nên không ghi đè chữ gõ tiếp. Lỗi giữ nội dung và không tự lặp request; bài đã đăng/đang duyệt/bị khóa không autosave.
 
 - **Web có:** Chọn/upload/chèn video, tiến độ và retry; tự lưu Blog DRAFT/REJECTED sau khi ngừng gõ.
 - **Mobile thiếu/hậu quả:** Service Blog mới có upload ảnh, chưa gọi `/blogs/videos/uploads`. Lưu nháp cần bấm nút; có cảnh báo rời màn nhưng chưa có autosave. Đọc được block video có sẵn không thay thế việc chèn video mới.
@@ -139,12 +157,16 @@ Các đường dẫn BE/Web dưới đây tính từ root repo tương ứng. C�
 
 ### 16. P2 — Tìm kiếm tổng hợp: người dùng và món nhà hàng
 
+- **Trạng thái cập nhật:** Có Tất cả/Người dùng/Bài viết/Công thức/Món nhà hàng. Tất cả xem trước từng nguồn và mở danh sách đầy đủ; người dùng phân trang `/profiles/search` rồi mở hồ sơ, món dùng lại API menu và mở đúng quán. Giữ tìm công thức phù hợp, lỗi/thử lại/trang tiếp theo và deep link tab cũ.
+
 - **Web có:** Các tab Tất cả/Mọi người/Công thức/Món nhà hàng/Bài viết; kết quả người dùng mở hồ sơ/theo dõi, kết quả món mở quán/menu.
 - **Mobile thiếu/hậu quả:** Màn Search chỉ có Bài viết và Công thức, chưa gọi `/profiles/search`. Tìm món menu đã có trong màn Nhà hàng riêng, nhưng chưa xuất hiện trong tìm kiếm chung.
 - **Bằng chứng:** BE `src/profiles/profiles.controller.ts:119`, GET `/restaurants/menu/search`; Web `features/posts/components/search-view.tsx:32`, `:53`, `:59`. Mobile `src/features/posts/components/search-screen.tsx` có hai tab, `src/features/profile/services/profile.service.ts` chưa có search profiles; `src/features/restaurants/services/restaurant.service.ts:21` đã có search menu.
 - **Bổ sung nhỏ nhất:** Thêm tìm người dùng; dùng lại kết quả menu hiện có để thêm tab món vào Search. Không tạo service tìm nhà hàng/menu trùng với module đã làm.
 
 ### 17. P2 — Danh mục công thức theo cấu hình BE
+
+- **Trạng thái cập nhật:** Lấy danh mục công khai theo trang 50 mục (đúng giới hạn BE), tối đa 200; bỏ danh mục ẩn và sắp xếp theo sortOrder. Chip tên danh mục kèm sticker ở catalog và Search Công thức gửi `baseTag` bằng `tag`, kết hợp từ khóa và Phù hợp với tôi; đổi danh mục tạo query mới từ trang đầu.
 
 - **Web có:** Chọn danh mục công khai do BE cấu hình, hiện nhãn và lọc công thức bằng `baseTag`.
 - **Mobile thiếu/hậu quả:** Chỉ có từ khóa và Phù hợp với tôi; chưa gọi `/recipe-categories`, chưa nhận `tag`. Người dùng không duyệt theo danh mục mà web đã có.

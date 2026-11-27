@@ -46,8 +46,8 @@ export function useMealPlannerVoice(planner: MealPlanner) {
   useEffect(() => { Object.assign(current.current, { planner, scroll, status }); });
   useEffect(() => {
     command.current = (next) => {
-      // shortcut: The remaining nutrition tabs need their own mobile panels.
-      if (next.focus?.kind === 'bodyMetrics' && next.focus.tab && next.focus.tab !== 'bmi') return 'Tab dinh dưỡng này hiện chưa có trong màn gọi trên mobile. Bạn có thể xem trên web hoặc nhờ mình mở chỉ số BMI.';
+      // shortcut: The dietary editor still lives outside the mobile call panel.
+      if (next.focus?.kind === 'bodyMetrics' && next.focus.tab === 'dietary') return 'Tab hồ sơ ăn uống hiện chưa có trong màn gọi trên mobile. Bạn có thể nhờ mình cập nhật ghi nhớ hoặc mở chỉ số BMI.';
       if (next.close === 'all' || next.close === current.current.screen.panel) {
         if (current.current.screen.panel !== 'none') current.current.scroll.reset();
         setFocus(null);
@@ -67,7 +67,7 @@ export function useMealPlannerVoice(planner: MealPlanner) {
         const base = { weekStart, day };
         if (target.kind === 'recipe') showScreen({ ...base, panel: 'recipe', recipeId: target.recipeId, recipeSection: target.section ?? 'top', ...(target.step ? { recipeStep: target.step } : {}) });
         else if (target.kind === 'eatingLog') showScreen({ ...base, panel: 'eatingLog', ...(target.date ? { eatingLogDate: target.date } : {}) });
-        else if (target.kind === 'bodyMetrics') showScreen({ ...base, panel: 'bodyMetrics', bodyMetricsTab: 'bmi' });
+        else if (target.kind === 'bodyMetrics') showScreen({ ...base, weekStart: target.weekStart ?? weekStart, panel: 'bodyMetrics', bodyMetricsTab: target.tab === 'weekly' ? 'weekly' : 'bmi' });
         else if (target.kind === 'shoppingList') {
           const value = current.current.screen;
           const shoppingWeek = target.weekStart ?? weekStart;
@@ -90,6 +90,7 @@ export function useMealPlannerVoice(planner: MealPlanner) {
       if (change.plan) {
         void client.invalidateQueries({ queryKey: mealPlanKeys.plan });
         void client.invalidateQueries({ queryKey: mealPlanKeys.shopping });
+        void client.invalidateQueries({ queryKey: mealLogKeys.all });
       }
       if (change.log) void client.invalidateQueries({ queryKey: mealLogKeys.all });
       if (change.dietary) void client.invalidateQueries({ queryKey: dietaryProfileKeys.mine });

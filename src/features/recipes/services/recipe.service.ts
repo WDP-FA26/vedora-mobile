@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { requestJson } from '@/shared/api/request-json';
 
-import { MAX_RECIPE_QUERY_LENGTH, recipeDetailSchema, recipeFavoriteStateSchema, recipePageSchema, type RecipeFilters } from '../types/recipe.schema';
+import { MAX_RECIPE_QUERY_LENGTH, recipeCategoryPageSchema, recipeDetailSchema, recipeFavoriteStateSchema, recipePageSchema, recipeTagSchema, type RecipeFilters } from '../types/recipe.schema';
 
 const PAGE_SIZE = 12;
 
@@ -11,9 +11,20 @@ export function getRecipePage({ filters, page, signal }: { filters: RecipeFilter
   return requestJson(recipePageSchema, {
     method: 'GET',
     url: '/recipes',
-    params: { page, limit: PAGE_SIZE, ...(q ? { q } : {}), ...(filters.suitableForMe ? { suitableForMe: true } : {}) },
+    params: { page, limit: PAGE_SIZE, ...(q ? { q } : {}), ...(filters.tag ? { tag: recipeTagSchema.parse(filters.tag) } : {}), ...(filters.suitableForMe ? { suitableForMe: true } : {}) },
     signal,
   });
+}
+
+export async function getRecipeCategories(signal?: AbortSignal) {
+  const items: z.output<typeof recipeCategoryPageSchema>['items'] = [];
+  // The backend caps the catalogue at 200 categories.
+  for (let page = 1; page <= 4; page++) {
+    const result = await requestJson(recipeCategoryPageSchema, { method: 'GET', url: '/recipe-categories', params: { page, limit: 50 }, signal });
+    items.push(...result.items);
+    if (!result.meta.hasNextPage) break;
+  }
+  return items.filter((item) => !item.hidden).sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
 export function getRecipe(id: string, signal?: AbortSignal) {

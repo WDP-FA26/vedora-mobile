@@ -1,4 +1,13 @@
 import type { ActivityLevel, BiologicalSex, BmiCategory, BodyFeeling, NutritionGoal } from '../types/nutrition.schema';
+import type { NutritionPillar } from '../types/nutrition-pillar.schema';
+
+export const pillarLabels: Record<NutritionPillar, { label: string; short: string }> = {
+  PLANT_PROTEIN: { label: 'Đạm thực vật', short: 'Đạm' },
+  FIBER_VEG: { label: 'Chất xơ & rau củ', short: 'Xơ' },
+  HEALTHY_FAT: { label: 'Chất béo tốt', short: 'Béo tốt' },
+  IRON_RICH: { label: 'Giàu sắt', short: 'Sắt' },
+  CALCIUM_RICH: { label: 'Giàu canxi', short: 'Canxi' },
+};
 
 export const sexLabels: Record<BiologicalSex, string> = { FEMALE: 'Nữ', MALE: 'Nam', OTHER: 'Khác' };
 

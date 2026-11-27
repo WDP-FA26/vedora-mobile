@@ -35,7 +35,7 @@ export const voiceScreenSchema = z.object({
   shoppingDays: z.array(z.enum(weekdays)).optional(), shoppingPeople: z.number().int().min(1).max(4).optional(), shoppingCheckedCount: z.number().int().nonnegative().optional(),
   recipeId: z.string().optional(), recipeSection: z.enum(['top', 'ingredients', 'steps']).optional(), recipeStep: z.number().int().min(1).max(50).optional(),
   eatingLogDate: z.iso.date().optional(), scrollState: z.object({ percent: z.number().int().min(0).max(100), atTop: z.boolean(), atBottom: z.boolean() }).optional(),
-  bodyMetricsTab: z.literal('bmi').optional(),
+  bodyMetricsTab: z.enum(['weekly', 'bmi']).optional(),
 });
 export const voiceTurnSchema = z.object({ weekStart: weekStartSchema, threadId: z.uuidv4(), requestId: z.string().min(1).max(100), message: z.string().trim().min(1).max(4000), screen: voiceScreenSchema });
 export type VoiceFocus = z.infer<typeof voiceFocusSchema>;

@@ -175,6 +175,7 @@ export function ComposeDialog({
   }
 
   function openDraft(draft: PostDraft) {
+    if (draft.kind === 'POST') { onClose(); router.push({ pathname: '/posts/new', params: { draftId: draft.id } }); return; }
     if (video) onRemoveVideo?.(video);
     setTitle(draft.title);
     setDescription(draft.description);
@@ -189,7 +190,7 @@ export function ComposeDialog({
   }
 
   function confirmDeleteDraft(draft: PostDraft) {
-    Alert.alert("Xóa bản nháp?", `"${draft.title.trim() || "Bản nháp chưa có tiêu đề"}" và video của nó sẽ bị xóa, không khôi phục được.`, [
+    Alert.alert("Xóa bản nháp?", `"${draft.title.trim() || draft.body?.trim().slice(0, 60) || "Bản nháp chưa có tiêu đề"}" và video đính kèm sẽ bị xóa, không khôi phục được.`, [
       { text: "Hủy", style: "cancel" },
       {
         text: "Xóa",
@@ -346,6 +347,10 @@ export function ComposeDialog({
                 </View>
                 <Image source={require("@/assets/branding/tomato-sticker.png")} style={styles.heroSticker} resizeMode="contain" accessible={false} />
               </View>
+              <Pressable accessibilityRole="button" onPress={() => { onClose(); router.push('/posts/new'); }} style={[styles.choice, { borderColor: theme.border, backgroundColor: theme.card }]}>
+                <View style={[styles.choiceIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: 'square.and.pencil', android: 'edit_note', web: 'edit_note' }} size={25} tintColor={theme.primary} /></View>
+                <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Bài viết</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Chia sẻ bằng chữ và tối đa 4 video. Lưu nháp để viết tiếp.</Text></View>
+              </Pressable>
               <Pressable accessibilityRole="button" onPress={() => { setMode("video"); setSubmitError(null); }} style={[styles.choice, styles.choicePrimary, { borderColor: isDark ? theme.primary : "#b5d5ae", backgroundColor: isDark ? theme.secondary : "#f1f7ed" }]}>
                 <View style={[styles.choiceIcon, { backgroundColor: theme.primary }]}><SymbolView name={{ ios: "video", android: "videocam", web: "videocam" }} size={25} tintColor={theme.primaryForeground} /></View>
                 <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Video hướng dẫn</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Chia sẻ cách nấu bằng video và phần hướng dẫn ngắn.</Text></View>
@@ -356,7 +361,7 @@ export function ComposeDialog({
               </Pressable>
               <Pressable accessibilityRole="button" onPress={() => { setMode("drafts"); setSubmitError(null); }} style={[styles.choice, { borderColor: theme.border, backgroundColor: theme.card }]}>
                 <View style={[styles.choiceIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: "tray.full", android: "drafts", web: "drafts" }} size={25} tintColor={theme.primary} /></View>
-                <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Bản nháp{draftItems.length ? ` (${draftItems.length})` : ""}</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Video hướng dẫn bạn đã lưu để đăng sau.</Text></View>
+                <View style={styles.choiceCopy}><Text style={[styles.choiceTitle, { color: theme.foreground }]}>Bản nháp{draftItems.length ? ` (${draftItems.length})` : ""}</Text><Text style={[styles.choiceDescription, { color: theme.mutedForeground }]}>Bài viết và video đã lưu từ mobile hoặc web.</Text></View>
               </Pressable>
             </ScrollView>
           ) : mode === "drafts" ? (
@@ -374,14 +379,14 @@ export function ComposeDialog({
                   <View key={draft.id} style={[styles.draftRow, { borderColor: theme.border, backgroundColor: theme.card }]}>
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel={`Mở bản nháp ${draft.title.trim() || "chưa có tiêu đề"}`}
+                      accessibilityLabel={`Mở bản nháp ${draft.title.trim() || draft.body?.trim().slice(0, 60) || "chưa có tiêu đề"}`}
                       accessibilityState={{ disabled: busy }}
                       disabled={busy}
                       onPress={() => openDraft(draft)}
                       style={({ pressed }) => [styles.draftCopy, { opacity: pressed ? 0.6 : 1 }]}>
-                      <Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>{draft.title.trim() || "Bản nháp chưa có tiêu đề"}</Text>
+                      <Text numberOfLines={1} style={[styles.videoName, { color: theme.foreground }]}>{draft.title.trim() || draft.body?.trim().slice(0, 80) || "Bản nháp chưa có tiêu đề"}</Text>
                       <Text numberOfLines={2} style={[styles.caption, { color: theme.mutedForeground }]}>
-                        {busy ? "Đang lưu hoặc đăng…" : draftVideoText(draft.media[0])}
+                        {busy ? "Đang lưu hoặc đăng…" : draft.kind === 'POST' ? `Bài viết · ${draft.media.length} video` : draftVideoText(draft.media[0])}
                       </Text>
                       <Text style={[styles.counter, styles.draftTime, { color: theme.mutedForeground }]}>Lưu lúc {formatSavedAt(draft.updatedAt)}</Text>
                     </Pressable>

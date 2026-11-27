@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { mealLogKeys } from '../data/meal-log.keys';
-import { createMealLogEntry, deleteMealLogEntry, estimateCalories, getMealLog } from '../services/meal-log.service';
+import { createMealLogEntry, deleteMealLogEntry, estimateCalories, getMealLog, updateMealLogEntry } from '../services/meal-log.service';
 
 export function useMealLog(token: string | null, weekStart?: string) {
   return useQuery({
@@ -17,11 +17,19 @@ export function useMealLog(token: string | null, weekStart?: string) {
 function useRefreshAfter<TInput, TResult>(token: string | null, write: (input: TInput) => Promise<TResult>) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: write,
+    mutationFn: (input: TInput) => {
+      if (!token || useSessionStore.getState().accessToken !== token) throw new Error('SESSION_CHANGED');
+      return write(input);
+    },
+    retry: false,
     onSuccess: () => {
-      if (token && useSessionStore.getState().accessToken === token) void queryClient.invalidateQueries({ queryKey: mealLogKeys.all });
+      if (token && useSessionStore.getState().accessToken === token) return queryClient.invalidateQueries({ queryKey: mealLogKeys.all });
     },
   });
+}
+
+export function useUpdateMealLogEntry(token: string | null) {
+  return useRefreshAfter(token, updateMealLogEntry);
 }
 
 export function useAddMealLogEntry(token: string | null) {

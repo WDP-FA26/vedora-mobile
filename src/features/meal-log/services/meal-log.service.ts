@@ -4,9 +4,11 @@ import { requestJson } from '@/shared/api/request-json';
 import {
   calorieEstimateSchema,
   mealLogEntrySchema,
+  mealLogEntryUpdateSchema,
   mealLogWeekSchema,
   newMealLogEntrySchema,
   type NewMealLogEntry,
+  type MealLogEntryUpdate,
 } from '../types/meal-log.schema';
 
 /** The week starting `weekStart` (a Monday), or the current week when omitted. */
@@ -20,6 +22,10 @@ export function createMealLogEntry(entry: NewMealLogEntry) {
 
 export async function deleteMealLogEntry(id: string) {
   await apiClient.delete(`/meal-plan/log/${id}`);
+}
+
+export function updateMealLogEntry({ id, change }: { id: string; change: MealLogEntryUpdate }) {
+  return requestJson(mealLogEntrySchema, { method: 'PATCH', url: `/meal-plan/log/${encodeURIComponent(id)}`, data: mealLogEntryUpdateSchema.parse(change) });
 }
 
 /** Asks the AI to look the dish up on the web; nothing is saved. Can take up to ~50 s, so pass a signal. */

@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { RecipeNutrition } from '@/features/dietary-profile/components/recipe-nutrition';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -82,6 +83,7 @@ export function RecipeDetailScreen() {
                 </View>
               </View>
               <RecipeSaveButton recipe={data} />
+              <RecipeNutrition {...data} />
               {data.post ? (
                 <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/posts/[id]', params: { id: data.post!.id } })} style={[styles.author, { backgroundColor: theme.muted }]}>
                   <SymbolView name={{ ios: 'person.crop.circle', android: 'account_circle', web: 'account_circle' }} size={22} tintColor={theme.primary} />

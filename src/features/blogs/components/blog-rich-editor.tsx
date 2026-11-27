@@ -8,6 +8,7 @@ import { ZoomImage } from '@/shared/components/image-viewer';
 
 import type { useBlogBlocks } from '../hooks/use-blog-blocks';
 import { BOLD, ITALIC, isTextBlock, numberAt, type Block, type ImageBlock, type RawBlock, type TextBlock, type TextType } from '../utils/blog-blocks';
+import { BlogVideo } from './blog-video';
 
 type Editor = ReturnType<typeof useBlogBlocks>;
 type Theme = ReturnType<typeof useTheme>;
@@ -146,10 +147,7 @@ function ImageView({ block, index, count, editor, disabled }: { block: ImageBloc
     <View style={styles.imageBlock}>
       <View>
         {video ? (
-          <View style={[styles.video, { backgroundColor: theme.muted }]}>
-            <SymbolView name={{ ios: 'play.rectangle.fill', android: 'smart_display', web: 'smart_display' }} size={28} tintColor={theme.primary} />
-            <Text style={[styles.videoText, { color: theme.mutedForeground }]}>Video trong bài (xem ở bản xem trước)</Text>
-          </View>
+          <BlogVideo url={block.url} />
         ) : (
           <ZoomImage
             source={{ uri: block.url }}
@@ -199,7 +197,7 @@ const TOOLS: { key: string; label: string; icon: IconName }[] = [
 ];
 
 /** Formatting bar kept above the keyboard: acts on the selected text, or on the line being typed. */
-export function BlogFormatBar({ editor, disabled, onImage }: { editor: Editor; disabled: boolean; onImage: () => void }) {
+export function BlogFormatBar({ editor, disabled, onImage, onVideo }: { editor: Editor; disabled: boolean; onImage: () => void; onVideo: () => void }) {
   const theme = useTheme();
   const enabled = !disabled && editor.focus !== null;
   const activeKey = (key: string) =>
@@ -236,6 +234,7 @@ export function BlogFormatBar({ editor, disabled, onImage }: { editor: Editor; d
         <Pressable accessibilityRole="button" accessibilityLabel="Chèn ảnh vào bài" disabled={disabled} onPress={onImage} style={({ pressed }) => [styles.tool, { backgroundColor: pressed ? theme.muted : 'transparent', opacity: disabled ? 0.4 : 1 }]}>
           <SymbolView name={{ ios: 'photo.badge.plus', android: 'add_photo_alternate', web: 'add_photo_alternate' }} size={20} tintColor={theme.primary} />
         </Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Chèn video vào blog" disabled={disabled} onPress={onVideo} style={[styles.tool, { opacity: disabled ? 0.4 : 1 }]}><SymbolView name={{ ios: 'video.badge.plus', android: 'video_call', web: 'video_call' }} size={20} tintColor={theme.primary} /></Pressable>
       </View>
     </View>
   );
@@ -262,6 +261,6 @@ const styles = StyleSheet.create({
   caption: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19, textAlign: 'center', paddingVertical: Spacing.one },
   bar: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.two, paddingVertical: Spacing.one + Spacing.half },
   barInner: { width: '100%', maxWidth: 720, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  tool: { width: 42, height: 40, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
+  tool: { flex: 1, minWidth: 32, maxWidth: 44, height: 44, borderRadius: Radius.lg, alignItems: 'center', justifyContent: 'center' },
   divider: { width: StyleSheet.hairlineWidth, height: 22 },
 });

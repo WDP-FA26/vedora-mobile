@@ -1,79 +1,29 @@
-import { useInfiniteQuery, useQueries, useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo } from 'react';
 
-import type { FeedPost } from "@/features/feed/types/feed.schema";
-import { useSessionStore } from "@/shared/stores/session-store";
+import { useFeed } from '@/features/feed/hooks/use-feed';
+import { useSessionStore } from '@/shared/stores/session-store';
 
-import {
-  getAuthorRecentPosts,
-  getFollowedAuthorsPage,
-  getMyProfile,
-  type FollowedAuthor,
-} from "../services/following.service";
-
-/** Build the timeline from the existing profile-list and author-post endpoints. */
 export function useFollowingFeed() {
   const accessToken = useSessionStore((state) => state.accessToken);
-  const me = useQuery({
-    queryKey: ["following", "me"],
-    queryFn: ({ signal }) => getMyProfile(signal),
-    enabled: Boolean(accessToken),
-  });
-  const profileId = me.data?.id;
-  const following = useInfiniteQuery({
-    queryKey: ["following", "authors", profileId],
-    initialPageParam: null as string | null,
-    queryFn: ({ pageParam, signal }) =>
-      getFollowedAuthorsPage({ profileId: profileId!, cursor: pageParam, signal }),
-    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    enabled: Boolean(accessToken && profileId),
-  });
-  const authors = useMemo(() => {
-    const byId = new Map<string, FollowedAuthor>();
-    if (!accessToken) return [];
-    for (const page of following.data?.pages ?? []) {
-      for (const author of page.items) byId.set(author.id, author);
-    }
-    return [...byId.values()];
-  }, [accessToken, following.data]);
-  const authorPosts = useQueries({
-    queries: authors.map((author) => ({
-      queryKey: ["following", "author-posts", author.id],
-      queryFn: ({ signal }: { signal: AbortSignal }) => getAuthorRecentPosts(author.id, signal),
-      enabled: Boolean(accessToken),
-      staleTime: 60_000,
-    })),
-  });
+  const feed = useFeed('all', Boolean(accessToken), 'following');
   const posts = useMemo(() => {
-    const byId = new Map<string, FeedPost>();
-    for (const result of authorPosts) {
-      for (const post of result.data?.items ?? []) {
-        if (post.status === "PUBLISHED") byId.set(post.id, post);
-      }
-    }
-    return [...byId.values()].sort((a, b) =>
-      (b.publishedAt ?? b.createdAt).localeCompare(a.publishedAt ?? a.createdAt),
-    );
-  }, [authorPosts]);
-
+    const seen = new Set<string>();
+    return (accessToken ? feed.data?.pages.flatMap((page) => page.items) ?? [] : [])
+      .filter((post) => {
+        if (post.status !== 'PUBLISHED' || seen.has(post.id)) return false;
+        seen.add(post.id);
+        return true;
+      });
+  }, [accessToken, feed.data]);
+  const authors = [...new Map(posts.map((post) => [post.author.id, post.author])).values()];
   return {
-    accessToken,
-    authors,
-    posts,
-    loading: Boolean(accessToken) && (
-      me.isPending ||
-      (Boolean(profileId) && following.isPending) ||
-      authorPosts.some((query) => query.isPending)
-    ),
-    error: me.isError || following.isError || authorPosts.some((query) => query.isError),
-    hasMoreAuthors: Boolean(following.hasNextPage),
-    loadingMoreAuthors: following.isFetchingNextPage,
-    loadMoreAuthors: () => following.fetchNextPage(),
-    retry: () => {
-      if (me.isError) void me.refetch();
-      if (following.isError) void following.refetch();
-      for (const query of authorPosts) if (query.isError) void query.refetch();
-    },
-    refresh: () => Promise.all([me.refetch(), following.refetch(), ...authorPosts.map((query) => query.refetch())]),
+    accessToken, authors, posts,
+    loading: Boolean(accessToken) && feed.isPending,
+    error: feed.isError,
+    hasMorePosts: Boolean(feed.hasNextPage),
+    loadingMorePosts: feed.isFetchingNextPage,
+    loadMorePosts: () => feed.fetchNextPage(),
+    retry: feed.restart,
+    refresh: feed.restart,
   };
 }

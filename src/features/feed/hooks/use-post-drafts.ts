@@ -5,7 +5,7 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { feedKeys } from '../data/feed.keys';
 import { deleteDraft, getDrafts } from '../services/compose.service';
 
-/** Your video drafts; loads only while `enabled` (the composer is open) and refreshes each time. */
+/** Private post/video drafts; refreshes whenever the composer opens. */
 export function usePostDrafts(enabled: boolean) {
   const token = useSessionStore((state) => state.accessToken);
   return useQuery({

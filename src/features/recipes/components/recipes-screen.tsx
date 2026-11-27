@@ -11,6 +11,8 @@ import { useSessionStore } from '@/shared/stores/session-store';
 
 import { useRecipes } from '../hooks/use-recipes';
 import { RecipeCard } from './recipe-card';
+import { RecipeCategoryPicker } from './recipe-category-picker';
+import type { RecipeTag } from '../types/recipe.schema';
 
 /** The recipe catalogue as the "Công thức" tab of the home feed; the feed supplies the header (whose search opens on recipes) and the safe area. */
 export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['onScroll'] }) {
@@ -19,7 +21,8 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
   const columns = width < 360 || fontScale > 1.2 ? 1 : 2;
   const token = useSessionStore((state) => state.accessToken);
   const [suitableForMe, setSuitableForMe] = useState(false);
-  const recipes = useRecipes({ q: '', suitableForMe: !!token && suitableForMe });
+  const [category, setCategory] = useState<{ id: string | null; tag: RecipeTag | null }>({ id: null, tag: null });
+  const recipes = useRecipes({ q: '', suitableForMe: !!token && suitableForMe, tag: category.tag });
   const pull = usePullToRefresh(recipes.refetch);
   const items = recipes.data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -102,6 +105,7 @@ export function RecipesList({ onScroll }: { onScroll?: FlatListProps<unknown>['o
               <Text accessibilityRole="header" style={[styles.sectionTitle, { color: theme.foreground }]}>{token && suitableForMe ? 'Món hợp với bạn' : 'Khám phá món ngon'}</Text>
               {recipes.isFetching && !recipes.isPending ? <ActivityIndicator size="small" color={theme.primary} /> : null}
             </View>
+            <RecipeCategoryPicker value={category.id} onChange={(id, tag) => setCategory({ id, tag })} />
           </View>
         )}
         ListEmptyComponent={recipes.isPending ? <ActivityIndicator color={theme.primary} style={styles.state} /> : recipes.isError ? (

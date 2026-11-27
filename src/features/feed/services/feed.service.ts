@@ -6,17 +6,19 @@ import {
   likeResponseSchema,
   repostResponseSchema,
   type FeedFilter,
+  type FeedSource,
 } from '../types/feed.schema';
 
-export function getFeedPage({ filter, cursor, signal }: {
+export function getFeedPage({ filter, cursor, signal, source = 'public' }: {
   filter: FeedFilter;
   cursor: string | null;
   signal?: AbortSignal;
+  source?: FeedSource;
 }) {
   return requestJson(feedPageSchema, {
     method: 'GET',
-    url: '/posts',
-    params: { limit: 12, ...(cursor ? { cursor } : {}), ...(filter === 'all' ? {} : { type: filter === 'blogs' ? 'BLOG' : 'POST' }) },
+    url: source === 'personalized' ? '/posts/feed' : source === 'following' ? '/posts/following' : '/posts',
+    params: { limit: 12, ...(cursor ? { cursor } : {}), ...(source !== 'public' || filter === 'all' ? {} : { type: filter === 'blogs' ? 'BLOG' : 'POST' }) },
     signal,
   });
 }

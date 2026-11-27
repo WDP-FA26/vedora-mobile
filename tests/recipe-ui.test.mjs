@@ -45,7 +45,7 @@ mock.module(local('hooks/use-theme.ts'), { exports: { useTheme: () => ({}) } });
 mock.module(local('hooks/use-pull-to-refresh.ts'), { exports: { usePullToRefresh: () => ({ refreshing: false, onRefresh: () => {} }) } });
 mock.module(local('shared/stores/session-store.ts'), { exports: { useSessionStore: (select) => select({ accessToken: token }) } });
 mock.module(local('features/recipes/hooks/use-recipes.ts'), { exports: {
-  useRecipes: (filter) => { filters.push(filter); return query; }, useFavoriteRecipes: () => query, useRecipe: () => ({ data: recipe }),
+  useRecipes: (filter) => { filters.push(filter); return query; }, useFavoriteRecipes: () => query, useRecipe: () => ({ data: recipe }), useRecipeCategories: () => ({ data: [] }),
 } });
 mock.module(local('features/recipes/components/recipe-save-button.tsx'), { exports: { RecipeSaveButton: 'SaveButton' } });
 mock.module(local('features/recipes/components/recipe-rating.tsx'), { exports: { RecipeRating: 'Rating' } });

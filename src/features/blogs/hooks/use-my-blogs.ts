@@ -4,6 +4,7 @@ import { feedKeys } from '@/features/feed/data/feed.keys';
 import { postsKeys } from '@/features/posts/data/posts.keys';
 import { profileKeys } from '@/features/profile/data/profile.keys';
 import { useSessionStore } from '@/shared/stores/session-store';
+import { getSessionRevision } from '@/shared/session/session-manager';
 
 import { blogsKeys } from '../data/blogs.keys';
 import { getMyBlogs, saveBlog } from '../services/blogs.service';
@@ -27,7 +28,13 @@ export function useSaveBlog() {
   return useMutation({
     // Fail offline requests instead of leaving the editor locked on a paused mutation.
     networkMode: 'always',
-    mutationFn: ({ id, input }: { id: string | null; input: BlogInput }) => saveBlog(id, input),
+    retry: false,
+    mutationFn: async ({ id, input }: { id: string | null; input: BlogInput }) => {
+      const revision = getSessionRevision();
+      const result = await saveBlog(id, input);
+      if (revision !== getSessionRevision()) throw new Error('Phiên đăng nhập đã thay đổi.');
+      return result;
+    },
     onSuccess: (blog) => {
       client.setQueryData(blogsKeys.detail(blog.id), blog);
       for (const queryKey of [blogsKeys.mine, feedKeys.all, feedKeys.detail(blog.id), profileKeys.all, postsKeys.bookmarks, ['post-search'], ['following']]) {

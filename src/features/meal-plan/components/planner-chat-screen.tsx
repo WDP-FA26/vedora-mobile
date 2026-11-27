@@ -12,6 +12,7 @@ import { ChatBubble, ChatStatus } from '@/shared/components/chat/chat-bubble';
 import { ChatComposer } from '@/shared/components/chat/chat-composer';
 
 import { useMealPlanner, type ChatTurn } from '../hooks/meal-planner-provider';
+import { usePlannerDraft } from '../hooks/use-planner-draft';
 import { MealRequestForm } from './meal-request-form';
 import { PlannerHistorySheet } from './planner-history-sheet';
 import { PlannerMessageActions } from './planner-message-actions';
@@ -30,6 +31,7 @@ const WELCOME =
 export function PlannerChatScreen() {
   const theme = useTheme();
   const planner = useMealPlanner();
+  usePlannerDraft(planner);
   const { turns, composer, busy, chatError, formOpen } = planner;
   const scroll = useRef<ScrollViewInstance>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
