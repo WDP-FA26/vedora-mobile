@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { recipeNutritionFields } from '@/features/dietary-profile/types/nutrition-pillar.schema';
 
 export const weekdays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
 export const mealSections = ['BREAKFAST', 'LUNCH', 'DINNER', 'OTHER'] as const;
@@ -12,6 +13,7 @@ export const calendarDateSchema = z.iso.date();
 export const weekStartSchema = calendarDateSchema.refine((date) => new Date(`${date}T00:00:00Z`).getUTCDay() === 1, 'Tuần phải bắt đầu vào thứ Hai.');
 
 const recipeSchema = recipeRefSchema.extend({
+  ...recipeNutritionFields,
   /** HTTPS link to the dish's photo; null when the recipe has none. */
   imageUrl: z.string().nullable().optional(),
   servings: z.number(),
@@ -111,3 +113,5 @@ export const plannerQuestionSchema = z.object({
 export const plannerWebRequestSchema = z.object({ reason: z.string().min(1) });
 export const plannerAnswerSchema = z.object({ answer: z.string().trim().min(1).max(4000) });
 export const plannerWebDecisionSchema = z.object({ approved: z.boolean() });
+export const plannerDraftSchema = z.object({ draft: z.string().trim().min(1).max(4000), week: weekStartSchema.optional() });
+export type PlannerDraft = z.output<typeof plannerDraftSchema>;

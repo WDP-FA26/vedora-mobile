@@ -77,3 +77,4 @@ export const repostResponseSchema = z.object({
 export type FeedPost = z.output<typeof feedPostSchema>;
 export type FeedPage = z.output<typeof feedPageSchema>;
 export type FeedFilter = 'all' | 'posts' | 'blogs';
+export type FeedSource = 'public' | 'personalized' | 'following';

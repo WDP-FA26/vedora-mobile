@@ -3,9 +3,13 @@ import { useInfiniteQuery, useIsMutating, useMutation, useQuery, useQueryClient 
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { recipeKeys } from '../data/recipe.keys';
-import { getFavoriteRecipePage, getRecipe, getRecipePage, setRecipeFavorite } from '../services/recipe.service';
+import { getFavoriteRecipePage, getRecipe, getRecipeCategories, getRecipePage, setRecipeFavorite } from '../services/recipe.service';
 import type { RecipeFilters } from '../types/recipe.schema';
 import { updateFavoriteDetail, updateFavoritePages } from '../utils/recipe-favorite-cache';
+
+export function useRecipeCategories() {
+  return useQuery({ queryKey: recipeKeys.categories, queryFn: ({ signal }) => getRecipeCategories(signal), staleTime: 300_000 });
+}
 
 export function useRecipes(filters: RecipeFilters, enabled = true) {
   return useInfiniteQuery({

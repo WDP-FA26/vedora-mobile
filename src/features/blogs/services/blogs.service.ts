@@ -1,6 +1,6 @@
 import { requestJson } from '@/shared/api/request-json';
 
-import { blogImageUploadSchema, blogInputSchema, blogPageSchema, blogSchema, type BlogInput } from '../types/blogs.schema';
+import { blogImageUploadSchema, blogInputSchema, blogPageSchema, blogSchema, blogVideoUploadSchema, type BlogInput } from '../types/blogs.schema';
 
 export function getBlog(blogId: string, signal?: AbortSignal) {
   return requestJson(blogSchema, { method: 'GET', url: `/blogs/${blogId}`, signal });
@@ -20,4 +20,8 @@ export function saveBlog(id: string | null, input: BlogInput) {
 
 export function requestBlogImageUpload(contentType: string, sizeBytes: number) {
   return requestJson(blogImageUploadSchema, { method: 'POST', url: '/blogs/images/uploads', data: { contentType, sizeBytes } });
+}
+
+export function requestBlogVideoUpload() {
+  return requestJson(blogVideoUploadSchema, { method: 'POST', url: '/blogs/videos/uploads' });
 }

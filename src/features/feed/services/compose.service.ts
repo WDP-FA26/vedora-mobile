@@ -9,14 +9,15 @@ import {
   postDraftPageSchema,
   postDraftSchema,
   publishedDraftSchema,
+  videoUploadTargetSchema,
   type SelectedComposeVideo,
   type VideoUploadTarget,
 } from '../types/compose.schema';
 
-/** Your video drafts, newest first. Short-post drafts made on the web are left out: the app cannot edit them. */
+/** Private post and video drafts, newest first. */
 export async function getDrafts(signal?: AbortSignal) {
   const page = await requestJson(postDraftPageSchema, { method: 'GET', url: '/posts/drafts', signal });
-  return page.items.filter((draft) => draft.kind === 'VIDEO');
+  return page.items;
 }
 
 /** Also reconciles uploads that finished while no webhook arrived, so read it again after sending a file. */
@@ -25,9 +26,14 @@ export function getDraft(id: string, signal?: AbortSignal) {
 }
 
 /** Idempotent on the client-made `id`: returns the existing draft on a retry. */
-export function createDraft(id: string) {
-  return requestJson(postDraftSchema, { method: 'POST', url: '/posts/drafts', data: { id, kind: 'VIDEO' } });
+export function createDraft(id: string, kind: 'POST' | 'VIDEO' = 'VIDEO') {
+  return requestJson(postDraftSchema, { method: 'POST', url: '/posts/drafts', data: { id, kind } });
 }
+
+export function requestVideoUpload() {
+  return requestJson(videoUploadTargetSchema, { method: 'POST', url: '/media/uploads', data: { type: 'VIDEO' } });
+}
+export async function discardVideoUpload(id: string) { await apiClient.delete(`/media/${id}`); }
 
 export function saveDraft(id: string, input: { expectedVersion: number; title: string; description: string; body: string }) {
   return requestJson(postDraftSchema, { method: 'PATCH', url: `/posts/drafts/${id}`, data: input });

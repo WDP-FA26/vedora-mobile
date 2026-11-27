@@ -33,6 +33,7 @@ const media = n => ({ id: id(n), type: 'VIDEO', status: 'READY', failureReason: 
 const post = (status = 'PUBLISHED') => ({ id: id(1), type: 'POST', status, body: 'Nội dung cũ', publishedAt: '', createdAt: '', author: { id: id(2), username: 'owner', fullName: 'Owner' }, media: [media(3), media(4)], commentCount: 0, likeCount: 0, isLiked: false, repostCount: 0, isReposted: false, isBookmarked: false, viewCount: 0 });
 const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 let slots = [], slot = 0, token = 'owner-session', pending = false, response = post('PROCESSING'), failure, gate;
+let pickedVideos = [], committedVideos = [], uploadRequests = 0;
 let routeId = id(1), ownerId = id(2), queryPost = post(), prevented, prevention, disabledPrevention = 0;
 const requests = [], routes = [], alerts = [];
 mock.module(local('shared/api/api-client.ts'), { namedExports: { apiClient: { request: async config => {
@@ -69,6 +70,10 @@ mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({}) 
 mock.module(local('features/profile/hooks/use-profile.ts'), { namedExports: { useMyProfile: () => ({ data: { id: ownerId } }) } });
 mock.module(local('features/posts/hooks/use-posts.ts'), { namedExports: { usePost: () => ({ data: queryPost, refetch() {} }) } });
 
+mock.module(local('features/feed/hooks/use-video-files.ts'), { exports: { useVideoFiles: () => ({ entries: pickedVideos, picking: false, uploadAll: async prepare => {
+  const ids = []; for (const _video of pickedVideos) ids.push((await prepare()).id); return ids;
+}, commit: ids => committedVideos.push(...ids), pick: async () => {}, remove() {} }) } });
+mock.module(local('features/feed/services/compose.service.ts'), { exports: { discardVideoUpload: async () => {}, requestVideoUpload: async () => ({ media: { id: id(50 + ++uploadRequests) }, upload: {} }) } });
 const { postEditFormSchema, postUpdateSchema } = await import('../src/features/posts/types/post-edit.schema.ts');
 const { updatePost } = await import('../src/features/posts/services/posts.service.ts');
 const { useUpdatePost } = await import('../src/features/posts/hooks/use-update-post.ts');
@@ -88,6 +93,7 @@ const button = (tree, label) => find(tree, node => node.type === 'Pressable' && 
 const flush = () => new Promise(resolve => setImmediate(resolve));
 function reset() {
   slots = []; token = 'owner-session'; pending = false; response = post('PROCESSING'); queryPost = post(); routeId = id(1); ownerId = id(2);
+  pickedVideos = []; committedVideos = []; uploadRequests = 0;
   failure = undefined; gate = undefined; client.clear(); requests.length = 0; routes.length = 0; alerts.length = 0; disabledPrevention = 0;
 }
 
@@ -207,4 +213,21 @@ test('BE refusal messages distinguish permissions, processing, appeals and missi
   for (const [status, code, expected] of [[403, undefined, /của mình/], [409, 'POST_NOT_EDITABLE', /đang xử lý/], [409, 'APPEAL_IN_PROGRESS', /khiếu nại/], [404, undefined, /không còn tồn tại/], [400, 'EMPTY_POST', /ít nhất một video/]]) {
     assert.match(postEditError(new ApiError(status, code, 'server internals')), expected);
   }
+});
+
+test('edit uploads several new videos before PATCH and commits only the returned media IDs after a successful save', async () => {
+  reset(); pickedVideos = [{ id: id(90) }, { id: id(91) }];
+  button(render(), 'Lưu thay đổi bài viết').props.onPress(); await flush();
+  assert.equal(uploadRequests, 2);
+  assert.deepEqual(requests[0].data, { mediaIds: [id(3), id(4), id(51), id(52)] });
+  assert.deepEqual(committedVideos, [id(51), id(52)]);
+  reset(); pickedVideos = [{ id: id(90) }]; failure = new ApiError(null, undefined, 'Offline');
+  button(render(), 'Lưu thay đổi bài viết').props.onPress(); await flush();
+  assert.deepEqual(committedVideos, []); assert.equal(routes.length, 0);
+});
+
+test('edit counts old and new videos together and refuses a fifth video before starting uploads', async () => {
+  reset(); pickedVideos = [{ id: id(90) }, { id: id(91) }, { id: id(92) }];
+  button(render(), 'Lưu thay đổi bài viết').props.onPress(); await flush();
+  assert.equal(uploadRequests, 0); assert.equal(requests.length, 0); assert.ok(text(render()).includes('4'));
 });

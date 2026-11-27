@@ -57,6 +57,12 @@ export const calorieEstimateSchema = z.object({
 
 const servings = z.number().min(MIN_SERVINGS).max(MAX_SERVINGS).optional();
 
+export const mealLogEntryUpdateSchema = z.object({
+  servings: z.number().min(MIN_SERVINGS).max(MAX_SERVINGS).refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-8, 'Tối đa 2 chữ số thập phân.').optional(),
+  caloriesPerServing: z.number().int().min(0).max(MAX_CALORIES).nullable().optional(),
+}).strict().refine((value) => Object.values(value).some((item) => item !== undefined), 'Chưa có thay đổi.');
+export type MealLogEntryUpdate = z.input<typeof mealLogEntryUpdateSchema>;
+
 /** Body of `POST /meal-plan/log`: exactly one of `recipeId` (catalog dish) or `name` (any other dish). */
 export const newMealLogEntrySchema = z.object({ date: dateSchema, section: z.enum(mealSections), servings }).and(z.union([
   z.object({ recipeId: z.string().min(1) }),

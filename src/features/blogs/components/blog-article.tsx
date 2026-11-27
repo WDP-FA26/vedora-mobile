@@ -7,6 +7,7 @@ import { ZoomImage } from '@/shared/components/image-viewer';
 
 import { useBlog } from '../hooks/use-blog';
 import { parseMarkdown, type Block, type InlineNode } from '../utils/markdown';
+import { BlogVideo } from './blog-video';
 
 type Theme = ReturnType<typeof useTheme>;
 
@@ -96,11 +97,7 @@ function BlockView({ block, theme }: { block: Block; theme: Theme }) {
     case 'image':
       return <BlogImage url={block.url} alt={block.alt} />;
     case 'video':
-      return (
-        <Pressable accessibilityRole="link" onPress={() => openUrl(block.url)} style={[styles.videoLink, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
-          <Text style={[styles.videoText, { color: theme.primary }]}>Xem video trong bài</Text>
-        </Pressable>
-      );
+      return <BlogVideo url={block.url} />;
     default:
       return <View style={[styles.rule, { backgroundColor: theme.border }]} />;
   }

@@ -89,7 +89,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
               <View style={styles.sectionTop}>
                 <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Người bạn theo dõi</Text>
                 <Text style={[styles.sectionCount, { color: theme.mutedForeground }]}>
-                  {feed.authors.length} tác giả
+                  {feed.authors.length} tác giả trên bảng tin
                 </Text>
               </View>
               <ScrollView
@@ -164,7 +164,7 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
           ) : feed.authors.length === 0 ? (
             <>
               <SymbolView name={{ ios: "person.2", android: "group", web: "group" }} size={34} tintColor={theme.primary} />
-              <Text style={[styles.emptyTitle, { color: theme.foreground }]}>Chưa theo dõi ai</Text>
+              <Text style={[styles.emptyTitle, { color: theme.foreground }]}>Chưa có bài viết mới</Text>
               <Text style={[styles.emptyDescription, { color: theme.mutedForeground }]}>
                 Khi bạn theo dõi tác giả, chia sẻ mới của họ sẽ xuất hiện ở đây.
               </Text>
@@ -180,17 +180,19 @@ export function FollowingScreen({ onScroll }: { onScroll?: (event: NativeSynthet
           )}
         </View>
       }
-      ListFooterComponent={feed.hasMoreAuthors ? (
+      onEndReached={() => { if (feed.hasMorePosts && !feed.loadingMorePosts && !feed.error) void feed.loadMorePosts(); }}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={feed.hasMorePosts ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityState={{ disabled: feed.loadingMoreAuthors }}
-          disabled={feed.loadingMoreAuthors}
-          onPress={() => { void feed.loadMoreAuthors(); }}
+          accessibilityState={{ disabled: feed.loadingMorePosts }}
+          disabled={feed.loadingMorePosts}
+          onPress={() => { void feed.loadMorePosts(); }}
           style={styles.more}
         >
-          {feed.loadingMoreAuthors ? <ActivityIndicator color={theme.primary} /> : null}
+          {feed.loadingMorePosts ? <ActivityIndicator color={theme.primary} /> : null}
           <Text style={[styles.moreText, { color: theme.primary }]}>
-            {feed.loadingMoreAuthors ? "Đang tải thêm" : "Tải thêm người theo dõi"}
+            {feed.loadingMorePosts ? "Đang tải thêm" : "Tải thêm bài viết"}
           </Text>
         </Pressable>
       ) : undefined}

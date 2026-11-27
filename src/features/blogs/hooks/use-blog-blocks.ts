@@ -133,9 +133,9 @@ export function useBlogBlocks(initialMarkdown: string, onEdit: () => void) {
     requestFocus(target, focus?.start ?? 0);
   }, [blocks, focus, requestFocus, update]);
 
-  const addImage = useCallback((url: string) => {
+  const addImage = useCallback((url: string, asCover = false) => {
     const result = insertImageBlock(blocks, focus?.id ?? null, url);
-    update(result.blocks);
+    update(asCover ? [...result.blocks.filter((block) => block.id === result.imageId), ...result.blocks.filter((block) => block.id !== result.imageId)] : result.blocks);
   }, [blocks, focus, update]);
 
   const replaceAll = useCallback((markdown: string) => {

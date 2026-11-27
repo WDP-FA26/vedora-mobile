@@ -8,12 +8,15 @@ import { Fonts, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import { AssistantHeader } from '@/shared/components/chat/assistant-header';
 import { useSessionStore } from '@/shared/stores/session-store';
+import { RecipeNutrition } from '@/features/dietary-profile/components/recipe-nutrition';
 
 import { useMealPlanner } from '../hooks/meal-planner-provider';
 import type { Weekday } from '../types/meal-plan.schema';
 import { avoidedIngredientsForRecipe, dayLabels, sectionLabels } from '../utils/meal-plan';
 import { addCalendarDays, weekRange } from '../utils/meal-week';
+import { computeDayNutrition } from '../utils/meal-nutrition';
 import { MealWeekSelector } from './meal-week-selector';
+import { MealNutritionSummary } from './meal-nutrition-summary';
 import { MealRecipePhoto } from './meal-recipe-photo';
 import { ActionButton, ActionText, MealActionSheet } from './meal-action-sheet';
 import { MealEditSheet, type MealSelection } from './meal-edit-sheet';
@@ -84,6 +87,7 @@ export function MealPlanScreen() {
 
   const mealCount = activeDay?.sections.reduce((total, { recipes }) => total + recipes.length, 0) ?? 0;
   const problems = plan.data?.problems ?? [];
+  const dailyNutrition = activeDay ? computeDayNutrition(activeDay) : null;
   const nextWeek = planner.currentWeekStart ? addCalendarDays(planner.currentWeekStart, 7) : undefined;
 
   return (
@@ -101,7 +105,7 @@ export function MealPlanScreen() {
         {planner.mealActions.pending ? <ActivityIndicator accessibilityLabel="Đang lưu thực đơn" color={theme.primary} /> : null}
         {planner.mealActions.notice ? <ActionText>{planner.mealActions.notice}</ActionText> : null}
         {planner.mealActions.error ? <ActionText error>{planner.mealActions.error}</ActionText> : null}
-        <Pressable accessibilityRole="button" onPress={() => router.push('/meal-log')} style={[styles.journal, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/meal-log', params: { date: plan.data?.days.some((day) => day.date === plan.data?.today) ? plan.data.today : planner.weekStart } })} style={[styles.journal, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={[styles.journalIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: 'book.closed', android: 'menu_book', web: 'menu_book' }} size={22} tintColor={theme.primary} /></View>
           <View style={styles.flex}>
             <Text style={[styles.recipeTitle, { color: theme.foreground }]}>Nhật ký ăn uống</Text>
@@ -109,6 +113,7 @@ export function MealPlanScreen() {
           </View>
           <SymbolView name={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} size={20} tintColor={theme.primary} />
         </Pressable>
+        {plan.data ? <MealNutritionSummary key={plan.data.weekStart} plan={plan.data} token={token} busy={planner.busy} onAskAssistant={(prompt) => { planner.setComposer(prompt); planner.setFormOpen(false); router.navigate('/ai'); void planner.sendMessage(prompt); }} /> : null}
         {planner.weekend && planner.weekStart === planner.currentWeekStart && nextWeek && planner.weeks.includes(nextWeek) ? (
           <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
             <Text style={[styles.cardTitle, { color: theme.foreground }]}>Chuẩn bị thực đơn cho tuần sau</Text>
@@ -169,6 +174,7 @@ export function MealPlanScreen() {
                     </Text>
                   </View>
                 </View>
+                {dailyNutrition ? <ActionText>{dailyNutrition.hasKnownCalories ? `${dailyNutrition.unknownCalories ? 'Ít nhất ' : '~'}${dailyNutrition.calories.toLocaleString('vi-VN')} kcal dự kiến` : 'Chưa có kcal dự kiến'} · {dailyNutrition.pillars.length}/5 nhóm chất</ActionText> : null}
                 {!activeDay.editable ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Ngày đã qua · Chỉ xem lại</Text> : null}
                 {activeDay.sections.map(({ section, recipes }) => (
                   <View key={section} style={styles.mealBlock}>
@@ -193,6 +199,7 @@ export function MealPlanScreen() {
                               onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: recipe.id } })}
                               style={({ pressed }) => [styles.recipeLink, { opacity: pressed ? 0.6 : 1 }]}>
                               <Text style={[styles.recipeTitle, { color: theme.foreground }]}>{recipe.title}</Text>
+                              <RecipeNutrition {...recipe} />
                               {avoided.length ? (
                                 <View style={styles.recipeWarning}>
                                   <SymbolView name={{ ios: 'exclamationmark.triangle.fill', android: 'warning', web: 'warning' }} size={16} tintColor={theme.destructive} />

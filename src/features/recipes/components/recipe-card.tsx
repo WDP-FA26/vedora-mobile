@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { RecipeNutrition } from '@/features/dietary-profile/components/recipe-nutrition';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -38,6 +39,7 @@ export function RecipeCard({ recipe }: { recipe: Recipe }) {
         </View>
         <View style={styles.cardCopy}>
           <Text numberOfLines={2} style={[styles.cardTitle, { color: theme.foreground }]}>{recipe.title}</Text>
+          <RecipeNutrition {...recipe} />
           <View style={styles.metaRow}>
             <Text style={[styles.sub, { color: theme.mutedForeground }]}>{recipe.servings} phần</Text>
             <Text style={[styles.sub, { color: theme.mutedForeground }]}>{recipe.ingredientCount} nguyên liệu</Text>

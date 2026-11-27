@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
 import { SymbolView } from 'expo-symbols';
+import { RecipeNutrition } from '@/features/dietary-profile/components/recipe-nutrition';
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ScrollViewInstance } from 'react-native';
 
@@ -90,14 +91,14 @@ export function VoiceCalendar({ screen, token, highlight, scrollRef, onDay, onRe
           {section.recipes.map((recipe) => {
             const changed = !!marked?.recipeIds.includes(recipe.id);
             const color = changed ? theme.primaryForeground : theme.foreground;
-            return <Pressable key={recipe.id} accessibilityRole="button" accessibilityLabel={`Xem công thức ${recipe.title}`}
+            return <View key={recipe.id}><Pressable accessibilityRole="button" accessibilityLabel={`Xem công thức ${recipe.title}`}
               accessibilityHint={changed ? `Món vừa cập nhật, bữa ${sectionLabels[section.section].toLowerCase()} ${shortDayLabels[day.day]}` : undefined}
               accessibilityState={{ selected: changed }} onPress={() => onRecipe(recipe.id, recipe.title)}
               style={({ pressed }) => [styles.recipeRow, { backgroundColor: changed ? theme.primary : theme.card, opacity: pressed ? 0.7 : 1 }]}>
               <SymbolView name={changed ? { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' } : { ios: 'leaf', android: 'eco', web: 'eco' }} size={20} tintColor={changed ? color : theme.primary} />
               <Text style={[styles.recipeName, { color }]}>{recipe.title}</Text>
               <SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={18} tintColor={changed ? color : theme.primary} />
-            </Pressable>;
+            </Pressable><View style={{ paddingHorizontal: 12, paddingBottom: 8 }}><RecipeNutrition {...recipe} /></View></View>;
           })}
           {!section.recipes.length ? <Text style={[styles.text, { color: theme.mutedForeground }]}>Chưa có món cho bữa này</Text> : null}
         </View>;

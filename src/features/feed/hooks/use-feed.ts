@@ -6,20 +6,20 @@ import { profileKeys } from '@/features/profile/data/profile.keys';
 
 import { feedKeys } from '../data/feed.keys';
 import { getFeedPage, setPostBookmark, setPostLike, setPostRepost } from '../services/feed.service';
-import type { FeedFilter, FeedPage, FeedPost } from '../types/feed.schema';
+import type { FeedFilter, FeedPage, FeedPost, FeedSource } from '../types/feed.schema';
 
-export function useFeed(filter: FeedFilter, enabled = true) {
+export function useFeed(filter: FeedFilter, enabled = true, source: FeedSource = 'public') {
   const queryClient = useQueryClient();
   const query = useInfiniteQuery({
-    queryKey: feedKeys.list(filter),
+    queryKey: feedKeys.list(filter, source),
     initialPageParam: null as string | null,
-    queryFn: ({ pageParam, signal }) => getFeedPage({ filter, cursor: pageParam, signal }),
+    queryFn: ({ pageParam, signal }) => getFeedPage({ filter, cursor: pageParam, signal, source }),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled,
   });
   return {
     ...query,
-    restart: () => queryClient.resetQueries({ queryKey: feedKeys.list(filter), exact: true }),
+    restart: () => queryClient.resetQueries({ queryKey: feedKeys.list(filter, source), exact: true }),
   };
 }
 

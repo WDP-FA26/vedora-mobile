@@ -31,6 +31,7 @@ export const draftMediaSchema = z.object({
 export const postDraftSchema = z.object({
   id: z.string(),
   kind: z.enum(['POST', 'VIDEO']),
+  body: z.string().default(''),
   title: z.string(),
   description: z.string(),
   version: z.number().int().nonnegative(),

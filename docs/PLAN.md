@@ -1,5 +1,36 @@
 # Kế hoạch và kết quả công việc
 
+## 28/11/2026 — Chuẩn bị commit và PR đồng bộ dinh dưỡng, nội dung
+
+- Kết quả đã làm: Rà toàn bộ thay đổi Dinh dưỡng/Nhật ký và Feed/Bài viết/Blog/Tìm kiếm; chuyển sang nhánh mới `feat/mobile-nutrition-content-parity` từ `main` sau khi PR #69 đã merge. Chuẩn bị nội dung PR với phạm vi thay đổi, kết quả kiểm tra và giới hạn nghiệm thu Expo Go; giữ các checklist chi tiết bên dưới.
+- Các bước kiểm tra luồng UI trên màn hình:
+  1. Mở PR trên GitHub → **Files changed**, kiểm tra các nhóm Dinh dưỡng/Nhật ký và Feed/Bài viết/Blog/Tìm kiếm, không có tệp môi trường hoặc bundle tạm.
+  2. Trong Expo Go, mở **Thực đơn → Dinh dưỡng** và **Nhật ký**; thực hiện checklist dinh dưỡng, sửa khẩu phần/kcal và nhờ AI nhận xét bên dưới.
+  3. Mở **Trang chủ → Tạo nội dung**, **Blog**, **Tìm kiếm**; thực hiện checklist Feed, nháp POST/video, autosave và danh mục công thức bên dưới.
+- Người thực hiện: Codex.
+- Giới hạn kiểm tra: Checklist UI cần nghiệm thu trên điện thoại/tài khoản thật; suite gần nhất có 303/304 test đạt, còn lỗi fixture Billing đã có sẵn thiếu `imageLimit`.
+
+## 28/11/2026 — Đồng bộ Feed, bài viết, Blog và Tìm kiếm với web
+
+- Kết quả đã làm: Đọc lại BE `cea8876` và frontend web `2765c55` mới fetch. Feed Dành cho bạn dùng nguồn cá nhân hóa khi đăng nhập; Theo dõi dùng phân trang chung BE, giữ thứ tự/cursor và loại bài trùng. Bổ sung bài chữ POST, tối đa 4 video, lưu/mở nháp POST lẫn VIDEO từ web; màn sửa bài cho upload video mới và giữ tiến độ/thử lại khi lưu. Blog có upload/chèn/phát video, dừng/thử lại; tự lưu DRAFT/REJECTED sau 2,5 giây với request tuần tự, giữ phần đang gõ khi response cũ về; ảnh bìa lấy đúng ảnh đầu nội dung. Search có Tất cả, Người dùng, Công thức, Món nhà hàng, Bài viết; thêm danh mục công thức lấy từ BE ở catalog và Search. Tận dụng uploader/native module hiện có, giữ Expo Go, không thêm thư viện hoặc tạo development build.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị, cần tài khoản thật):
+  1. Mở Expo Go → Trang chủ → Dành cho bạn khi chưa đăng nhập; kiểm tra bảng tin công khai. Đăng nhập tài khoản có tương tác, mở lại Dành cho bạn và kéo xuống nhiều trang; kiểm tra không lặp bài, kéo làm mới tải lại từ đầu.
+  2. Theo dõi ít nhất hai tác giả có nhiều bài → Đang theo dõi → kéo xuống hoặc nhấn tải thêm. Kiểm tra bài xen kẽ theo thời gian BE, tải được bài cũ của cùng tác giả. Bỏ theo dõi trên hồ sơ rồi quay lại để thấy feed cập nhật; thử mất mạng/tải lại.
+  3. Nhấn Tạo nội dung → Bài viết → nhập chữ → Lưu nháp. Quay lại → Tạo nội dung → Bản nháp → mở đúng nội dung, sửa và Đăng bài. Kiểm tra chuyển tới chi tiết và trạng thái kiểm duyệt; mở nháp tạo từ web ở mobile và ngược lại.
+  4. Tạo bài POST khác, chọn 2–4 video dưới 3 phút, gỡ một video và thêm lại; lưu nháp rồi mở lại để thấy đủ video. Thử thêm video thứ 5 hoặc video quá 3 phút để kiểm tra giới hạn. Đăng bài chỉ video hoặc chỉ chữ; bài rỗng không được đăng.
+  5. Khi lưu nhiều video, tắt Wi-Fi sau video đầu → kiểm tra chữ/tệp còn trên màn hình và có lỗi. Bật mạng, nhấn Lưu nháp/Đăng bài để thử lại; kiểm tra không tạo nháp hoặc video trùng. Rời form có thay đổi để kiểm tra cảnh báo và lựa chọn lưu nháp.
+  6. Mở bài POST của mình → Chỉnh sửa → gỡ/đổi thứ tự video cũ → Thêm video mới → Lưu thay đổi. Kiểm tra tiến độ, bài được gửi duyệt lại và video mới xuất hiện sau xử lý. Thử lỗi mạng khi upload/lưu để kiểm tra dữ liệu còn nguyên; hủy form rồi mở lại phải thấy bài đã lưu trước đó.
+  7. Blog → Viết blog → nhập tiêu đề và nội dung → ngừng gõ hơn 2,5 giây. Kiểm tra “Đang tự lưu/Đã tự lưu”, quay lại danh sách và mở nháp. Gõ tiếp trong lúc tự lưu để chắc chữ mới không bị response cũ ghi đè; lỗi mạng giữ nội dung và cho lưu tay lại.
+  8. Trong Blog, chọn biểu tượng video trên thanh định dạng → chọn video không quá 100 MB → xem tiến độ và block video đã chèn. Thử phát/tạm dừng/toàn màn hình trong editor và Xem trước; thử dừng upload, tải lại, gỡ video và di chuyển khối. Lưu rồi mở cùng Blog trên web để đối chiếu.
+  9. Chọn/đổi ảnh bìa Blog → kiểm tra ảnh nằm ở đầu nội dung. Thêm ảnh khác/video, di chuyển hoặc gỡ ảnh đầu → kiểm tra bìa theo đúng ảnh đầu còn lại và giữ nguyên sau lưu/mở lại. Video không trở thành bìa.
+  10. Mở Blog đã đăng/đang xử lý → sửa chữ rồi ngừng gõ → kiểm tra không tự chuyển thành nháp hoặc tự gửi duyệt lại; lưu tay theo nút hiện có. Với bài bị từ chối còn được sửa, kiểm tra tự lưu nháp; bài có khiếu nại/bị gỡ vẫn khóa thao tác.
+  11. Nhấn Tìm kiếm → nhập từ khóa → Tất cả; kiểm tra các nhóm Người dùng/Công thức/Món nhà hàng/Bài viết và Xem tất cả. Mở người dùng để tới đúng hồ sơ; mở món để tới đúng quán/menu, có tên/ảnh/giá/địa chỉ. Thử nhiều trang, từ khóa không kết quả và lỗi mạng ở từng tab.
+  12. Trang chủ → Công thức → chọn danh mục do BE cấu hình; kiểm tra tên/sticker, đổi danh mục bắt đầu từ trang đầu, Tất cả bỏ lọc. Vào Search → Công thức, kết hợp danh mục + từ khóa + Hợp với mình, mở chi tiết và thử trở lại bộ lọc.
+  13. Trong lúc tải/lưu, đăng xuất hoặc đổi danh tính/tài khoản; kiểm tra không gắn video hoặc cập nhật cache của tài khoản trước vào tài khoản mới. Thử các màn với bàn phím, chữ lớn, màn hình nhỏ trên cả iOS và Android.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: TypeScript/lint đạt; toàn bộ 304 test có 303 đạt, 1 lỗi Billing có sẵn do fixture thiếu `imageLimit`. Có 18 test mới cho hợp đồng feed/draft/search/danh mục, video nhiều tệp/thử lại/đổi phiên, debounce và điều kiện autosave, lưu/đăng nháp POST, gửi đúng media ID mới khi sửa bài và chặn quá 4 video trước upload. Bundle Android và web xuất thành công, web có 51 route gồm `/posts/new`; CLI web thoát mã 0 sau thông báo forceful exit như lần trước. Đã đối chiếu tài liệu Expo SDK 58 ImagePicker/Video/FileSystem; không chạy development build.
+- Giới hạn kiểm tra: Chưa kiểm tra bằng tài khoản thật/API thật hoặc thao tác trên Expo Go iOS/Android; các bước UI trên là checklist nghiệm thu, chưa phải kết quả đã chạy trên thiết bị.
+
 ## 2026-11-27 — Sửa mic báo gián đoạn ngay khi kết nối trong Expo Go
 
 - Kết quả đã làm: Theo phản hồi người dùng, màn gọi chuyển từ “Đang kết nối” sang “Mic bị gián đoạn” trước khi trò chuyện. Đọc source `expo-audio` SDK 58: `AudioStream.start()` mở engine iOS ở chế độ record; code mobile cũ đổi category ngay sau đó, có thể làm engine ngừng cấp PCM rồi chạm ngưỡng báo lỗi 3 giây. Chuyển cấu hình audio trước lúc mở mic; khi phát lời trợ lý, dừng engine rồi mới chuyển sang playback, mở lại mic sau khi phát xong/ngắt lời. Tuần tự hóa các lần chuyển chế độ, giữ các frame im lặng gửi Gateway trong lúc mic tạm dừng để giữ nhịp audio input.
@@ -1777,3 +1808,27 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
   6. Mở Nhà hàng từ Home → xem chi tiết/đánh giá → chuyển Trang nhà hàng → quản lý thực đơn và sửa thông tin; kiểm tra giao diện sáng/tối, màn hình hẹp và chữ lớn.
 - Người thực hiện: Codex.
 - Kiểm tra kỹ thuật: TypeScript, lint và kiểm tra khoảng trắng diff đạt. Toàn bộ 269 kiểm thử chạy được, 268 đạt; 1 kiểm thử Billing thiếu `imageLimit` trong fixture cũng lỗi trên mã nền của PR #68 và các file Billing không thay đổi so với `main`. Chưa kiểm thử thiết bị thật hoặc luồng API với tài khoản thật; các lần export Android/web của phần triển khai đã đạt, không tạo development build.
+
+## 28/11/2026 — Đồng bộ Dinh dưỡng và Nhật ký với web
+
+- Kết quả đã làm:
+  - Fetch và đối chiếu BE `main` tại `8e9d29d`, web `main` tại `02d56dc`: DTO công thức/thực đơn, tổng hợp dinh dưỡng, PATCH nhật ký, điều kiện và prompt nhờ AI. Không sửa repo nguồn.
+  - Nhận kcal/suất và 5 nhóm chất của công thức; hiện trên danh sách, chi tiết, Thực đơn và Voice. Cộng một suất/món như web, không nhân kcal/suất với số suất cả công thức.
+  - Thực đơn có tổng ngày và bảng Dinh dưỡng tuần thu gọn/mở rộng: tổng kcal, trung bình, ngày đủ 3 bữa, số ngày xuất hiện từng nhóm chất, nhóm chưa có, biểu đồ dự kiến/đã ăn và mục tiêu. Dữ liệu kcal thiếu có nhãn riêng; chỉ tính trung bình trên ngày đủ 3 bữa và mọi món có kcal. Nút nhờ AI dùng đúng tuần, giữ ngày đã qua; tuần cũ chỉ nhận xét.
+  - Nhật ký sửa khẩu phần/kcal ngay trên món bằng PATCH, chỉ gửi trường đổi; Hủy không ghi, để trống kcal xóa thành chưa biết, 0 vẫn hợp lệ, chỉ đổi khẩu phần giữ nguồn kcal cũ. Khóa theo `loggable`, giữ form và báo lỗi khi lưu thất bại; không tự gửi lại mutation hoặc ghi sau đổi phiên. Làm mới tổng/ngày/tuần sau lưu và cả kcal dự kiến khi AI đổi thực đơn.
+  - Nhờ trợ lý xem lại tuần theo điều kiện web: có ngày đã qua ghi đủ kcal và còn ngày trong tuần hiện tại. Chuyển đúng tuần rồi gửi ngay khi trợ lý rảnh; khi đang bận chỉ điền sẵn chat. Yêu cầu chuyển màn chỉ giữ trong bộ nhớ theo phiên đăng nhập, tiêu thụ một lần; tham số URL ngoài không tự gọi AI. Prompt yêu cầu hỏi trước khi chỉnh và chỉ chỉnh từ hôm nay đến cuối tuần. Mở Nhật ký từ Thực đơn giữ đúng tuần.
+  - Voice mở được Dinh dưỡng tuần với snapshot `bodyMetricsTab: weekly`, không tắt cuộc gọi. Có thể nói yêu cầu cân đối/nhận xét ngay trong cuộc gọi; tab hồ sơ ăn uống trong Voice vẫn chưa triển khai. Giữ Expo Go, không thêm dependency hoặc development build.
+- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện với tài khoản thật trên Expo Go):
+  1. Vào Khám phá → Món ăn → mở một công thức có kcal/nhóm chất → so kcal/suất và các nhãn với web. Mở món chưa có kcal, kiểm tra hiện Chưa có kcal/suất, không hiện 0.
+  2. Vào Thực đơn → chọn tuần có dữ liệu → mở Dinh dưỡng → kiểm tra tổng kcal, trung bình, 5 nhóm chất và biểu đồ T2–CN. Đổi ngày và đối chiếu tổng ngày với các món, mỗi món tính một suất.
+  3. Thêm/chuyển/gỡ một món → mở lại Dinh dưỡng → kiểm tra tổng/nhóm chất đổi theo. Với ngày có món thiếu kcal, kiểm tra chú thích tổng một phần và ngày đó không làm trung bình thành thấp giả.
+  4. Bấm Nhờ AI cân đối tuần → kiểm tra mở Trợ lý và gửi đúng tuần; kiểm tra nhận xét/đề xuất theo mục tiêu. Chuyển tuần cũ → bấm Nhờ AI nhận xét tuần cũ → kiểm tra yêu cầu chỉ nhận xét, giữ nguyên dữ liệu lịch sử.
+  5. Từ tuần đang xem, mở Nhật ký → kiểm tra đúng tuần → chọn ngày được ghi → Sửa một món → nhập 1,5 khẩu phần → Lưu → kiểm tra tổng món/ngày/tuần và dữ liệu sau tải lại. Chỉ đổi khẩu phần của món AI ước tính phải giữ nhãn AI.
+  6. Sửa kcal/suất thành 0 và lưu → kiểm tra 0 là số hợp lệ. Sửa lại, xóa ô kcal → lưu → kiểm tra Chưa có kcal và số món chưa rõ tăng. Nhập số âm, hơn 5.000 kcal, khẩu phần ngoài 0,25–20 → kiểm tra không lưu.
+  7. Sửa món rồi Hủy → kiểm tra dữ liệu giữ nguyên. Thử mất mạng khi Lưu → kiểm tra form còn mở, có lỗi và có thể thử lại; xem ngày đã khóa để kiểm tra không có nút sửa/xóa.
+  8. Trong tuần hiện tại có ngày đã qua ghi đủ kcal, kiểm tra nút Nhờ trợ lý xem lại tuần → bấm → kiểm tra mở chat/gửi đúng tuần, prompt yêu cầu hỏi trước khi sửa. Thử khi trợ lý đang chạy yêu cầu khác, kiểm tra chỉ điền nội dung, không gửi thêm. Tuần cũ hoặc tuần chưa đủ dữ liệu không hiện nút này.
+  9. Mở Vedora Voice → nói Mở dinh dưỡng tuần này → kiểm tra bảng tuần và cuộc gọi còn hoạt động → nhờ chuyển tuần/nhận xét/cân đối → so đúng tuần trên UI. Mở công thức và Nhật ký trong cuộc gọi, kiểm tra kcal/nhóm chất và sửa khẩu phần.
+  10. Kiểm tra sáng/tối, màn hình hẹp và cỡ chữ lớn; mở/thu bảng tuần, cuộn biểu đồ, mở bàn phím sửa món và dùng đọc màn hình cho các icon Sửa/Xóa.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: TypeScript và lint đạt. Toàn bộ 286 test: 285 đạt, 1 lỗi Billing có sẵn do fixture thiếu `imageLimit`, không thuộc thay đổi này; có 16 test mới cho dữ liệu dinh dưỡng, PATCH/khóa phiên, form sửa, điều kiện nhận xét và chuyển tuần trước khi gọi AI, cùng kiểm tra snapshot Voice tuần. Export Android (`tmp/nutrition-android`) và web (`tmp/nutrition-web`) thành công; web xuất đầy đủ route rồi CLI tự thoát cưỡng bức với mã 0 như các lần trước. Không build môi trường developer.
+- Giới hạn kiểm tra: Chưa nghiệm thu Expo Go trên điện thoại hoặc API bằng tài khoản thật; checklist UI ở trên cần thực hiện trên iOS/Android.

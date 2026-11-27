@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { recipeNutritionFields } from '@/features/dietary-profile/types/nutrition-pillar.schema';
 
 const namedRefSchema = z.object({ id: z.string(), name: z.string() });
 
@@ -11,6 +12,7 @@ const recipeConflictSchema = z.object({
 });
 
 export const recipeSchema = z.object({
+  ...recipeNutritionFields,
   id: z.string(),
   title: z.string(),
   isFavorite: z.boolean(),
@@ -51,4 +53,11 @@ export const recipeFavoriteStateSchema = z.object({ recipeId: z.string().uuid(),
 
 export type Recipe = z.output<typeof recipeSchema>;
 export type RecipeDetail = z.output<typeof recipeDetailSchema>;
-export type RecipeFilters = { q: string; suitableForMe: boolean };
+export const recipeTagSchema = z.enum(['SOUP', 'SALAD', 'RICE', 'NOODLES', 'STIR_FRY', 'BREAD', 'DESSERT', 'DRINK', 'SNACK']);
+export type RecipeTag = z.infer<typeof recipeTagSchema>;
+export const recipeCategorySchema = z.object({
+  id: z.string(), name: z.string(), description: z.string().nullable(),
+  baseTag: recipeTagSchema, icon: z.string(), sortOrder: z.number(), hidden: z.boolean(),
+});
+export const recipeCategoryPageSchema = z.object({ items: z.array(recipeCategorySchema), meta: z.object({ hasNextPage: z.boolean() }) });
+export type RecipeFilters = { q: string; suitableForMe: boolean; tag?: RecipeTag | null };

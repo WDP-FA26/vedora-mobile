@@ -89,12 +89,20 @@ test('diary date and week changes reach the snapshot without retaining a closed 
   assert.deepEqual(days, ['SAT']);
 });
 
+test('weekly nutrition accepts the requested week and exposes its tab in the live snapshot', () => {
+  render();
+  const { options } = calls[0];
+  assert.equal(options.onScreen(command({ kind: 'bodyMetrics', tab: 'weekly', weekStart: '2026-11-30' })), undefined);
+  const screen = options.getScreen();
+  assert.equal(screen.panel, 'bodyMetrics'); assert.equal(screen.weekStart, '2026-11-30'); assert.equal(screen.bodyMetricsTab, 'weekly');
+});
+
 test('only accepted AI actions glow, the pulse expires, and errors stop the effect', (t) => {
   t.mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
   render(); const { options } = calls[0];
   options.onStatus('listening');
   assert.equal(render().glowing, false);
-  assert.match(options.onScreen(command({ kind: 'bodyMetrics', tab: 'weekly' })), /chưa có/);
+  assert.match(options.onScreen(command({ kind: 'bodyMetrics', tab: 'dietary' })), /chưa có/);
   assert.equal(render().glowing, false);
   options.onScreen(command({ kind: 'recipe', recipeId: 'tofu', title: 'Đậu hũ', section: 'ingredients' }));
   assert.equal(render().glowing, true);

@@ -29,6 +29,7 @@ registerHooks({
   },
 });
 const local = (path) => new URL(path, sourceRoot).href;
+mock.module(local('shared/session/session-manager.ts'), { exports: { getSessionRevision: () => 0 } });
 let response, lastRequest;
 mock.module(local('shared/api/api-client.ts'), { namedExports: { apiClient: { request: async (config) => { lastRequest = config; return { data: response }; } } } });
 mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({ foreground: '#111', mutedForeground: '#555', destructive: '#900', muted: '#eee', border: '#ccc' }) } });

@@ -73,6 +73,7 @@ mock.module(local('features/meal-plan/hooks/use-meal-plan.ts'), { exports: { use
 mock.module(local('features/recipes/hooks/use-recipes.ts'), { exports: { useRecipe: () => ({ data: recipe }) } });
 mock.module(local('features/nutrition-chat/components/sprout-pet.tsx'), { exports: { SproutPet: 'SproutPet' } });
 mock.module(local('features/dietary-profile/components/nutrition-section.tsx'), { exports: { NutritionSection: 'NutritionSection' } });
+mock.module(local('features/meal-plan/components/meal-nutrition-summary.tsx'), { exports: { MealNutritionSummary: 'MealNutritionSummary' } });
 mock.module(local('features/meal-log/components/meal-log-screen.tsx'), { exports: { MealLogScreen: 'MealLogScreen' } });
 globalThis.require = (asset) => asset;
 const { VoiceCallControls } = await import('../src/features/meal-plan/components/voice-call-controls.tsx');

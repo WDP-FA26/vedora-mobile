@@ -12,11 +12,16 @@ import { dayLabels, sectionLabels } from '@/features/meal-plan/utils/meal-plan';
 import { addCalendarDays, weekRange } from '@/features/meal-plan/utils/meal-week';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
+import { WeeklyCalorieChart } from '@/features/dietary-profile/components/weekly-calorie-chart';
+import { ActionButton } from '@/features/meal-plan/components/meal-action-sheet';
+import { calendarDateSchema } from '@/features/meal-plan/types/meal-plan.schema';
+import { usePlannerRequestStore } from '@/features/meal-plan/stores/planner-request.store';
 
-import { useDeleteMealLogEntry, useMealLog } from '../hooks/use-meal-log';
+import { useDeleteMealLogEntry, useMealLog, useUpdateMealLogEntry } from '../hooks/use-meal-log';
 import type { MealLogDay } from '../types/meal-log.schema';
-import { caloriesLabel, mealLogErrorMessage, vn } from '../utils/meal-log';
+import { mealLogErrorMessage, mealLogReviewPrompt, vn } from '../utils/meal-log';
 import { MealLogEntryForm, type PlannedRecipe } from './meal-log-entry-form';
+import { MealLogEntryRow } from './meal-log-entry-row';
 
 const SHORT_DAY: Record<Weekday, string> = { MON: 'T2', TUE: 'T3', WED: 'T4', THU: 'T5', FRI: 'T6', SAT: 'T7', SUN: 'CN' };
 
@@ -36,29 +41,34 @@ function DayTotal({ day, target }: { day: MealLogDay; target: number | null }) {
 }
 
 /** What you actually ate each day of a week, with kcal against the daily target. */
-export function MealLogScreen({ initialDate, onClose, scrollRef, scrollProps, onDateChange }: { initialDate?: string; onClose?: () => void; scrollRef?: RefObject<ScrollViewInstance | null>; scrollProps?: ScrollViewProps; onDateChange?: (date: string) => void } = {}) {
+export function MealLogScreen({ initialDate, onClose, scrollRef, scrollProps, onDateChange, onReview }: { initialDate?: string; onClose?: () => void; scrollRef?: RefObject<ScrollViewInstance | null>; scrollProps?: ScrollViewProps; onDateChange?: (date: string) => void; onReview?: ((prompt: string, weekStart: string) => void) | null } = {}) {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
   const hydrated = useSessionStore((state) => state.isHydrated);
+  const parsedDate = calendarDateSchema.safeParse(initialDate);
+  const startDate = parsedDate.success ? parsedDate.data : undefined;
   const [weekStart, setWeekStart] = useState<string | undefined>(() => {
-    if (!initialDate) return undefined;
-    const date = new Date(`${initialDate}T00:00:00Z`);
-    return addCalendarDays(initialDate, -((date.getUTCDay() + 6) % 7));
+    if (!startDate) return undefined;
+    const date = new Date(`${startDate}T00:00:00Z`);
+    return addCalendarDays(startDate, -((date.getUTCDay() + 6) % 7));
   });
-  const [selectedDate, setSelectedDate] = useState<string | null>(initialDate ?? null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(startDate ?? null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState('');
   const log = useMealLog(token, weekStart);
   const plan = useMealPlan(token, log.data?.weekStart);
   const remove = useDeleteMealLogEntry(token);
+  const update = useUpdateMealLogEntry(token);
+  const busy = remove.isPending || update.isPending;
   const week = log.data;
+  const reviewPrompt = week ? mealLogReviewPrompt(week) : null;
   const day = week ? week.days.find((item) => item.date === selectedDate) ?? week.days.find((item) => item.date === week.today) ?? week.days[0] : undefined;
   useEffect(() => { if (day) onDateChange?.(day.date); }, [day, onDateChange]);
   const isCurrentWeek = !!week?.days.some((item) => item.date === week.today);
   const planned: PlannedRecipe[] = plan.data?.days.find((item) => item.date === day?.date)?.sections.flatMap(({ section, recipes }) => recipes.map(({ id, title }) => ({ section, id, title }))) ?? [];
 
   function move(offset: number) {
-    if (!week) return;
+    if (!week || busy) return;
     setWeekStart(addCalendarDays(week.weekStart, offset));
     setSelectedDate(null);
     setError('');
@@ -105,21 +115,17 @@ export function MealLogScreen({ initialDate, onClose, scrollRef, scrollProps, on
           if (!entries.length) return null;
           return <View key={section} style={styles.block}>
             <Text style={[styles.sectionLabel, { color: theme.mutedForeground }]}>BỮA {sectionLabels[section].toUpperCase()}</Text>
-            {entries.map((entry) => <View key={entry.id} style={[styles.entry, { borderColor: theme.border, backgroundColor: theme.card }]}>
-              <View style={styles.flex}>
-                <Text style={[styles.entryName, { color: theme.foreground }]}>{entry.name}</Text>
-                <Text style={[styles.helper, { color: theme.mutedForeground }]}>{vn(entry.servings)} khẩu phần · {caloriesLabel(entry)}{entry.calorieSource === 'WEB_ESTIMATE' ? ' · AI ước tính' : ''}</Text>
-              </View>
-              {day.loggable ? <Pressable accessibilityRole="button" accessibilityLabel={`Xóa ${entry.name}`} disabled={remove.isPending} hitSlop={6} onPress={() => confirmDelete(entry.id, entry.name)} style={[styles.back, { backgroundColor: theme.muted }]}><SymbolView name={{ ios: 'trash', android: 'delete', web: 'delete' }} size={18} tintColor={theme.destructive} /></Pressable> : null}
-            </View>)}
+            {entries.map((entry) => <MealLogEntryRow key={`${entry.id}:${entry.servings}:${entry.caloriesPerServing}`} entry={entry} editable={day.loggable} busy={busy} onUpdate={(change) => update.mutateAsync({ id: entry.id, change })} onDelete={() => confirmDelete(entry.id, entry.name)} />)}
           </View>;
         })}
         {!day.entries.length ? <Text style={[styles.empty, { color: theme.mutedForeground, borderColor: theme.border }]}>{day.loggable ? 'Chưa ghi món nào cho ngày này.' : 'Ngày này không có món nào được ghi.'}</Text> : null}
-        {day.loggable ? <Pressable accessibilityRole="button" onPress={() => setAdding(true)} style={[styles.primary, { backgroundColor: theme.primary }]}><Text style={[styles.buttonText, { color: theme.primaryForeground }]}>Ghi món đã ăn</Text></Pressable> : null}
+        {day.loggable ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => setAdding(true)} style={[styles.primary, { backgroundColor: theme.primary, opacity: busy ? 0.5 : 1 }]}><Text style={[styles.buttonText, { color: theme.primaryForeground }]}>Ghi món đã ăn</Text></Pressable> : null}
 
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.heading, { color: theme.foreground }]}>Tổng kết tuần</Text>
           <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đã ghi {week.summary.loggedDays} ngày{week.summary.averageCalories !== null ? ` · Trung bình ~${vn(week.summary.averageCalories)} kcal/ngày (tính ${week.summary.completeDays} ngày đã qua có đủ kcal)` : '. Trung bình sẽ hiện khi có ngày đã qua với mọi món đều có kcal.'}</Text>
+          <WeeklyCalorieChart target={week.dailyCalorieTarget} days={week.days.map((item) => ({ date: item.date, label: SHORT_DAY[item.day], planned: item.plannedCalories, logged: item.entries.length ? item.loggedCalories : null, loggedIncomplete: item.unknownCalorieEntries > 0 }))} />
+          {reviewPrompt && onReview !== null ? <ActionButton label="Nhờ trợ lý xem lại tuần" icon={<SymbolView name={{ ios: 'sparkles', android: 'auto_awesome', web: 'auto_awesome' }} size={18} tintColor={theme.primary} />} disabled={busy} onPress={() => { if (onReview) onReview(reviewPrompt, week.weekStart); else { usePlannerRequestStore.getState().queue({ draft: reviewPrompt, week: week.weekStart, token }); router.navigate('/ai'); } }} /> : <Text style={[styles.helper, { color: theme.mutedForeground }]}>{reviewPrompt ? 'Bạn có thể nói “Nhờ trợ lý xem lại tuần” để tiếp tục trong cuộc gọi.' : 'Nhận xét tuần khả dụng khi có ngày đã qua ghi đủ kcal và còn ngày để cân đối trong tuần hiện tại.'}</Text>}
         </View>
       </> : null}
     </ScrollView>
@@ -148,8 +154,6 @@ const styles = StyleSheet.create({
   fill: { height: 8, borderRadius: 4 },
   block: { gap: 8 },
   sectionLabel: { fontFamily: Fonts.sansBold, fontSize: 11, lineHeight: 16, letterSpacing: 1.1 },
-  entry: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.two },
-  entryName: { fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
   empty: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, padding: Spacing.three, textAlign: 'center', fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
   primary: { minHeight: 50, borderRadius: Radius['2xl'], alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   buttonText: { fontFamily: Fonts.sansBold, fontSize: 15, lineHeight: 22 },

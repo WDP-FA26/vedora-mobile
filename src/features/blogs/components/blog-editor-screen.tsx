@@ -1,6 +1,6 @@
 import { Redirect, router, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -11,6 +11,9 @@ import { ApiError } from '@/shared/api/api-error';
 import { PostModerationNotice } from '@/features/posts/components/post-moderation-notice';
 import { isPostEditLocked, POST_STATUS_LABELS } from '@/features/posts/utils/post-status';
 import { useSessionStore } from '@/shared/stores/session-store';
+import { getSessionRevision } from '@/shared/session/session-manager';
+import { useVideoFiles } from '@/features/feed/hooks/use-video-files';
+import { VideoFileList } from '@/features/feed/components/video-file-list';
 
 import { useBlog } from '../hooks/use-blog';
 import { useBlogAssistant } from '../hooks/use-blog-assistant';
@@ -22,6 +25,9 @@ import { BlogAssistantSheet, type EditorApply } from './blog-assistant-sheet';
 import { blocksToMarkdown, markdownToBlocks } from '../utils/blog-blocks';
 import { BlogMarkdown } from './blog-article';
 import { BlogFormatBar, BlogRichEditor } from './blog-rich-editor';
+import { blogCoverFromContent } from '../utils/blog-cover';
+import { requestBlogVideoUpload } from '../services/blogs.service';
+import { useBlogAutosave } from '../hooks/use-blog-autosave';
 
 export function BlogEditorScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -46,13 +52,19 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
   const image = useBlogImage();
   const [id, setId] = useState(initial?.id ?? null);
   const [title, setTitle] = useState(initial?.blog.title ?? '');
-  const [cover, setCover] = useState(initial?.blog.coverImageUrl ?? '');
+  const idRef = useRef(initial?.id ?? null);
+  const revision = useRef(getSessionRevision());
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const videos = useVideoFiles();
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [autoSaving, setAutoSaving] = useState(false);
   const live = useBlog(id ?? '', !!id);
   const moderation = live.data ?? initial;
   const status = moderation?.status ?? 'DRAFT';
   const locked = !!moderation && isPostEditLocked(moderation);
   // The saved text is compared in the form the editor writes, so opening a blog never shows "unsaved".
-  const [saved, setSaved] = useState(() => ({ title: initial?.blog.title ?? '', content: blocksToMarkdown(markdownToBlocks(initial?.content ?? '')), cover: initial?.blog.coverImageUrl ?? '' }));
+  const [saved, setSaved] = useState(() => ({ title: initial?.blog.title ?? '', content: blocksToMarkdown(markdownToBlocks(initial?.content ?? '')) }));
   const [preview, setPreview] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -63,11 +75,13 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
   const changed = useCallback(() => { setNotice(''); setError(''); }, []);
   const editor = useBlogBlocks(initial?.content ?? '', changed);
   const content = editor.markdown;
+  const cover = blogCoverFromContent(content);
   const assistant = useBlogAssistant({ blogId: id, getEditor: () => ({ title, content, range: editor.markdownRange() }) });
-  const dirty = title !== saved.title || content !== saved.content || cover !== saved.cover;
-  const busy = save.isPending || image.isPending;
+  const dirty = title !== saved.title || content !== saved.content;
+  const busy = (save.isPending && !autoSaving) || image.isPending || videoBusy;
+  const working = save.isPending || image.isPending || videoBusy;
   const disabled = busy || locked;
-  usePreventRemove(!discard && (dirty || busy), ({ repeat }) => {
+  usePreventRemove(!discard && (dirty || working || videos.entries.length > 0), ({ repeat }) => {
     if (!actionLock.current) setLeave(() => repeat);
   });
 
@@ -78,31 +92,39 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
     editor.replaceAll(result.content);
   }
 
-  async function persist(nextStatus: BlogInput['status']) {
+  async function persist(nextStatus: BlogInput['status'], automatic = false) {
     if (actionLock.current || locked) return;
     const input = blogInputSchema.safeParse({ title, content, coverImageUrl: cover.trim() || null, status: nextStatus });
     if (!input.success) { setError(input.error.issues[0]?.message ?? 'Kiểm tra lại nội dung.'); return; }
     if (!token) { setError('Phiên đăng nhập đã hết hạn. Hãy đăng nhập lại.'); return; }
     actionLock.current = true;
+    setAutoSaving(automatic);
     setError(''); setNotice('');
     try {
-      const result = await save.mutateAsync({ id, input: input.data });
+      const result = await save.mutateAsync({ id: idRef.current, input: input.data });
+      if (!alive.current || revision.current !== getSessionRevision()) return;
+      idRef.current = result.id;
       setId(result.id);
-      setTitle(result.blog.title);
       // Keep the editor as it is (and the cursor in it) unless the server stored something different.
       const stored = result.content === content ? content : blocksToMarkdown(markdownToBlocks(result.content));
-      if (result.content !== content) editor.replaceAll(result.content);
-      setCover(result.blog.coverImageUrl ?? '');
-      setSaved({ title: result.blog.title, content: stored, cover: result.blog.coverImageUrl ?? '' });
-      setNotice(result.status === 'PUBLISHED' ? 'Đã lưu và đăng blog.' : result.status === 'DRAFT' ? 'Đã lưu bản nháp.' : `Đã lưu blog · ${POST_STATUS_LABELS[result.status]}.`);
+      if (!automatic) {
+        setTitle(result.blog.title);
+        if (result.content !== content) editor.replaceAll(result.content);
+      }
+      setSaved(automatic ? { title, content } : { title: result.blog.title, content: stored });
+      setNotice(automatic ? 'Đã tự lưu bản nháp.' : result.status === 'PUBLISHED' ? 'Đã lưu và đăng blog.' : result.status === 'DRAFT' ? 'Đã lưu bản nháp.' : `Đã lưu blog · ${POST_STATUS_LABELS[result.status]}.`);
     } catch (caught) {
+      if (!alive.current || revision.current !== getSessionRevision()) return;
       setError(caught instanceof ApiError && caught.code === 'BLOG_CONTENT_REQUIRED' ? 'Hãy viết nội dung trước khi đăng.'
+        : caught instanceof ApiError && ['BLOG_COVER_NOT_ALLOWED', 'BLOG_MEDIA_NOT_ALLOWED'].includes(caught.code ?? '') ? 'Chỉ chèn được ảnh hoặc video đã tải lên Vedora. Nội dung vẫn được giữ để bạn chỉnh lại.'
         : caught instanceof ApiError && caught.status === 409 ? 'Bài đang bị khóa hoặc đã thay đổi. Hãy mở lại bài để xem trạng thái mới nhất.'
         : caught instanceof ApiError && caught.status === 404 ? 'Blog không còn tồn tại hoặc bạn không có quyền sửa.'
         : caught instanceof ApiError && caught.status === 401 ? 'Phiên đăng nhập đã hết hạn. Nội dung vẫn được giữ trên màn hình.'
         : 'Chưa lưu được blog. Nội dung vẫn được giữ, hãy thử lại.');
-    } finally { actionLock.current = false; }
+    } finally { actionLock.current = false; if (alive.current) setAutoSaving(false); }
   }
+
+  useBlogAutosave({ title, content, dirty, enabled: !locked && !leave && !!token, busy: working, status, save: () => persist(undefined, true) });
 
   async function addImage(asCover: boolean) {
     if (actionLock.current || locked) return;
@@ -110,13 +132,27 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
     changed();
     try {
       const url = await image.mutateAsync();
-      if (url) {
-        if (asCover) setCover(url);
-        else editor.addImage(url);
-      }
+      if (url && alive.current && revision.current === getSessionRevision()) editor.addImage(url, asCover);
     } catch (caught) {
       setError(caught instanceof ApiError ? 'Không tải được ảnh lên. Vui lòng thử lại.' : caught instanceof Error ? caught.message : 'Không chọn được ảnh.');
     } finally { actionLock.current = false; }
+  }
+
+  async function addVideo(select = true) {
+    if (actionLock.current || locked) return;
+    actionLock.current = true; setVideoBusy(true); changed();
+    try {
+      if (select) await videos.pick(1 - videos.entries.length, 100 * 1048576, Infinity);
+      const urls = await videos.uploadAll(async () => {
+        const target = await requestBlogVideoUpload();
+        return { id: target.url, upload: target.upload };
+      });
+      if (!alive.current || revision.current !== getSessionRevision()) return;
+      for (const url of urls) editor.addImage(url);
+      // This upload is now represented by a Markdown media block.
+      videos.clear();
+    } catch (caught) { if (alive.current) setError(caught instanceof Error ? caught.message : 'Chưa chèn được video.'); }
+    finally { actionLock.current = false; if (alive.current) setVideoBusy(false); }
   }
 
   const published = status === 'PUBLISHED';
@@ -131,7 +167,7 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
         <Text accessibilityRole="header" numberOfLines={1} style={[styles.heading, { color: theme.foreground }]}>{id ? 'Chỉnh sửa blog' : 'Viết blog'}</Text>
         <View style={styles.statusRow}>
           <View style={[styles.dot, { backgroundColor: published ? theme.primary : theme.chart3 }]} />
-          <Text style={[styles.statusText, { color: theme.mutedForeground }]}>{POST_STATUS_LABELS[status]}{dirty ? ' · Chưa lưu' : ''}</Text>
+          <Text style={[styles.statusText, { color: theme.mutedForeground }]}>{POST_STATUS_LABELS[status]}{autoSaving ? ' · Đang tự lưu…' : dirty ? ' · Chưa lưu' : ''}</Text>
         </View>
       </View>
       <Pressable accessibilityRole="button" accessibilityLabel="Mở trợ lý viết blog" disabled={disabled} onPress={() => setAssistantOpen(true)} style={({ pressed }) => [styles.assist, { backgroundColor: theme.secondary, opacity: busy ? 0.5 : pressed ? 0.8 : 1 }]}>
@@ -170,7 +206,6 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
               <ZoomImage source={{ uri: cover }} style={styles.cover} contentFit="cover" accessibilityLabel="Ảnh bìa" />
               <View style={styles.coverActions}>
                 <Pressable accessibilityRole="button" disabled={disabled} onPress={() => void addImage(true)} style={styles.coverButton}><Text style={styles.coverButtonText}>Đổi ảnh</Text></Pressable>
-                <Pressable accessibilityRole="button" disabled={disabled} onPress={() => { setCover(''); changed(); }} style={styles.coverButton}><Text style={styles.coverButtonText}>Gỡ</Text></Pressable>
               </View>
             </View>
           ) : (
@@ -180,6 +215,7 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
               <Text style={[styles.coverHint, { color: theme.mutedForeground }]}>JPEG, PNG, WebP hoặc GIF, tối đa 5 MB</Text>
             </Pressable>
           )}
+          <Text style={[styles.copy, { color: theme.mutedForeground }]}>Ảnh đầu tiên trong nội dung là ảnh bìa. Di chuyển hoặc gỡ ảnh ngay trong bài để thay đổi.</Text>
 
           <TextInput
             accessibilityLabel="Tiêu đề blog"
@@ -201,10 +237,13 @@ function BlogEditor({ initial }: { initial: Blog | null }) {
             <BlogRichEditor editor={editor} disabled={disabled} />
           </View>
           <Text style={[styles.counter, { color: content.length > MAX_BLOG_CONTENT_LENGTH ? theme.destructive : theme.mutedForeground }]}>{content.length.toLocaleString('vi-VN')}/50.000 ký tự</Text>
+          <VideoFileList entries={videos.entries} disabled={videoBusy} onRemove={videos.remove} />
+          {videos.entries.length && !videoBusy ? <Pressable accessibilityRole="button" disabled={disabled} onPress={() => void addVideo(false)} style={styles.textButton}><Text style={[styles.textButtonLabel, { color: theme.primary }]}>Tải lại và chèn video</Text></Pressable> : null}
+          {videoBusy ? <Pressable accessibilityRole="button" onPress={videos.cancel} style={styles.textButton}><Text style={[styles.textButtonLabel, { color: theme.destructive }]}>Dừng tải video</Text></Pressable> : null}
         </>}
       </ScrollView>
 
-      {preview ? null : <BlogFormatBar editor={editor} disabled={disabled} onImage={() => void addImage(false)} />}
+      {preview ? null : <BlogFormatBar editor={editor} disabled={disabled || save.isPending} onImage={() => void addImage(false)} onVideo={() => void addVideo()} />}
 
       <View style={[styles.footer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
         <View style={styles.footerInner}>

@@ -1,9 +1,15 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { registerHooks } from 'node:module';
 
-import { recipeFavoriteStateSchema, recipeSchema } from '../src/features/recipes/types/recipe.schema.ts';
 import { updateFavoriteDetail, updateFavoritePages } from '../src/features/recipes/utils/recipe-favorite-cache.ts';
 import { authReturnTo } from '../src/features/auth/utils/return-to.ts';
+
+registerHooks({ resolve(specifier, context, next) {
+  if (specifier.startsWith('@/')) specifier = new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href;
+  return next(specifier, context);
+} });
+const { recipeFavoriteStateSchema, recipeSchema } = await import('../src/features/recipes/types/recipe.schema.ts');
 
 const id = '00000000-0000-4000-8000-000000000001';
 const recipe = { id, title: 'Món chay', isFavorite: false, imageUrl: null, servings: 2, prepMinutes: 10, cookMinutes: 15, ingredientCount: 3, conflicts: [], post: null, updatedAt: '2026-11-07' };

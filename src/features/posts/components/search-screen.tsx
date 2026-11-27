@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -10,24 +10,29 @@ import { feedPostOf, usePostViewability } from '@/features/feed/hooks/use-post-v
 import { RecipeCard } from '@/features/recipes/components/recipe-card';
 import { useRecipes } from '@/features/recipes/hooks/use-recipes';
 import { MAX_RECIPE_QUERY_LENGTH } from '@/features/recipes/types/recipe.schema';
+import type { RecipeTag } from '@/features/recipes/types/recipe.schema';
+import { RecipeCategoryPicker } from '@/features/recipes/components/recipe-category-picker';
 import { useTheme } from '@/hooks/use-theme';
 import { useSessionStore } from '@/shared/stores/session-store';
 
 import { usePostSearch } from '../hooks/use-posts';
 import { MAX_SEARCH_QUERY_LENGTH } from '../types/posts.schema';
 
-type SearchTab = 'posts' | 'recipes';
+import { AllResults, DishResults, PeopleResults, type SearchTab } from './search-extra-results';
 
 const TABS: { key: SearchTab; label: string; placeholder: string; maxLength: number }[] = [
-  { key: 'posts', label: 'Bài viết', placeholder: 'Tìm bài viết...', maxLength: MAX_SEARCH_QUERY_LENGTH },
+  { key: 'all', label: 'Tất cả', placeholder: 'Tìm món, người dùng, bài viết...', maxLength: MAX_SEARCH_QUERY_LENGTH },
+  { key: 'people', label: 'Người dùng', placeholder: 'Tên, @username hoặc giới thiệu...', maxLength: MAX_SEARCH_QUERY_LENGTH },
   { key: 'recipes', label: 'Công thức', placeholder: 'Tìm món hoặc nguyên liệu...', maxLength: MAX_RECIPE_QUERY_LENGTH },
+  { key: 'dishes', label: 'Món nhà hàng', placeholder: 'Tìm món tại nhà hàng...', maxLength: MAX_SEARCH_QUERY_LENGTH },
+  { key: 'posts', label: 'Bài viết', placeholder: 'Tìm bài viết...', maxLength: MAX_SEARCH_QUERY_LENGTH },
 ];
 
 /** The one search in the app. `tab` and `q` route params open it on a tab, optionally with a query already typed. */
 export function SearchScreen() {
   const theme = useTheme();
   const params = useLocalSearchParams<{ tab?: string; q?: string }>();
-  const [tab, setTab] = useState<SearchTab>(params.tab === 'recipes' ? 'recipes' : 'posts');
+  const [tab, setTab] = useState<SearchTab>(TABS.find((item) => item.key === params.tab)?.key ?? 'all');
   const [text, setText] = useState(params.q ?? '');
   const [q, setQ] = useState((params.q ?? '').trim());
   const current = TABS.find((item) => item.key === tab)!;
@@ -65,7 +70,7 @@ export function SearchScreen() {
             ) : null}
           </View>
         </View>
-        <View accessibilityRole="tablist" style={styles.tabs}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" contentContainerStyle={styles.tabs}>
           {TABS.map((item) => {
             const selected = item.key === tab;
             return (
@@ -79,9 +84,9 @@ export function SearchScreen() {
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
       </View>
-      {tab === 'posts' ? <PostResults q={q} /> : <RecipeResults q={q.slice(0, MAX_RECIPE_QUERY_LENGTH)} />}
+      {tab === 'all' ? <AllResults q={q} onTab={setTab} /> : tab === 'people' ? <PeopleResults q={q} /> : tab === 'dishes' ? <DishResults q={q} /> : tab === 'posts' ? <PostResults q={q} /> : <RecipeResults q={q.slice(0, MAX_RECIPE_QUERY_LENGTH)} />}
     </SafeAreaView>
   );
 }
@@ -98,7 +103,7 @@ function PostResults({ q }: { q: string }) {
       keyExtractor={(post) => post.id}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={styles.list}
-      onEndReached={() => { if (search.hasNextPage && !search.isFetchingNextPage) void search.fetchNextPage(); }}
+      onEndReached={() => { if (search.hasNextPage && !search.isFetching && !search.isFetchNextPageError) void search.fetchNextPage(); }}
       onEndReachedThreshold={0.5}
       renderItem={({ item }) => <PostCard post={item} visible={false} />}
       ListEmptyComponent={!q ? (
@@ -108,7 +113,7 @@ function PostResults({ q }: { q: string }) {
           <Text style={[styles.sub, { color: theme.destructive }]}>Không tìm được lúc này. Chạm để thử lại.</Text>
         </Pressable>
       ) : <Text style={[styles.sub, styles.state, { color: theme.mutedForeground }]}>Không có bài viết nào khớp “{q}”.</Text>}
-      ListFooterComponent={search.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : undefined}
+      ListFooterComponent={search.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : search.isFetchNextPageError ? <Pressable accessibilityRole="button" onPress={() => void search.fetchNextPage()} style={styles.state}><Text style={{ color: theme.destructive }}>Chưa tải được thêm bài. Chạm để thử lại.</Text></Pressable> : undefined}
     />
   );
 }
@@ -119,10 +124,11 @@ function RecipeResults({ q }: { q: string }) {
   const columns = width < 360 || fontScale > 1.2 ? 1 : 2;
   const token = useSessionStore((state) => state.accessToken);
   const [suitableForMe, setSuitableForMe] = useState(false);
+  const [category, setCategory] = useState<{ id: string | null; tag: RecipeTag | null }>({ id: null, tag: null });
   const suitable = !!token && suitableForMe;
   // Nothing typed and no filter: show a prompt instead of the whole catalogue (that lives in the Công thức tab).
-  const active = q.length > 0 || suitable;
-  const recipes = useRecipes({ q, suitableForMe: suitable }, active);
+  const active = q.length > 0 || suitable || !!category.tag;
+  const recipes = useRecipes({ q, suitableForMe: suitable, tag: category.tag }, active);
   const items = active ? recipes.data?.pages.flatMap((page) => page.items) ?? [] : [];
 
   function toggleSuitable() {
@@ -146,6 +152,8 @@ function RecipeResults({ q }: { q: string }) {
       onEndReachedThreshold={0.5}
       renderItem={({ item }) => <View style={columns === 2 ? styles.gridItem : styles.singleItem}><RecipeCard recipe={item} /></View>}
       ListHeaderComponent={(
+        <View style={{ gap: 12 }}>
+        <RecipeCategoryPicker value={category.id} onChange={(id, tag) => setCategory({ id, tag })} />
         <Pressable
           accessibilityRole="switch"
           accessibilityLabel="Chỉ món hợp với hồ sơ ăn uống của bạn"
@@ -155,6 +163,7 @@ function RecipeResults({ q }: { q: string }) {
           <SymbolView name={{ ios: suitable ? 'checkmark' : 'leaf', android: suitable ? 'check' : 'eco', web: suitable ? 'check' : 'eco' }} size={16} tintColor={theme.primary} />
           <Text style={[styles.filterText, { color: theme.foreground }]}>Hợp với mình</Text>
         </Pressable>
+        </View>
       )}
       ListEmptyComponent={!active ? (
         <Text style={[styles.sub, styles.state, { color: theme.mutedForeground }]}>Nhập tên món hoặc nguyên liệu để tìm công thức.</Text>
@@ -163,7 +172,7 @@ function RecipeResults({ q }: { q: string }) {
           <Text style={[styles.sub, { color: theme.destructive }]}>Không tìm được lúc này. Chạm để thử lại.</Text>
         </Pressable>
       ) : <Text style={[styles.sub, styles.state, { color: theme.mutedForeground }]}>{q ? `Không có công thức nào khớp “${q}”.` : 'Chưa có món hợp với hồ sơ của bạn.'}</Text>}
-      ListFooterComponent={recipes.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : undefined}
+      ListFooterComponent={recipes.isFetchingNextPage ? <ActivityIndicator color={theme.primary} style={styles.state} /> : recipes.isFetchNextPageError ? <Pressable accessibilityRole="button" onPress={() => void recipes.fetchNextPage()} style={styles.state}><Text style={{ color: theme.destructive }}>Chưa tải được thêm món. Chạm để thử lại.</Text></Pressable> : undefined}
     />
   );
 }
@@ -176,7 +185,7 @@ const styles = StyleSheet.create({
   search: { flex: 1, minHeight: 42, borderWidth: 1, borderRadius: Radius.xl, flexDirection: 'row', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three },
   // Fills the bar's height and centres the text in it; Android's extra font padding otherwise pushes the placeholder off the icon's line.
   input: { flex: 1, minWidth: 0, height: 40, fontFamily: Fonts.sans, fontSize: 14, paddingVertical: 0, textAlignVertical: 'center', includeFontPadding: false },
-  tabs: { flexDirection: 'row', gap: Spacing.four, paddingLeft: 40 + Spacing.two },
+  tabs: { flexDirection: 'row', gap: Spacing.four },
   tab: { minHeight: 44, justifyContent: 'center', borderBottomWidth: 2 },
   tabText: { fontFamily: Fonts.sansBold, fontSize: 14 },
   list: { width: '100%', maxWidth: 680, alignSelf: 'center' },

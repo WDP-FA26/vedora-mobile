@@ -102,6 +102,8 @@ export function useFollow(id: string) {
       void queryClient.invalidateQueries({ queryKey: profileKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: profileKeys.me });
       void queryClient.invalidateQueries({ queryKey: ['following'] });
+      void queryClient.invalidateQueries({ queryKey: ['feed', 'all', 'following'] });
+      void queryClient.invalidateQueries({ queryKey: ['profile-search'] });
       void queryClient.invalidateQueries({ queryKey: profileKeys.all, predicate: (query) => query.queryKey[1] === 'followers' || query.queryKey[1] === 'following' });
       // Following decides who may message whom, so refresh chat permissions and the inboxes.
       void queryClient.invalidateQueries({ queryKey: messagingKeys.all });

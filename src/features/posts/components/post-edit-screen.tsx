@@ -8,6 +8,9 @@ import { z } from 'zod';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
 import type { FeedPost } from '@/features/feed/types/feed.schema';
+import { VideoFileList } from '@/features/feed/components/video-file-list';
+import { useVideoFiles } from '@/features/feed/hooks/use-video-files';
+import { discardVideoUpload, requestVideoUpload } from '@/features/feed/services/compose.service';
 import { useMyProfile } from '@/features/profile/hooks/use-profile';
 import { useTheme } from '@/hooks/use-theme';
 import { ApiError } from '@/shared/api/api-error';
@@ -63,10 +66,12 @@ export function PostEditForm({ post }: { post: FeedPost }) {
   const [saved, setSaved] = useState(false);
   const submitting = useRef(false);
   const save = useUpdatePost(post.id);
+  const videos = useVideoFiles(discardVideoUpload);
+  const [uploading, setUploading] = useState(false);
   const bodyChanged = body.trim() !== (original.body ?? '').trim();
-  const mediaChanged = mediaIds.join(',') !== original.media.map((item) => item.id).join(',');
+  const mediaChanged = mediaIds.join(',') !== original.media.map((item) => item.id).join(',') || videos.entries.length > 0;
   const dirty = bodyChanged || mediaChanged;
-  const busy = save.isPending;
+  const busy = save.isPending || uploading || videos.picking;
   const disablePrevention = usePreventRemove(!saved && (dirty || busy), ({ repeat }) => {
     if (submitting.current || save.isPending) return;
     const discard = () => { setSaved(true); repeat(); };
@@ -88,20 +93,26 @@ export function PostEditForm({ post }: { post: FeedPost }) {
   async function submit() {
     if (submitting.current || busy || !dirty) return;
     if (!canEditPost(post)) { setError('Bài viết chưa thể sửa. Hãy tải lại để kiểm tra trạng thái.'); return; }
-    const parsed = postEditFormSchema.safeParse({ body, mediaIds });
+    const parsed = postEditFormSchema.safeParse({ body, mediaIds: [...mediaIds, ...videos.entries.map((entry) => entry.id)] });
     if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? 'Kiểm tra lại nội dung.'); return; }
     submitting.current = true;
+    setUploading(true);
     setError('');
     try {
+      const added = videos.entries.length ? await videos.uploadAll(async () => {
+        const target = await requestVideoUpload();
+        return { id: target.media.id, upload: target.upload };
+      }) : [];
       await save.mutateAsync({
         ...(bodyChanged ? { body: parsed.data.body } : {}),
-        ...(mediaChanged ? { mediaIds: parsed.data.mediaIds } : {}),
+        ...(mediaChanged ? { mediaIds: [...mediaIds, ...added] } : {}),
       });
+      videos.commit(added);
       setSaved(true);
       disablePrevention();
       router.replace({ pathname: '/posts/[id]', params: { id: post.id } });
     } catch (caught) { setError(postEditError(caught)); }
-    finally { submitting.current = false; }
+    finally { submitting.current = false; setUploading(false); }
   }
 
   return <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -123,7 +134,7 @@ export function PostEditForm({ post }: { post: FeedPost }) {
         <Text style={[styles.counter, { color: postWordCount(body) > MAX_POST_BODY_WORDS ? theme.destructive : theme.mutedForeground }]}>{body.length}/{MAX_POST_BODY_LENGTH} ký tự · {postWordCount(body)}/{MAX_POST_BODY_WORDS} từ</Text>
         {original.media.length ? <>
           <Text style={[styles.label, { color: theme.foreground }]}>Video đính kèm ({mediaIds.length})</Text>
-          <Text style={[styles.helper, { color: theme.mutedForeground }]}>Bạn có thể gỡ hoặc đổi thứ tự video hiện có. Video đã gỡ chỉ bị xóa khi lưu bài viết.</Text>
+          <Text style={[styles.helper, { color: theme.mutedForeground }]}>Gỡ, đổi thứ tự hoặc thêm video mới. Thay đổi chỉ áp dụng khi lưu bài viết.</Text>
           {mediaIds.map((id, index) => {
             const media = original.media.find((item) => item.id === id)!;
             return <View key={id} style={[styles.video, { borderColor: theme.border, backgroundColor: theme.card }]}>
@@ -140,6 +151,8 @@ export function PostEditForm({ post }: { post: FeedPost }) {
           })}
           {mediaChanged ? <Pressable accessibilityRole="button" disabled={busy} onPress={() => setMediaIds(original.media.map((item) => item.id))} style={styles.button}><Text style={[styles.buttonText, { color: theme.primary }]}>Khôi phục danh sách video</Text></Pressable> : null}
         </> : null}
+        <VideoFileList entries={videos.entries} disabled={busy} onRemove={videos.remove} />
+        <Pressable accessibilityRole="button" disabled={busy || mediaIds.length + videos.entries.length >= 4} onPress={() => void videos.pick(4 - mediaIds.length - videos.entries.length).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : 'Chưa chọn được video.'))} style={[styles.button, { borderWidth: 1, borderColor: theme.border, borderRadius: Radius.xl }]}><Text style={[styles.buttonText, { color: theme.primary }]}>＋ Thêm video ({mediaIds.length + videos.entries.length}/4)</Text></Pressable>
         {error ? <Text accessibilityRole="alert" style={[styles.helper, { color: theme.destructive }]}>{error}</Text> : null}
       </ScrollView>
       <View style={[styles.footer, { borderTopColor: theme.border, backgroundColor: theme.card }]}>

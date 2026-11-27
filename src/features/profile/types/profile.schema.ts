@@ -40,6 +40,9 @@ export const profilePageSchema = z.object({
 });
 
 export const relationshipSchema = z.object({ isFollowing: z.boolean() });
+export const profileSearchItemSchema = profileSummarySchema.extend({ isFollowing: z.boolean() });
+export const profileSearchPageSchema = z.object({ items: z.array(profileSearchItemSchema), nextCursor: z.string().nullable() });
+export type ProfileSearchItem = z.output<typeof profileSearchItemSchema>;
 
 export type ProfileSummary = z.output<typeof profileSummarySchema>;
 export type ProfileListKind = 'followers' | 'following';

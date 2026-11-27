@@ -7,6 +7,9 @@ import { SproutPet } from '@/features/nutrition-chat/components/sprout-pet';
 import { useTheme } from '@/hooks/use-theme';
 import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { NutritionSection } from '@/features/dietary-profile/components/nutrition-section';
+import { RecipeNutrition } from '@/features/dietary-profile/components/recipe-nutrition';
+import { useMealPlan } from '../hooks/use-meal-plan';
+import { MealNutritionSummary } from './meal-nutrition-summary';
 import { MealLogScreen } from '@/features/meal-log/components/meal-log-screen';
 import { useRecipe } from '@/features/recipes/hooks/use-recipes';
 import { formatIngredient, recipeMinutes } from '@/features/recipes/utils/recipe-format';
@@ -23,6 +26,7 @@ export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onC
   const theme = useTheme();
   const { screen, focus, status, error, reply, heard, elapsed, highlight, glowing, sendContext, scrollRef, scrollProps, closePanel, end, toggleMute, interrupt, applyScreen, selectDay, setLogDate, setShoppingSnapshot, retry } = useMealPlannerVoice(planner);
   const token = planner.token;
+  const nutritionPlan = useMealPlan(screen.panel === 'bodyMetrics' && screen.bodyMetricsTab === 'weekly' ? token : null, screen.weekStart);
   const close = () => { end(); onClose(); };
   return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -37,7 +41,7 @@ export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onC
           <Pressable accessibilityRole="button" accessibilityLabel="Đóng cuộc gọi" onPress={close} style={({ pressed }) => [styles.control, { backgroundColor: theme.muted, opacity: pressed ? 0.7 : 1 }]}><SymbolView name={{ ios: 'xmark', android: 'close', web: 'close' }} size={22} tintColor={theme.foreground} /></Pressable>
         </View>
       </View>
-      {screen.panel === 'eatingLog' ? <MealLogScreen key={focus?.kind === 'eatingLog' ? focus.date : 'log'} initialDate={screen.eatingLogDate} onClose={closePanel} scrollRef={scrollRef} scrollProps={scrollProps} onDateChange={setLogDate} />
+      {screen.panel === 'eatingLog' ? <MealLogScreen key={focus?.kind === 'eatingLog' ? focus.date : 'log'} initialDate={screen.eatingLogDate} onClose={closePanel} scrollRef={scrollRef} scrollProps={scrollProps} onDateChange={setLogDate} onReview={null} />
         : <ScrollView key={screen.panel === 'recipe' ? screen.recipeId : screen.panel} ref={scrollRef} {...scrollProps} style={styles.screen} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           {screen.panel === 'none' ? <View style={styles.hero}>
             <View style={styles.heroCopy}>
@@ -54,7 +58,10 @@ export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onC
           </Pressable>}
           {screen.panel === 'recipe' && focus?.kind === 'recipe' ? <VoiceRecipe focus={focus} scrollRef={scrollRef} onContext={sendContext} onStep={(step) => applyScreen({ close: null, focus: { ...focus, step, section: 'steps' } })} />
             : screen.panel === 'shoppingList' ? <ShoppingListPanel key={screen.weekStart} weekStart={screen.weekStart} command={focus?.kind === 'shoppingList' ? focus : undefined} onSnapshot={setShoppingSnapshot} onContext={sendContext} onRecipe={(id, title) => applyScreen({ close: null, focus: { kind: 'recipe', recipeId: id, title, section: 'top' } })} />
-            : screen.panel === 'bodyMetrics' && token ? <NutritionSection token={token} />
+            : screen.panel === 'bodyMetrics' && token ? screen.bodyMetricsTab === 'weekly'
+              ? nutritionPlan.data ? <><MealNutritionSummary key={screen.weekStart} plan={nutritionPlan.data} token={token} expanded /><Text style={[styles.text, { color: theme.mutedForeground }]}>Bạn có thể nói “Nhờ trợ lý cân đối tuần này” để tiếp tục trong cuộc gọi.</Text></>
+                : nutritionPlan.isError ? <Pressable accessibilityRole="button" onPress={() => void nutritionPlan.refetch()}><Text style={[styles.text, { color: theme.destructive }]}>Chưa tải được dinh dưỡng tuần. Chạm để thử lại.</Text></Pressable> : <ActivityIndicator color={theme.primary} />
+              : <NutritionSection token={token} />
               : <VoiceCalendar key={screen.weekStart} screen={screen} token={token} highlight={highlight} scrollRef={scrollRef} onDay={selectDay} onRecipe={(id, title) => applyScreen({ close: null, focus: { kind: 'recipe', recipeId: id, title, section: 'top' } })} />}
         </ScrollView>}
       <VoiceCallControls status={status} error={error} reply={reply} heard={heard} elapsed={elapsed} onClose={close} onRetry={retry} onToggleMute={toggleMute} onInterrupt={interrupt} />
@@ -84,6 +91,7 @@ function VoiceRecipe({ focus, scrollRef, onContext, onStep }: { focus: Extract<V
         <Text style={[styles.kicker, { color: theme.primary }]}>CÙNG VÀO BẾP</Text>
         <Text accessibilityRole="header" style={[styles.recipeTitle, { color: theme.foreground }]}>{data.title}</Text>
         <Text style={[styles.caption, { color: theme.mutedForeground }]}>{[minutes !== null ? `${minutes} phút` : null, `${data.servings} khẩu phần`].filter(Boolean).join(' · ')}</Text>
+        <RecipeNutrition {...data} />
       </View>
       <Image source={require('@/assets/branding/carrot-sticker.png')} style={styles.recipeSticker} contentFit="contain" accessible={false} />
     </View>

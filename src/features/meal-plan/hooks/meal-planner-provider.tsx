@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { createContext, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import { createClientMessageId } from '@/features/messaging/utils/messaging';
+import { mealLogKeys } from '@/features/meal-log/data/meal-log.keys';
 import { ApiError } from '@/shared/api/api-error';
 import { aiQuotaMessage } from '@/shared/api/ai-quota';
 import { useSessionStore } from '@/shared/stores/session-store';
@@ -159,6 +160,7 @@ function useMealPlannerState() {
     // Includes the current-week alias and every cached week the assistant may have changed.
     await client.invalidateQueries({ queryKey: mealPlanKeys.plan });
     await client.invalidateQueries({ queryKey: mealPlanKeys.shopping });
+    await client.invalidateQueries({ queryKey: mealLogKeys.all });
   }
 
   async function sendMessage(override?: string, decision?: { callId: string; output: { answer: string } | { approved: boolean } }) {
