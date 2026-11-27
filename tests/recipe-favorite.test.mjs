@@ -37,8 +37,9 @@ test('preserves recipe detail and never creates incomplete detail data', () => {
   assert.equal(updateFavoriteDetail(undefined, id, true), undefined);
 });
 
-test('login allows recipe and bookmark screens without allowing external redirects', () => {
-  assert.equal(authReturnTo('/recipes'), '/recipes');
+test('login uses the current explore entry for recipes and allows bookmarks without external redirects', () => {
+  assert.equal(authReturnTo('/explore'), '/explore');
+  assert.equal(authReturnTo('/recipes'), '/explore');
   assert.equal(authReturnTo('/bookmarks'), '/bookmarks');
   assert.equal(authReturnTo('https://attacker.example'), '/explore');
   assert.equal(authReturnTo('//attacker.example'), '/explore');

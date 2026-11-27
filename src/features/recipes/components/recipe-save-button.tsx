@@ -45,7 +45,7 @@ export function RecipeSaveButton({ recipe }: { recipe: Recipe }) {
 
 const styles = StyleSheet.create({
   group: { gap: Spacing.one },
-  button: { minHeight: 44, borderWidth: 1, borderRadius: Radius.xl, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: Spacing.two, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-  label: { fontFamily: Fonts.sansSemibold, fontSize: 14, flexShrink: 1 },
+  button: { minHeight: 44, borderWidth: 1, borderRadius: Radius['4xl'], flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: Spacing.two },
+  label: { fontFamily: Fonts.sansSemibold, fontSize: 13, lineHeight: 19, flexShrink: 1, textAlign: 'center' },
   error: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 18 },
 });

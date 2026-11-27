@@ -31,7 +31,8 @@ export const voiceStateSchema = z.object({
   }).optional(),
 });
 export const voiceScreenSchema = z.object({
-  weekStart: weekStartSchema, day: z.enum(weekdays).optional(), panel: z.enum(['none', 'recipe', 'eatingLog', 'bodyMetrics']),
+  weekStart: weekStartSchema, day: z.enum(weekdays).optional(), panel: z.enum(['none', 'recipe', 'eatingLog', 'bodyMetrics', 'shoppingList']),
+  shoppingDays: z.array(z.enum(weekdays)).optional(), shoppingPeople: z.number().int().min(1).max(4).optional(), shoppingCheckedCount: z.number().int().nonnegative().optional(),
   recipeId: z.string().optional(), recipeSection: z.enum(['top', 'ingredients', 'steps']).optional(), recipeStep: z.number().int().min(1).max(50).optional(),
   eatingLogDate: z.iso.date().optional(), scrollState: z.object({ percent: z.number().int().min(0).max(100), atTop: z.boolean(), atBottom: z.boolean() }).optional(),
   bodyMetricsTab: z.literal('bmi').optional(),

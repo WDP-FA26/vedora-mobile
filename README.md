@@ -11,7 +11,7 @@ npm start
 
 Scan the QR code with Expo Go (SDK 58). The start, Android and iOS scripts always target Expo Go. If LAN access is blocked, use `npx expo start --go --tunnel` and scan the new QR code.
 
-Assistant voice calls use `expo-audio` included in Expo Go SDK 58. Open Trợ lý or Thực đơn, tap Gọi and grant microphone access. Native calls listen between assistant replies to avoid speaker echo; tap Nói tiếp to interrupt. Temporary playback files are deleted when playback finishes or the call closes. No development build is required. Google sign-in is unavailable in Expo Go; use email sign-in.
+Assistant voice calls target Expo Go SDK 58. Open Trợ lý or Thực đơn, tap Gọi and grant microphone access. Native calls use a bundled local Web Audio document inside the existing `react-native-webview`, with simultaneous capture/playback and browser echo cancellation like the web frontend. Speak naturally, including while the assistant speaks; Ngắt lời is an optional manual interruption. Only PCM audio crosses this local bridge; authentication, Gateway connections and Planner requests remain in React Native. No remote page or audio file is downloaded, and no development build is required. Microphone permission, speaker echo cancellation and spoken interruption still need verification on physical iOS/Android devices. Google sign-in is unavailable in Expo Go; use email sign-in.
 
 Run `npx tsc --noEmit` and `npx expo lint` before merging changes.
 

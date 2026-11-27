@@ -38,12 +38,15 @@ export function useMealPlannerVoice(planner: MealPlanner) {
     const value = current.current.screen;
     if (value.panel === 'eatingLog' && value.eatingLogDate !== date) showScreen({ ...value, eatingLogDate: date });
   }, [showScreen]);
+  const setShoppingSnapshot = useCallback((snapshot: Pick<VoiceScreen, 'shoppingDays' | 'shoppingPeople' | 'shoppingCheckedCount'>) => {
+    const value = current.current.screen;
+    if (value.panel === 'shoppingList' && JSON.stringify([value.shoppingDays, value.shoppingPeople, value.shoppingCheckedCount]) !== JSON.stringify([snapshot.shoppingDays, snapshot.shoppingPeople, snapshot.shoppingCheckedCount])) showScreen({ ...value, ...snapshot });
+  }, [showScreen]);
   const command = useRef<(command: VoiceScreenCommand) => string | void>(() => undefined);
   useEffect(() => { Object.assign(current.current, { planner, scroll, status }); });
   useEffect(() => {
     command.current = (next) => {
-      // shortcut: New web panels have no mobile UI; add navigation when those mobile screens exist.
-      if (next.focus?.kind === 'shoppingList') return 'Danh sách đi chợ hiện chưa có trên mobile. Bạn có thể mở mục này trên web; màn hình hiện tại vẫn được giữ.';
+      // shortcut: The remaining nutrition tabs need their own mobile panels.
       if (next.focus?.kind === 'bodyMetrics' && next.focus.tab && next.focus.tab !== 'bmi') return 'Tab dinh dưỡng này hiện chưa có trong màn gọi trên mobile. Bạn có thể xem trên web hoặc nhờ mình mở chỉ số BMI.';
       if (next.close === 'all' || next.close === current.current.screen.panel) {
         if (current.current.screen.panel !== 'none') current.current.scroll.reset();
@@ -65,6 +68,12 @@ export function useMealPlannerVoice(planner: MealPlanner) {
         if (target.kind === 'recipe') showScreen({ ...base, panel: 'recipe', recipeId: target.recipeId, recipeSection: target.section ?? 'top', ...(target.step ? { recipeStep: target.step } : {}) });
         else if (target.kind === 'eatingLog') showScreen({ ...base, panel: 'eatingLog', ...(target.date ? { eatingLogDate: target.date } : {}) });
         else if (target.kind === 'bodyMetrics') showScreen({ ...base, panel: 'bodyMetrics', bodyMetricsTab: 'bmi' });
+        else if (target.kind === 'shoppingList') {
+          const value = current.current.screen;
+          const shoppingWeek = target.weekStart ?? weekStart;
+          const filters = value.panel === 'shoppingList' && value.weekStart === shoppingWeek ? { shoppingDays: value.shoppingDays, shoppingPeople: value.shoppingPeople, shoppingCheckedCount: value.shoppingCheckedCount } : {};
+          showScreen({ ...base, ...filters, weekStart: shoppingWeek, panel: 'shoppingList' });
+        }
         else showScreen({ weekStart: target.weekStart, ...(target.day ? { day: target.day } : {}), panel: 'none' });
       }
       if (next.scroll) requestAnimationFrame(() => current.current.scroll.move(next.scroll!));
@@ -78,7 +87,10 @@ export function useMealPlannerVoice(planner: MealPlanner) {
     const refresh = (change: VoiceRefresh) => {
       // Never write or invalidate another account's cache after this call loses its session.
       if (useSessionStore.getState().accessToken !== token) return;
-      if (change.plan) void client.invalidateQueries({ queryKey: mealPlanKeys.plan });
+      if (change.plan) {
+        void client.invalidateQueries({ queryKey: mealPlanKeys.plan });
+        void client.invalidateQueries({ queryKey: mealPlanKeys.shopping });
+      }
       if (change.log) void client.invalidateQueries({ queryKey: mealLogKeys.all });
       if (change.dietary) void client.invalidateQueries({ queryKey: dietaryProfileKeys.mine });
       if (change.nutrition) void client.invalidateQueries({ queryKey: dietaryProfileKeys.nutrition });
@@ -142,7 +154,7 @@ export function useMealPlannerVoice(planner: MealPlanner) {
     selectDay: (day: NonNullable<VoiceScreen['day']>) => {
       showScreen({ ...current.current.screen, day }); planner.setSelectedDay(day);
     },
-    setLogDate,
+    setLogDate, setShoppingSnapshot,
     retry: () => { setError(''); setHeard(''); setHighlight(null); setLastActionAt(null); setElapsed(0); setStatus('connecting'); setAttempt((value) => value + 1); },
   };
 }

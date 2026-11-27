@@ -53,6 +53,7 @@ globalThis.WebSocket = FakeSocket;
 const { PlannerVoiceCall } = await import('../src/features/meal-plan/services/voice-call.ts');
 const { UtteranceAssembler, FarewellTracker } = await import('../src/features/meal-plan/services/voice-call-state.ts');
 const { pcm16Base64 } = await import('../src/features/meal-plan/utils/voice-audio.ts');
+const { VOICE_INSTRUCTIONS, voiceGreeting } = await import('../src/features/meal-plan/utils/voice-config.ts');
 const { VoiceNoiseGate } = await import('../src/features/meal-plan/utils/voice-noise-gate.ts');
 const { voiceScreenCommandSchema, voiceTurnSchema } = await import('../src/features/meal-plan/types/voice.schema.ts');
 const tick = () => new Promise((resolve) => setImmediate(resolve));
@@ -134,12 +135,28 @@ test('mute blocks capture; unmute resumes it; audio chunks play through the same
   socket.emit({ type: 'audio-chunk', delta: 'reply-pcm' });
   assert.deepEqual(audio.played, ['reply-pcm']);
 });
-test('native alternating audio asks the assistant to wait instead of cutting off user speech with backchannels', async (t) => {
+test('native realtime uses the latest web prompt and short greeting without disabling spoken interruption', async (t) => {
   const { call } = fixture(t);
-  audio.canListenWhileSpeaking = false;
   const socket = await connect(call);
-  assert.match(socket.sent[0].config.instructions, /Native turn-taking overrides backchannel policy/);
-  assert.match(socket.sent[0].config.instructions, /wait for their complete utterance/);
+  assert.equal(socket.sent[0].config.instructions, VOICE_INSTRUCTIONS);
+  assert.match(VOICE_INSTRUCTIONS, /Stop speaking immediately the moment the user interrupts/);
+  assert.match(VOICE_INSTRUCTIONS, /withdraws what they asked for while backend work is still running/);
+  assert.doesNotMatch(VOICE_INSTRUCTIONS, /Native turn-taking|tap Nói tiếp/);
+  assert.equal(socket.sent[0].config.providerOptions.openai.input[0].content[0].text, voiceGreeting('An'));
+  assert.doesNotMatch(voiceGreeting('  '), /full name/);
+});
+test('spoken interruption clears speaker audio while capture continues without pressing a control', async (t) => {
+  const { call } = fixture(t);
+  const socket = await connect(call);
+  socket.emit({ type: 'audio-chunk', delta: 'assistant-audio' });
+  const before = audio.interrupted;
+  audio.send('simultaneous-user-audio');
+  assert.equal(socket.sent.at(-1).audio, 'simultaneous-user-audio');
+  socket.emit({ type: 'speech-started' });
+  assert.equal(audio.interrupted, before + 1);
+  assert.equal(audio.stopCount, 0);
+  audio.send('continued-user-audio');
+  assert.equal(socket.sent.at(-1).audio, 'continued-user-audio');
 });
 test('delegation submits spoken text and current screen once, then sends commentary on finish', async (t) => {
   const { call, events } = fixture(t);
@@ -210,11 +227,11 @@ test('a disconnected speaker during manual interruption ends the call and releas
   assert.equal(audio.stopCount, 1);
 });
 test('new web screen commands remain valid and unavailable mobile panels never announce a false success', async (t) => {
-  const unavailable = 'Danh sách đi chợ hiện chưa có trên mobile.';
+  const unavailable = 'Bảng dinh dưỡng tuần hiện chưa có trong màn gọi trên mobile.';
   const { call, events } = fixture(t, { onScreen: () => unavailable });
   turnHandler = async (_, __, emit) => {
-    emit({ type: 'data-screen', data: { focus: { kind: 'shoppingList', weekStart: screen.weekStart, people: 2, checkItems: ['Đậu hũ'] }, close: null } });
-    emit({ type: 'text-delta', delta: 'Đã mở danh sách đi chợ.' });
+    emit({ type: 'data-screen', data: { focus: { kind: 'bodyMetrics', tab: 'weekly', weekStart: screen.weekStart }, close: null } });
+    emit({ type: 'text-delta', delta: 'Đã mở bảng dinh dưỡng tuần.' });
     emit({ type: 'finish' });
   };
   const socket = await connect(call); delegate(socket); await tick();

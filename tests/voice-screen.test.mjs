@@ -94,7 +94,7 @@ test('only accepted AI actions glow, the pulse expires, and errors stop the effe
   render(); const { options } = calls[0];
   options.onStatus('listening');
   assert.equal(render().glowing, false);
-  assert.match(options.onScreen(command({ kind: 'shoppingList' })), /chưa có/);
+  assert.match(options.onScreen(command({ kind: 'bodyMetrics', tab: 'weekly' })), /chưa có/);
   assert.equal(render().glowing, false);
   options.onScreen(command({ kind: 'recipe', recipeId: 'tofu', title: 'Đậu hũ', section: 'ingredients' }));
   assert.equal(render().glowing, true);
@@ -104,6 +104,18 @@ test('only accepted AI actions glow, the pulse expires, and errors stop the effe
   assert.equal(render().glowing, true);
   options.onStatus('error');
   assert.equal(render().glowing, false);
+});
+
+test('shopping opens inside the live call and its filters and checked count reach the snapshot', () => {
+  const voice = render(), { options } = calls[0];
+  voice.applyScreen(command({ kind: 'shoppingList', weekStart: '2026-11-30', day: 'TUE', people: 3, checkItems: ['Đậu hũ'] }));
+  voice.setShoppingSnapshot({ shoppingDays: ['TUE'], shoppingPeople: 3, shoppingCheckedCount: 2 });
+  assert.deepEqual(options.getScreen(), { weekStart: '2026-11-30', day: 'MON', panel: 'shoppingList', shoppingDays: ['TUE'], shoppingPeople: 3, shoppingCheckedCount: 2, scrollState: { percent: 0, atTop: true, atBottom: true } });
+  assert.equal(calls.length, 1);
+  voice.applyScreen(command({ kind: 'shoppingList', people: 3 }));
+  assert.equal(options.getScreen().shoppingCheckedCount, 2, 'Opening the same shopping view retains an unchanged snapshot');
+  voice.closePanel();
+  assert.equal(options.getScreen().shoppingDays, undefined);
 });
 
 test('saved edits focus their day, reset on a new turn, and old sessions cannot change the screen', () => {

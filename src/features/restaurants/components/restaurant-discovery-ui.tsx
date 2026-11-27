@@ -10,12 +10,13 @@ export function DiscoveryWelcome() {
   const t = useTheme();
   return (
     <View style={[styles.hero, { backgroundColor: t.secondary }]}>
+      <View pointerEvents="none" style={[styles.heroRing, { borderColor: t.primary }]} />
       <View style={styles.heroCopy}>
         <Text style={[styles.eyebrow, { color: t.secondaryForeground }]}>MỘT BỮA CHAY, MỘT NIỀM VUI</Text>
         <Text accessibilityRole="header" style={[styles.heroTitle, { color: t.secondaryForeground }]}>Tìm quán chay,{ '\n' }thêm vị mỗi ngày.</Text>
         <Text style={[styles.description, { color: t.secondaryForeground }]}>Khám phá quán, xem menu và chọn bữa ngon cho bạn.</Text>
       </View>
-      <Image source={require('@/assets/branding/avocado-sticker.png')} contentFit="contain" accessible={false} style={styles.heroSticker} />
+      <View style={[styles.stickerTile, { backgroundColor: t.card }]}><Image source={require('@/assets/branding/avocado-sticker.png')} contentFit="contain" accessible={false} style={styles.heroSticker} /></View>
     </View>
   );
 }
@@ -64,12 +65,14 @@ export function DiscoveryRestaurantCard({ restaurant: r, onOpen }: { restaurant:
 }
 
 const styles = StyleSheet.create({
-  hero: { borderRadius: 24, padding: 20, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  hero: { borderRadius: 26, padding: 22, flexDirection: 'row', alignItems: 'center', gap: 12, overflow: 'hidden' },
+  heroRing: { position: 'absolute', width: 230, height: 230, borderRadius: 115, borderWidth: 1, right: -100, top: -110, opacity: 0.12 },
   heroCopy: { flex: 1, gap: 10 },
   eyebrow: { fontFamily: Fonts.sansBold, fontSize: 10, letterSpacing: 1 },
   heroTitle: { fontFamily: Fonts.headingBold, fontSize: 24, lineHeight: 34 },
   description: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19, flexShrink: 1 },
-  heroSticker: { width: 72, height: 104, transform: [{ rotate: '8deg' }] },
+  stickerTile: { width: 74, height: 100, borderRadius: 28, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '8deg' }] },
+  heroSticker: { width: 58, height: 82 },
   filter: { minHeight: 44, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 24, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   filterLabel: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   headingRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },

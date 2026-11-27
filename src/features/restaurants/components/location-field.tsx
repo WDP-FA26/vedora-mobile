@@ -16,12 +16,14 @@ export function LocationField({
   disabled,
   address,
   onAddressChange,
+  mapVisible = true,
 }: {
   value: LngLat | null;
   onChange: (value: LngLat) => void;
   disabled?: boolean;
   address?: string;
   onAddressChange?: (address: string) => void;
+  mapVisible?: boolean;
 }) {
   const locate = useRestaurantLocation();
   const search = useRestaurantAddressSearch();
@@ -47,11 +49,11 @@ export function LocationField({
           ? 'Vị trí nhà hàng'
           : 'Chạm hoặc kéo ghim đến đúng vị trí quán.'}
       </Copy>
-      <RestaurantMap
+      {mapVisible && <RestaurantMap
         point={value}
         editable={!disabled && !busy}
         onPick={pick}
-      />
+      />}
       {value && (
         <Copy>
           {value.latitude.toFixed(5)}, {value.longitude.toFixed(5)}
