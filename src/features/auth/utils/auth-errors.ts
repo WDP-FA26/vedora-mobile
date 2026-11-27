@@ -2,6 +2,7 @@ import { ApiError } from '@/shared/api/api-error';
 
 export function authErrorMessage(error: unknown, action: 'login' | 'register' | 'verify' | 'resend' | 'reset'): string {
   if (!(error instanceof ApiError)) return 'Không thể hoàn tất yêu cầu. Vui lòng thử lại.';
+  if (error.status === null) return 'Không thể kết nối máy chủ. Kiểm tra mạng rồi thử lại sau.';
   if (error.code === 'VERIFY_LIMIT_REACHED') return 'Bạn đã nhập sai quá nhiều lần. Vui lòng thử lại ngày mai.';
   if (error.code === 'RESEND_LIMIT_REACHED') return 'Đã hết lượt gửi mã trong một giờ. Vui lòng thử lại sau.';
   if (error.code === 'CAPTCHA_FAILED') return 'Xác minh bảo mật không hợp lệ hoặc đã hết hạn. Vui lòng xác minh lại.';

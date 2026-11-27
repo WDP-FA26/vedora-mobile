@@ -2,6 +2,7 @@ import { apiClient } from '@/shared/api/api-client';
 import { ApiError } from '@/shared/api/api-error';
 import { requestJson } from '@/shared/api/request-json';
 import { requestAiStream, type AiPart } from '@/shared/api/ai-stream';
+import { z } from 'zod';
 
 import {
   dietaryRestrictionsSchema,
@@ -24,8 +25,8 @@ export function getDietaryRestrictions(signal?: AbortSignal) {
 }
 
 /** Streams an answer; the API saves the question and the answer into thread `threadId` (created on first use). */
-export function askMealPlanner(weekStart: string, threadId: string, requestId: string, messages: { role: 'user' | 'assistant'; text: string }[], onParts?: (parts: AiPart[]) => void, signal?: AbortSignal, allowWebSearch = false) {
-  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { weekStart: weekStartSchema.parse(weekStart), threadId, requestId, allowWebSearch, messages: messages.slice(-40) }, onParts, signal });
+export function askMealPlanner(weekStart: string, threadId: string, requestId: string, message: string, onParts?: (parts: AiPart[]) => void, signal?: AbortSignal, allowWebSearch = false) {
+  return requestAiStream({ method: 'POST', url: '/meal-plan/chat', data: { weekStart: weekStartSchema.parse(weekStart), threadId, requestId, allowWebSearch, message: z.string().trim().min(1).max(4000).parse(message) }, onParts, signal });
 }
 
 /** Patch the server's message ID, not the temporary ID used while streaming. */

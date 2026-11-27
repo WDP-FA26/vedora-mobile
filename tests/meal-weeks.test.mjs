@@ -65,11 +65,13 @@ mock.module('react/jsx-runtime', { namedExports: { jsx, jsxs: jsx, Fragment: 'Fr
 mock.module('expo-symbols', { namedExports: { SymbolView: 'SymbolView' } });
 mock.module('react-native', { namedExports: { PanResponder: { create: (handlers) => ({ panHandlers: handlers }) }, View: 'View', Text: 'Text', Pressable: 'Pressable', Modal: 'Modal', ScrollView: 'ScrollView', ActivityIndicator: 'ActivityIndicator', StyleSheet: { create: (styles) => styles } } });
 mock.module(local('hooks/use-theme.ts'), { namedExports: { useTheme: () => ({}) } });
+mock.module(local('features/meal-plan/components/voice-call-sheet.tsx'), { namedExports: { VoiceCallSheet: 'VoiceCallSheet' } });
 
 const schema = await import('../src/features/meal-plan/types/meal-plan.schema.ts');
 const { addCalendarDays, planningWeeks, isPlanningWeekend } = await import('../src/features/meal-plan/utils/meal-week.ts');
 const { displayDays, avoidedIngredientsForRecipe } = await import('../src/features/meal-plan/utils/meal-plan.ts');
 const { savedPlanChanges } = await import('../src/features/meal-plan/utils/planner-changes.ts');
+const { savedMemoryUpdates } = await import('../src/features/meal-plan/utils/planner-memory.ts');
 const interactions = await import('../src/features/meal-plan/utils/planner-interactions.ts');
 const { PlannerQuestionCard, PlannerWebConsentCard, PlannerRewindDialog } = await import('../src/features/meal-plan/components/planner-interaction-cards.tsx');
 const { PlannerMessageActions } = await import('../src/features/meal-plan/components/planner-message-actions.tsx');
@@ -220,10 +222,28 @@ test('saved history keeps tool changes but never revives a local draft; it can b
   planner.showSavedWeek(nextWeek); assert.equal(routes.at(-1), '/meal-plan');
   await planner.openThread('history'); assert.equal(requests.length, 2);
 });
-test('service carries request IDs and bounded context, with no draft endpoint', async () => {
-  reset(); const messages = Array.from({ length: 45 }, () => ({ role: 'user', text: 'hello' }));
-  await service.askMealPlanner(nextWeek, 'thread', 'request-1', messages);
-  assert.equal(requests.at(-1).data.messages.length, 40); assert.equal(requests.at(-1).data.requestId, 'request-1');
+test('chat sends the current message and request ID using the BE contract', async () => {
+  reset();
+  await service.askMealPlanner(nextWeek, 'thread', 'request-1', ' hello ');
+  assert.deepEqual(requests.at(-1).data, { weekStart: nextWeek, threadId: 'thread', requestId: 'request-1', allowWebSearch: false, message: 'hello' });
+  assert.throws(() => service.askMealPlanner(nextWeek, 'thread', 'request-1', ' '));
+  assert.throws(() => service.askMealPlanner(nextWeek, 'thread', 'request-1', 'a'.repeat(4001)));
+  assert.equal(requests.length, 1);
+});
+
+test('updateMemory accepts successful section outputs only and refreshes shared dietary cache once', async () => {
+  reset();
+  const memory = part('updateMemory', { section: 'allergies', lines: ['No peanuts'] }, 'memory-1');
+  assert.deepEqual(savedMemoryUpdates([memory]), [{ id: 'memory-1', section: 'allergies', lines: ['No peanuts'] }]);
+  for (const value of [{ ...memory, state: 'input-available' }, part('updateMemory', { section: 'bad', lines: [] }), part('updateMemory', { section: 'preferences', lines: [42] }), part('updatePreferences', { section: 'preferences', lines: [] })]) assert.deepEqual(savedMemoryUpdates([value]), []);
+  client.setQueryData(mealPlanKeys.dietary, { allergies: [], preferences: [] });
+  const spy = mock.method(client, 'invalidateQueries');
+  streamParts = [memory]; streamResult.parts = [memory];
+  try {
+    await render().sendMessage('Remember my allergy');
+    assert.equal(client.getQueryState(mealPlanKeys.dietary).isInvalidated, true);
+    assert.equal(spy.mock.calls.filter(({ arguments: args }) => JSON.stringify(args[0].queryKey) === JSON.stringify(mealPlanKeys.dietary)).length, 1);
+  } finally { spy.mock.restore(); }
 });
 
 const questionPart = (multiple = false) => ({ type: 'tool-askUser', toolCallId: 'question', state: 'input-available', input: { question: 'Choose dinner', options: ['Soup', 'Tofu'], multiple } });
@@ -263,9 +283,8 @@ test('a picked answer patches the canonical message once and carries the questio
   assert.equal(patch.data.messages[0].parts.at(-1).output.answer, 'Soup');
   assert.equal(requests.filter((request) => request.method === 'PATCH').length, 1);
   const chat = requests.filter((request) => request.url === '/meal-plan/chat').at(-1);
-  assert.ok(chat.data.messages.at(-2).text.includes('Choose dinner'));
-  assert.ok(chat.data.messages.at(-2).text.includes('recipe-123'));
-  assert.equal(chat.data.messages.at(-1).text, 'Soup');
+  assert.equal(chat.data.message, 'Soup');
+  assert.equal('messages' in chat.data, false);
   assert.equal(chat.data.allowWebSearch, false);
 });
 

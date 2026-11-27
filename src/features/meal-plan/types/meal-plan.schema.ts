@@ -87,18 +87,13 @@ export const plannerThreadPageSchema = z.object({
   meta: z.object({ page: z.number(), hasNextPage: z.boolean() }),
 });
 
-export const dietaryRestrictionsSchema = z.object({
-  ingredients: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
-  groups: z.array(recipeRefSchema.pick({ id: true }).extend({ name: z.string() })),
-  allergyNote: z.string().nullable().optional(),
-  preferenceNote: z.string().nullable().optional(),
-});
+export { dietaryRestrictionsSchema } from '@/features/dietary-profile/types/dietary-profile.schema';
 
 export type MealPlan = z.output<typeof mealPlanSchema>;
 export type PlanChange = z.output<typeof planChangeSchema>;
 export type PlannerThread = z.output<typeof plannerThreadSchema>;
 export type PlannerThreadSummary = z.output<typeof plannerThreadPageSchema>['items'][number];
-export type DietaryRestrictions = z.output<typeof dietaryRestrictionsSchema>;
+export type { DietaryRestrictions } from '@/features/dietary-profile/types/dietary-profile.schema';
 
 export const plannerRewindSchema = z.object({
   text: z.string(),

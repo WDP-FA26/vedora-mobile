@@ -36,6 +36,16 @@ const { ApiError } = await import('../src/shared/api/api-error.ts');
 const { parseAiStream, requestAiStream, AiStreamParser } = await import('../src/shared/api/ai-stream.ts');
 const event = (value) => `data: ${JSON.stringify(value)}\n\n`;
 
+test('voice streams expose transient data and permit a summary-only finished turn', () => {
+  const commands = [];
+  const parser = new AiStreamParser(undefined, undefined, (value) => commands.push(value), true);
+  parser.push(event({ type: 'data-summary', data: { text: 'Đã xong.' } }).slice(0, 15));
+  parser.push(event({ type: 'data-summary', data: { text: 'Đã xong.' } }).slice(15) + event({ type: 'finish' }));
+  assert.equal(parser.finish().text, '');
+  assert.deepEqual(commands.map((value) => value.type), ['data-summary', 'finish']);
+  assert.throws(() => new AiStreamParser().finish());
+});
+
 test('backend model error codes inside HTTP 200 streams retain their machine-readable category', () => {
   for (const code of ['MODEL_ERROR', 'RATE_LIMITED']) {
     assert.throws(() => parseAiStream(event({ type: 'error', errorText: code })), (error) => error instanceof ApiError && error.status === null && error.code === code);

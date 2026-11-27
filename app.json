@@ -8,7 +8,8 @@
     "scheme": "vedoramobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/branding/app-icon.png"
+      "icon": "./assets/branding/app-icon.png",
+      "bundleIdentifier": "com.vedora.app"
     },
     "android": {
       "package": "com.vedora.app",
@@ -17,7 +18,11 @@
         "backgroundColor": "#255d32",
         "foregroundImage": "./assets/branding/android-foreground.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "web": {
       "output": "static",
@@ -40,13 +45,25 @@
         {
           "photosPermission": "Vedora cần truy cập thư viện để bạn chọn video hướng dẫn đăng bài.",
           "cameraPermission": false,
-          "microphonePermission": false
+          "microphonePermission": "Vedora cần dùng mic để bạn trò chuyện với trợ lý giọng nói."
         }
       ],
       "expo-font",
       "expo-image",
       "expo-status-bar",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-audio-api",
+        {
+          "iosMicrophonePermission": "Vedora cần dùng mic để bạn trò chuyện với trợ lý giọng nói.",
+          "iosBackgroundMode": false,
+          "androidPermissions": [
+            "android.permission.RECORD_AUDIO",
+            "android.permission.MODIFY_AUDIO_SETTINGS"
+          ],
+          "androidForegroundService": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -59,9 +76,9 @@
         }
       },
       "eas": {
-        "projectId": "8e1bb0f4-c168-4783-8570-8b1125c0bf11"
+        "projectId": "60cee5be-bd27-439e-898e-5a2e48c12350"
       }
     },
-    "owner": "ngochivy"
+    "owner": "kaorihzemou"
   }
 }

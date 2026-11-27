@@ -66,10 +66,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
   const [ingredientError, setIngredientError] = useState('');
   const [submitError, setSubmitError] = useState('');
 
-  const avoided = [
-    ...(restrictions?.groups.map(({ name }) => name) ?? []),
-    ...(restrictions?.ingredients.map(({ name }) => name) ?? []),
-  ];
+  const avoided = restrictions?.allergies ?? [];
   const profileReady = !loading && !failed && !!restrictions;
   const noMeals = meals.length === 0;
   const canSubmit = profileReady && !noMeals && !busy && !!weekStart;
@@ -112,6 +109,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
       `Hãy lên và lưu thực đơn cho tuần bắt đầu ${weekStart} (${weekRange(weekStart!)}), từ Thứ Hai đến Chủ nhật. Chỉ lập các ngày còn được phép sửa của tuần này.`,
       `Các bữa cần lập mỗi ngày: ${mealSections.filter((meal) => meals.includes(meal)).map((meal) => sectionLabels[meal].toLowerCase()).join(', ')}.`,
       avoided.length ? `Thực phẩm cần tránh đã lưu: ${avoided.join(', ')}.` : '',
+      restrictions?.preferences.length ? `Sở thích và thói quen đã lưu: ${restrictions.preferences.join('; ')}.` : '',
       people ? `Số người ăn: ${people === 6 ? 'từ 6 người trở lên' : people}.` : '',
       minutes ? `Thời gian nấu tối đa mỗi bữa: ${minutes} phút.` : '',
       `Ưu tiên: ${priority.toLowerCase()}.`,

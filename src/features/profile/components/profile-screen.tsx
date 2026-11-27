@@ -66,7 +66,7 @@ export function ProfileScreen() {
   const posts = postsQuery.data?.items ?? [];
   const shownPosts = posts.filter((post) => post.type === 'POST' && post.media.some((media) => media.type === 'VIDEO'));
   const views = useScrollPostViews(contentTab === 'reposts' ? reposts.data?.pages.flatMap((page) => page.items) ?? [] : shownPosts, contentTab !== 'blogs');
-  const avoided = [...(dietary.data?.groups.map((group) => group.name) ?? []), ...(dietary.data?.ingredients.map((ingredient) => ingredient.name) ?? [])];
+  const avoided = dietary.data?.allergies ?? [];
   const queryClient = useQueryClient();
   const pull = usePullToRefresh(() => Promise.all([
     profileQuery.refetch(),
@@ -187,13 +187,13 @@ export function ProfileScreen() {
               </View>
               <View style={styles.dietaryHeading}>
                 <Text style={[styles.sectionTitle, { color: theme.foreground }]}>Hồ sơ ăn uống</Text>
-                <Text style={[styles.helper, { color: theme.mutedForeground }]}>Món ăn được gợi ý dựa trên lựa chọn này</Text>
+                <Text style={[styles.helper, { color: theme.mutedForeground }]}>Dị ứng và sở thích trợ lý ghi nhớ</Text>
               </View>
               <SymbolView name={{ ios: 'chevron.right', android: 'chevron_right', web: 'chevron_right' }} size={18} tintColor={theme.mutedForeground} />
             </View>
             <View style={styles.dietaryLabelRow}>
               <SymbolView name={{ ios: 'checkmark.shield', android: 'verified_user', web: 'verified_user' }} size={16} tintColor={theme.primary} />
-              <Text style={[styles.dietaryLabel, { color: theme.foreground }]}>Không ăn</Text>
+              <Text style={[styles.dietaryLabel, { color: theme.foreground }]}>Dị ứng & không ăn</Text>
             </View>
             {dietary.isPending ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Đang tải…</Text>
               : dietary.isError ? <Text style={[styles.helper, { color: theme.destructive }]}>Chưa tải được</Text>
@@ -203,6 +203,7 @@ export function ProfileScreen() {
                   {avoided.length > MAX_AVOIDED_CHIPS ? <View style={[styles.chip, { backgroundColor: theme.secondary }]}><Text style={[styles.chipText, { color: theme.secondaryForeground }]}>+{avoided.length - MAX_AVOIDED_CHIPS}</Text></View> : null}
                 </View>
               ) : <Text style={[styles.helper, { color: theme.mutedForeground }]}>Chưa khai báo</Text>}
+            {dietary.data ? <Text numberOfLines={3} style={[styles.helper, { color: theme.mutedForeground }]}>Sở thích & thói quen: {dietary.data.preferences.join(' · ') || 'Chưa có'}</Text> : null}
           </Pressable>
 
           <Pressable accessibilityRole="button" accessibilityLabel="Gói của bạn. Xem gói dịch vụ và thanh toán" onPress={() => router.push('/billing')} style={({ pressed }) => [styles.card, styles.billing, { backgroundColor: theme.secondary, borderColor: theme.secondary, opacity: pressed ? 0.8 : 1 }]}>

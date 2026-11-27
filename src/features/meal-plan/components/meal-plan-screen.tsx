@@ -84,6 +84,7 @@ export function MealPlanScreen() {
         avatar={<Image source={STICKER} style={styles.headerSticker} resizeMode="contain" accessibilityLabel="Hình cà chua Vedora" />}
         title="Thực đơn của tôi"
         subtitle={planner.weekStart ? weekRange(planner.weekStart) : 'Thực đơn theo từng tuần'}
+        action={<Pressable accessibilityRole="button" accessibilityLabel="Gọi trợ lý giọng nói" disabled={planner.busy || !plan.data} onPress={() => planner.setVoiceOpen(true)} style={{ padding: Spacing.three, opacity: planner.busy || !plan.data ? 0.4 : 1 }}><SymbolView name={{ ios: 'waveform', android: 'graphic_eq', web: 'graphic_eq' }} size={24} tintColor={theme.primary} /></Pressable>}
       />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <MealWeekSelector weeks={planner.weeks} selected={planner.weekStart} onChange={planner.changeWeek} disabled={planner.busy} />

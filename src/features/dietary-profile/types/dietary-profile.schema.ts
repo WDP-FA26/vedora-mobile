@@ -1,28 +1,30 @@
 import { z } from 'zod';
 
-const namedRefSchema = z.object({ id: z.string(), name: z.string() });
-export const MAX_DIETARY_NOTE_LENGTH = 1000;
-const dietaryNoteSchema = z.string().trim().max(MAX_DIETARY_NOTE_LENGTH, 'Mỗi ghi chú tối đa 1.000 ký tự.').nullable().optional();
+export const MAX_MEMORY_ITEMS = 30;
+export const MAX_MEMORY_ITEM_LENGTH = 200;
 
-export const dietaryOptionsSchema = z.object({
-  ingredients: z.array(namedRefSchema.extend({ aliases: z.array(z.string()) })),
-  groups: z.array(namedRefSchema.extend({ ingredients: z.array(z.string()) })),
-});
+/** Same normalization as BE and web: one fact per line, no blanks or repeats. */
+export function memoryLines(text: string): string[] {
+  return [...new Set(text.split('\n').map((line) => line.trim()).filter(Boolean))];
+}
 
 export const dietaryRestrictionsSchema = z.object({
-  ingredients: z.array(namedRefSchema),
-  groups: z.array(namedRefSchema),
-  allergyNote: dietaryNoteSchema,
-  preferenceNote: dietaryNoteSchema,
+  allergies: z.array(z.string()),
+  preferences: z.array(z.string()),
 });
+
+const linesSchema = z.array(z.string().trim())
+  .transform((lines) => [...new Set(lines.filter(Boolean))])
+  .pipe(z.array(z.string().max(MAX_MEMORY_ITEM_LENGTH, `Mỗi dòng tối đa ${MAX_MEMORY_ITEM_LENGTH} ký tự.`))
+    .max(MAX_MEMORY_ITEMS, `Tối đa ${MAX_MEMORY_ITEMS} dòng mỗi mục.`));
 
 export const dietaryUpdateSchema = z.object({
-  groupIds: z.array(z.uuid({ version: 'v4' })).max(50).refine((ids) => new Set(ids).size === ids.length),
-  ingredientIds: z.array(z.uuid({ version: 'v4' })).max(200).refine((ids) => new Set(ids).size === ids.length),
-  allergyNote: dietaryNoteSchema,
-  preferenceNote: dietaryNoteSchema,
-});
+  allergies: linesSchema.optional(),
+  preferences: linesSchema.optional(),
+}).strict();
 
-export type DietaryOptions = z.output<typeof dietaryOptionsSchema>;
+const memoryTextSchema = z.string().transform(memoryLines).pipe(linesSchema);
+export const dietaryFormSchema = z.object({ allergies: memoryTextSchema, preferences: memoryTextSchema });
+
 export type DietaryRestrictions = z.output<typeof dietaryRestrictionsSchema>;
 export type DietaryUpdate = z.input<typeof dietaryUpdateSchema>;
