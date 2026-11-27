@@ -1431,6 +1431,17 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 
 - Kết quả đã làm: Chia toàn bộ 56 file thành 10 commit/nhánh nối tiếp từ main: phiên Page, hợp đồng nhà hàng, bản đồ/vị trí, query/UI chung, đăng ký, quản lý, khám phá/chi tiết, điều hướng, voice UI và test/tài liệu. Tiêu đề commit và nội dung PR dùng tiếng Anh; các PR phụ thuộc nhau và cần merge từ 1 đến 10. Lint/TypeScript đạt; suite 207/209 với hai lỗi nền billing và recipe-favorite.
 - Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Sau khi hợp nhất đủ stack, mở Khám phá → Nhà hàng chay → chi tiết/menu/đánh giá. (2) Hồ sơ → Nhà hàng của tôi → Đăng ký; kiểm tra đủ 3 bước và thanh tiến trình. (3) Mở Trang quản lý để kiểm tra menu/thành viên và chuyển tài khoản. (4) Mở Trợ lý, kiểm tra voice bên trái ô nhập và UI cuộc gọi trên development build. Các checklist chi tiết nằm ở các mục trước.
+- Đã commit/push và tạo đủ 10 draft PR bằng tiếng Anh, merge lần lượt:
+  1. [Preserve personal and Page sessions across account switches](https://github.com/WDP-FA26/vedora-mobile/pull/57)
+  2. [Add restaurant and workspace API contracts](https://github.com/WDP-FA26/vedora-mobile/pull/58)
+  3. [Add restaurant maps and foreground location support](https://github.com/WDP-FA26/vedora-mobile/pull/59)
+  4. [Connect restaurant queries and shared form controls](https://github.com/WDP-FA26/vedora-mobile/pull/60)
+  5. [Build the three-step restaurant registration experience](https://github.com/WDP-FA26/vedora-mobile/pull/61)
+  6. [Add owner and manager restaurant controls](https://github.com/WDP-FA26/vedora-mobile/pull/62)
+  7. [Build restaurant discovery, details and reviews](https://github.com/WDP-FA26/vedora-mobile/pull/63)
+  8. [Connect restaurant routes and profile entry points](https://github.com/WDP-FA26/vedora-mobile/pull/64)
+  9. [Move voice beside the chat input and refresh call controls](https://github.com/WDP-FA26/vedora-mobile/pull/65)
+  10. [Document restaurant delivery and add contract regression tests](https://github.com/WDP-FA26/vedora-mobile/pull/66)
 - Người thực hiện: Codex.
 
 ## 2026-11-27 — Đưa voice về đầu thanh nhắn tin
