@@ -24,6 +24,7 @@ export function RestaurantProfileEntry() {
           <Image source={require('@/assets/branding/tomato-sticker.png')} contentFit="contain" accessible={false} style={styles.sticker} />
         </View>
         <View style={styles.copy}>
+          <Text style={[styles.eyebrow, { color: theme.primary }]}>KHÔNG GIAN NHÀ HÀNG</Text>
           <Text style={[styles.title, { color: theme.foreground }]}>Nhà hàng của tôi</Text>
           <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Chăm chút Trang, menu và đội ngũ của bạn</Text>
         </View>
@@ -46,10 +47,11 @@ export function RestaurantProfileEntry() {
 
 const styles = StyleSheet.create({
   section: { marginHorizontal: Spacing.three, gap: Spacing.three },
-  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: Spacing.three, minHeight: 96, borderWidth: 1, borderRadius: Radius['3xl'] },
+  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing.three, padding: 20, minHeight: 112, borderWidth: 1, borderRadius: Radius['4xl'] },
   stickerFrame: { width: 56, height: 60, borderRadius: Radius['2xl'], alignItems: 'center', justifyContent: 'center' },
   sticker: { width: 56, height: 62 },
   copy: { flex: 1, gap: Spacing.one },
+  eyebrow: { fontFamily: Fonts.sansBold, fontSize: 9, letterSpacing: 0.8 },
   title: { fontFamily: Fonts.sansBold, fontSize: 16 },
   subtitle: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
   account: { borderRadius: Radius['2xl'], padding: Spacing.three, gap: Spacing.two },

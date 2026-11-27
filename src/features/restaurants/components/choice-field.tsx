@@ -24,7 +24,7 @@ export function ChoiceField({
   const theme = useTheme();
   return (
     <View style={{ gap: 6 }}>
-      <Text style={{ color: theme.mutedForeground, fontFamily: Fonts.sans, fontSize: 15 }}>{label}</Text>
+      <Text style={{ color: theme.foreground, fontFamily: Fonts.sansSemibold, fontSize: 14 }}>{label}</Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${options.find(([id]) => id === value)?.[1] ?? 'Chọn'}`}

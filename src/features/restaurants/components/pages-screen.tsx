@@ -2,17 +2,16 @@ import { router } from 'expo-router';
 import { useSessionStore } from '@/shared/stores/session-store';
 import { useMyWorkspaces } from '../hooks/use-restaurants';
 import { usePageAccount } from '../hooks/use-page-account';
-import { WORKSPACE_STATUS_LABELS } from '../types/restaurant.schema';
 import { RefreshWorkspaceButton, WorkspaceWelcome } from './workspace-ui';
+import { WorkspacePageCard } from './workspace-cards';
 import {
   Action,
   Body,
   Busy,
-  Card,
-  Copy,
-  Heading,
   Notice,
   RestaurantShell,
+  RestaurantEmptyState,
+  RestaurantSectionHeading,
 } from './restaurant-ui';
 
 export function PagesScreen() {
@@ -24,8 +23,7 @@ export function PagesScreen() {
     <RestaurantShell title="Nhà hàng của tôi" action={token ? <RefreshWorkspaceButton busy={pages.isFetching} onPress={() => void pages.refetch()} /> : undefined}>
       <Body>
         {!token ? (
-          <>
-            <Copy>Đăng nhập để mở và quản lý nhà hàng của bạn.</Copy>
+          <RestaurantEmptyState title="Chào người chủ quán tương lai" description="Đăng nhập để tạo Trang, giới thiệu quán chay và quản lý đội ngũ của bạn." sticker="tomato">
             <Action
               primary
               label="Đăng nhập"
@@ -36,60 +34,41 @@ export function PagesScreen() {
                 })
               }
             />
-          </>
+          </RestaurantEmptyState>
         ) : (
           <>
             {actor ? (
-              <>
-                <Copy>
-                  Bạn đang dùng tài khoản Trang. Chuyển về cá nhân để đăng ký
-                  nhà hàng mới.
-                </Copy>
+              <WorkspaceWelcome title="Chăm chút từng góc nhỏ của quán" description="Bạn đang dùng danh tính Trang nhà hàng. Chuyển về cá nhân nếu muốn đăng ký thêm một Trang mới.">
                 <Action
                   label={`Về @${actor.username}`}
                   disabled={account.isPending}
                   onPress={() => account.mutate(null)}
                 />
                 <Notice error={account.error} />
-              </>
+              </WorkspaceWelcome>
             ) : (
               <WorkspaceWelcome title="Mang quán chay của bạn đến gần mọi người" description="Tạo Trang để giới thiệu quán, chia sẻ menu và cùng đội ngũ chăm sóc khách hàng.">
               <Action
                 primary
-                label="＋ Đăng ký nhà hàng"
+                label="Đăng ký nhà hàng"
+                icon={{ ios: 'plus', android: 'add', web: 'add' }}
                 onPress={() => router.push('/pages/new')}
               />
-              <Copy>Chuẩn bị thông tin quán và ảnh giấy tờ để đăng ký trong 3 bước.</Copy>
               </WorkspaceWelcome>
             )}
             {pages.isPending && <Busy />}
             <Notice error={pages.error} retry={() => void pages.refetch()} />
             {pages.data?.length === 0 && (
-              <Copy>Bạn chưa sở hữu hoặc quản lý Trang nhà hàng nào.</Copy>
+              <RestaurantEmptyState title="Quán của bạn bắt đầu từ đây" description="Các Trang bạn sở hữu hoặc được mời quản lý sẽ xuất hiện tại đây." sticker="tomato" />
             )}
+            {!!pages.data?.length && <RestaurantSectionHeading title={`Trang của bạn · ${pages.data.length}`} description="Chọn một nhà hàng để cập nhật thông tin và chăm sóc Trang." />}
             {pages.data?.map((page) => (
-              <Card key={page.id}>
-                <Heading>{page.name}</Heading>
-                <Copy>
-                  @{page.username} ·{' '}
-                  {page.role === 'OWNER' ? 'Chủ trang' : 'Quản lý'}
-                </Copy>
-                <Copy>
-                  {WORKSPACE_STATUS_LABELS[page.status]} · {page.address}
-                </Copy>
-                {page.status === 'REJECTED' && (
-                  <Copy>{page.reviewNote ?? 'Đơn chưa được duyệt.'}</Copy>
-                )}
-                <Action
-                  label="Quản lý Trang"
-                  onPress={() =>
+              <WorkspacePageCard key={page.id} page={page} onPress={() =>
                     router.push({
                       pathname: '/pages/[id]',
                       params: { id: page.id },
                     })
-                  }
-                />
-              </Card>
+                  } />
             ))}
           </>
         )}

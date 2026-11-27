@@ -19,6 +19,7 @@ import { savedMemoryUpdates } from '../utils/planner-memory';
 import { VoiceCallSheet } from '../components/voice-call-sheet';
 import { isToolPart, savedToolParts, type ToolPart } from '../utils/planner-trace';
 import { useDietaryRestrictions, useLatestPlannerThread, useMealPlan } from './use-meal-plan';
+import { useMealPlanActions } from './use-meal-plan-actions';
 
 export type ChatTurn = { id: string; role: 'user' | 'assistant'; text: string; refused?: boolean; toolParts?: ToolPart[]; streaming?: boolean };
 export type Preset = 'week' | 'quick' | 'pantry';
@@ -65,6 +66,7 @@ function useMealPlannerState() {
   const [composer, setComposer] = useState('');
   const [busy, setBusy] = useState(false);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const mealActions = useMealPlanActions(token, plan.data, busy || voiceOpen);
   const [chatError, setChatError] = useState('');
   const [rewindingId, setRewindingId] = useState<string | null>(null);
   const [rewindNotice, setRewindNotice] = useState('');
@@ -137,7 +139,8 @@ function useMealPlannerState() {
   }
 
   function startForm(nextPreset: Preset = 'week') {
-    if (sending.current || opening.current) return;
+    if (sending.current || opening.current || mealActions.pending) return;
+    if (currentPlan.data && weekStart && weekStart < currentPlan.data.currentWeekStart) setSelectedWeek(currentPlan.data.currentWeekStart);
     setPreset(nextPreset);
     setFormKey((key) => key + 1);
     setFormOpen(true);
@@ -145,7 +148,7 @@ function useMealPlannerState() {
   }
 
   function requestReplacement(day: Weekday, section: MealSection, title: string) {
-    if (!weekStart || !plan.data?.days.find((item) => item.day === day)?.editable || busy) return;
+    if (!weekStart || !plan.data?.days.find((item) => item.day === day)?.editable || busy || mealActions.pending) return;
     setComposer(`Đổi món khác thay cho "${title}" ở ${dayLabels[day]} của tuần bắt đầu ${weekStart}, bữa ${sectionLabels[section].toLowerCase()}. Chỉ đổi bữa này.`);
     setFormOpen(false);
     router.navigate('/ai');
@@ -155,11 +158,12 @@ function useMealPlannerState() {
     if (!isCurrent()) return;
     // Includes the current-week alias and every cached week the assistant may have changed.
     await client.invalidateQueries({ queryKey: mealPlanKeys.plan });
+    await client.invalidateQueries({ queryKey: mealPlanKeys.shopping });
   }
 
   async function sendMessage(override?: string, decision?: { callId: string; output: { answer: string } | { approved: boolean } }) {
     const text = (override ?? composer).trim();
-    if (sending.current || opening.current || !isCurrent()) return;
+    if (sending.current || opening.current || mealActions.pending || !isCurrent()) return;
     if (!text) { setChatError('Nhập câu hỏi hoặc yêu cầu trước khi gửi.'); return; }
     if (text.length > 4000) { setChatError('Tin nhắn tối đa 4.000 ký tự.'); return; }
     const interaction = openPlannerInteraction(turns);
@@ -271,9 +275,9 @@ function useMealPlannerState() {
   }
 
   return {
-    token, plan, dietary, turns, composer, setComposer, busy, chatError, setChatError, voiceOpen, setVoiceOpen,
+    token, plan, dietary, turns, composer, setComposer, busy: busy || mealActions.pending, mealActions, chatError, setChatError, voiceOpen, setVoiceOpen,
     selectedDay, setSelectedDay, formOpen, setFormOpen, formKey, preset, days, activeDay,
-    weekStart, weeks, weekend, changeWeek, showSavedWeek,
+    weekStart, currentWeekStart: currentPlan.data?.currentWeekStart, weeks, weekend, changeWeek, showSavedWeek,
     threadId, startForm, requestReplacement, sendMessage, startNewChat, openThread,
     rewindingId, rewindNotice, rewind,
     interaction: busy ? null : openPlannerInteraction(turns),

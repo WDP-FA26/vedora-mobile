@@ -27,11 +27,11 @@ export function VoiceCallControls({ status, error, reply, heard, elapsed, onClos
   const finished = status === 'ended' || status === 'error';
   const muted = status === 'muted';
   const connecting = status === 'connecting';
-  const canInterrupt = status === 'speaking' || status === 'ending' || muted;
+  const canInterrupt = status === 'speaking' || status === 'ending';
   const hint = finished ? 'Bạn có thể gọi lại khi muốn trò chuyện tiếp.'
     : connecting ? 'Cho phép sử dụng mic khi ứng dụng yêu cầu.'
-      : canInterrupt ? 'Chạm “Nói tiếp” để ngắt lời và bật mic.'
-        : 'Tối đa 5 phút · Thay đổi được lưu như khi chat';
+      : muted ? 'Bật mic để trò chuyện tiếp.'
+        : 'Cứ nói tự nhiên, bạn có thể ngắt lời Vedora bằng giọng nói. Tối đa 5 phút.';
 
   return <ScrollView nestedScrollEnabled style={[styles.footer, { maxHeight: height * 0.55, backgroundColor: theme.card, borderColor: theme.border }]} contentContainerStyle={styles.footerContent}>
     <View style={styles.inner}>
@@ -90,7 +90,7 @@ export function VoiceCallControls({ status, error, reply, heard, elapsed, onClos
             style={({ pressed }) => [styles.roundButton, { backgroundColor: theme.secondary, opacity: !canInterrupt ? 0.4 : pressed ? 0.7 : 1 }]}>
             <SymbolView name={{ ios: 'hand.raised.fill', android: 'pan_tool', web: 'pan_tool' }} size={25} tintColor={theme.primary} />
           </Pressable>
-          <Text style={[styles.actionLabel, { color: theme.foreground }]}>Nói tiếp</Text>
+          <Text style={[styles.actionLabel, { color: theme.foreground }]}>Ngắt lời</Text>
         </View> : null}
       </View>
       <Text style={[styles.hint, { color: theme.mutedForeground }]}>{hint}</Text>

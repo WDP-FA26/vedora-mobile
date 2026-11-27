@@ -12,10 +12,10 @@ export function weekRange(weekStart: string) {
   return `${label(weekStart)} – ${label(addCalendarDays(weekStart, 6))}`;
 }
 
-export function planningWeeks(plan?: Pick<MealPlan, 'currentWeekStart' | 'maxWeekStart'>) {
+export function planningWeeks(plan?: Pick<MealPlan, 'minWeekStart' | 'currentWeekStart' | 'maxWeekStart'>) {
   if (!plan) return [];
   const weeks: string[] = [];
-  for (let week = plan.currentWeekStart; week <= plan.maxWeekStart; week = addCalendarDays(week, 7)) weeks.push(week);
+  for (let week = plan.minWeekStart; week <= plan.maxWeekStart; week = addCalendarDays(week, 7)) weeks.push(week);
   return weeks;
 }
 

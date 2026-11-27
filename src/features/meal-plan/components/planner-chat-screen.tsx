@@ -80,7 +80,8 @@ export function PlannerChatScreen() {
             failed={planner.dietary.isError}
             busy={busy}
             weekStart={planner.weekStart}
-            weeks={planner.weeks}
+            currentWeekStart={planner.currentWeekStart}
+            weeks={planner.weeks.filter((week) => !planner.currentWeekStart || week >= planner.currentWeekStart)}
             onWeekChange={planner.changeWeek}
             retry={() => void planner.dietary.refetch()}
             onClose={() => planner.setFormOpen(false)}

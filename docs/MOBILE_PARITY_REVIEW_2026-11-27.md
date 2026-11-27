@@ -1,5 +1,7 @@
 # Mobile còn thiếu so với backend và web — 27/11/2026
 
+> Hiện trạng mới được rà lại tại [báo cáo 28/11](MOBILE_PARITY_REVIEW_2026-11-28.md). Voice, nhà hàng và quản lý Trang đã có trên mobile; không dùng bảng lịch sử bên dưới làm danh sách việc còn thiếu hiện tại.
+
 > Cập nhật sau báo cáo: mục Trợ lý giọng nói đã được tích hợp source theo web `f08e84f` (mic, Gateway Live, phiên gọi và lệnh màn hình/dữ liệu). Đã kiểm tra tự động và export Android/web; development build cùng kiểm tra mic/loa trên thiết bị còn chờ. Xem mục “Tích hợp trợ lý giọng nói” trong [PLAN.md](PLAN.md). Bảng dưới giữ nguyên kết quả tại thời điểm rà soát trước triển khai.
 
 ## Phạm vi đã đọc

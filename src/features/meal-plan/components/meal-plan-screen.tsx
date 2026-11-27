@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -12,9 +12,15 @@ import { useSessionStore } from '@/shared/stores/session-store';
 import { useMealPlanner } from '../hooks/meal-planner-provider';
 import type { Weekday } from '../types/meal-plan.schema';
 import { avoidedIngredientsForRecipe, dayLabels, sectionLabels } from '../utils/meal-plan';
-import { weekRange } from '../utils/meal-week';
+import { addCalendarDays, weekRange } from '../utils/meal-week';
 import { MealWeekSelector } from './meal-week-selector';
 import { MealRecipePhoto } from './meal-recipe-photo';
+import { ActionButton, ActionText, MealActionSheet } from './meal-action-sheet';
+import { MealEditSheet, type MealSelection } from './meal-edit-sheet';
+import { QuickGenerateSheet } from './quick-generate-sheet';
+import { ShoppingListPanel } from './shopping-list-panel';
+import { MealPlanActions } from './meal-plan-actions';
+import { MealRecipeActions } from './meal-recipe-actions';
 
 const SHORT_DAY: Record<Weekday, string> = { MON: 'T2', TUE: 'T3', WED: 'T4', THU: 'T5', FRI: 'T6', SAT: 'T7', SUN: 'CN' };
 const STICKER = require('@/assets/branding/tomato-sticker.png');
@@ -50,12 +56,13 @@ function OutlineButton({ label, onPress, disabled, tone = 'primary' }: ButtonPro
   );
 }
 
-/** The Thực đơn tab: shows the saved week; plans are made in the Trợ lý Vedora tab. */
 export function MealPlanScreen() {
   const theme = useTheme();
   const token = useSessionStore((s) => s.accessToken);
   const planner = useMealPlanner();
   const { plan, days, activeDay } = planner;
+  const [selection, setSelection] = useState<MealSelection | null>(null);
+  const [panel, setPanel] = useState<'shopping' | 'quick' | null>(null);
 
   if (!token) {
     return (
@@ -77,6 +84,7 @@ export function MealPlanScreen() {
 
   const mealCount = activeDay?.sections.reduce((total, { recipes }) => total + recipes.length, 0) ?? 0;
   const problems = plan.data?.problems ?? [];
+  const nextWeek = planner.currentWeekStart ? addCalendarDays(planner.currentWeekStart, 7) : undefined;
 
   return (
     <SafeAreaView edges={['top']} style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -86,14 +94,26 @@ export function MealPlanScreen() {
         subtitle={planner.weekStart ? weekRange(planner.weekStart) : 'Thực đơn theo từng tuần'}
         action={<Pressable accessibilityRole="button" accessibilityLabel="Gọi trợ lý giọng nói" disabled={planner.busy || !plan.data} onPress={() => planner.setVoiceOpen(true)} style={{ padding: Spacing.three, opacity: planner.busy || !plan.data ? 0.4 : 1 }}><SymbolView name={{ ios: 'waveform', android: 'graphic_eq', web: 'graphic_eq' }} size={24} tintColor={theme.primary} /></Pressable>}
       />
+      <MealPlanActions onShopping={() => setPanel('shopping')} onQuick={() => setPanel('quick')} shoppingDisabled={!plan.data || planner.busy} quickDisabled={!plan.data?.editable || planner.busy} readOnly={!!plan.data && !plan.data.editable} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <MealWeekSelector weeks={planner.weeks} selected={planner.weekStart} onChange={planner.changeWeek} disabled={planner.busy} />
-        <OutlineButton label="Nhật ký ăn uống · Ghi món đã ăn" onPress={() => router.push('/meal-log')} />
-        {planner.weekend && planner.weekStart === planner.weeks[0] && planner.weeks[1] ? (
+        <MealWeekSelector weeks={planner.weeks} selected={planner.weekStart} currentWeekStart={plan.data?.currentWeekStart} onChange={planner.changeWeek} disabled={planner.busy} />
+        {planner.mealActions.canUndo ? <ActionButton label="Hoàn tác thay đổi vừa lưu" disabled={planner.busy} onPress={() => void planner.mealActions.undo()} /> : null}
+        {planner.mealActions.pending ? <ActivityIndicator accessibilityLabel="Đang lưu thực đơn" color={theme.primary} /> : null}
+        {planner.mealActions.notice ? <ActionText>{planner.mealActions.notice}</ActionText> : null}
+        {planner.mealActions.error ? <ActionText error>{planner.mealActions.error}</ActionText> : null}
+        <Pressable accessibilityRole="button" onPress={() => router.push('/meal-log')} style={[styles.journal, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={[styles.journalIcon, { backgroundColor: theme.secondary }]}><SymbolView name={{ ios: 'book.closed', android: 'menu_book', web: 'menu_book' }} size={22} tintColor={theme.primary} /></View>
+          <View style={styles.flex}>
+            <Text style={[styles.recipeTitle, { color: theme.foreground }]}>Nhật ký ăn uống</Text>
+            <Text style={[styles.helper, { color: theme.mutedForeground }]}>Ghi lại những món bạn đã ăn</Text>
+          </View>
+          <SymbolView name={{ ios: 'arrow.right', android: 'arrow_forward', web: 'arrow_forward' }} size={20} tintColor={theme.primary} />
+        </Pressable>
+        {planner.weekend && planner.weekStart === planner.currentWeekStart && nextWeek && planner.weeks.includes(nextWeek) ? (
           <View style={[styles.card, { borderColor: theme.border, backgroundColor: theme.secondary }]}>
             <Text style={[styles.cardTitle, { color: theme.foreground }]}>Chuẩn bị thực đơn cho tuần sau</Text>
             <Text style={[styles.helper, { color: theme.mutedForeground }]}>Cuối tuần rồi, bạn có thể lên trước thực đơn từ thứ Hai tới. Thực đơn tuần này được giữ riêng.</Text>
-            <PrimaryButton label="Lên thực đơn tuần sau" disabled={planner.busy} onPress={() => { planner.changeWeek(planner.weeks[1]); planner.startForm(); }} />
+            <PrimaryButton label="Lên thực đơn tuần sau" disabled={planner.busy} onPress={() => { planner.changeWeek(nextWeek); planner.startForm(); }} />
           </View>
         ) : null}
         {plan.isPending && !plan.data ? (
@@ -152,14 +172,22 @@ export function MealPlanScreen() {
                 {!activeDay.editable ? <Text style={[styles.helper, { color: theme.mutedForeground }]}>Ngày đã qua · Chỉ xem lại</Text> : null}
                 {activeDay.sections.map(({ section, recipes }) => (
                   <View key={section} style={styles.mealBlock}>
-                    <Text style={[styles.mealLabel, { color: theme.mutedForeground }]}>BỮA {sectionLabels[section].toUpperCase()}</Text>
+                    <View style={styles.mealHeading}>
+                      <View style={[styles.mealIcon, { backgroundColor: theme.secondary }]}>
+                        <SymbolView name={{ ios: section === 'BREAKFAST' ? 'sunrise' : section === 'LUNCH' ? 'sun.max' : section === 'DINNER' ? 'moon' : 'fork.knife', android: section === 'BREAKFAST' ? 'wb_twilight' : section === 'LUNCH' ? 'light_mode' : section === 'DINNER' ? 'dark_mode' : 'restaurant', web: section === 'BREAKFAST' ? 'wb_twilight' : section === 'LUNCH' ? 'light_mode' : section === 'DINNER' ? 'dark_mode' : 'restaurant' }} size={18} tintColor={theme.primary} />
+                      </View>
+                      <Text accessibilityRole="header" style={[styles.mealLabel, { color: theme.foreground }]}>Bữa {sectionLabels[section].toLowerCase()}</Text>
+                      <Text style={[styles.helper, { color: theme.mutedForeground }]}>{recipes.length} món</Text>
+                      {activeDay.editable ? <Pressable accessibilityRole="button" accessibilityLabel={`Thêm món bữa ${sectionLabels[section].toLowerCase()}`} accessibilityState={{ disabled: planner.busy || recipes.length >= 5 }} disabled={planner.busy || recipes.length >= 5} onPress={() => setSelection({ day: activeDay.day, section })} style={({ pressed }) => [styles.addMeal, { backgroundColor: theme.secondary, opacity: planner.busy || recipes.length >= 5 ? 0.45 : pressed ? 0.7 : 1 }]}><SymbolView name={{ ios: 'plus', android: 'add', web: 'add' }} size={20} tintColor={theme.primary} /></Pressable> : null}
+                    </View>
                     {recipes.length ? (
                       recipes.map((recipe) => {
                         const avoided = avoidedIngredientsForRecipe(problems, activeDay.day, recipe);
                         return (
                           <View key={recipe.id} style={[styles.recipeCard, { borderColor: theme.border, backgroundColor: theme.card }]}>
-                            <MealRecipePhoto recipe={recipe} />
-                            <Pressable
+                            <View style={styles.recipeTop}>
+                              <MealRecipePhoto recipe={recipe} />
+                              <Pressable
                               accessibilityRole="link"
                               accessibilityLabel={`Xem công thức ${recipe.title}${avoided.length ? `. Có nguyên liệu cần tránh: ${avoided.join(', ')}` : ''}`}
                               onPress={() => router.push({ pathname: '/recipes/[id]', params: { id: recipe.id } })}
@@ -172,18 +200,9 @@ export function MealPlanScreen() {
                                 </View>
                               ) : null}
                               <Text style={[styles.recipeHint, { color: theme.primary }]}>Xem công thức ›</Text>
-                            </Pressable>
-                            {activeDay.editable ? (
-                              <Pressable
-                                accessibilityRole="button"
-                                accessibilityLabel={`Đổi món ${recipe.title}`}
-                                hitSlop={6}
-                                onPress={() => planner.requestReplacement(activeDay.day, section, recipe.title)}
-                                style={({ pressed }) => [styles.swap, { backgroundColor: theme.secondary, opacity: pressed ? 0.7 : 1 }]}>
-                                <SymbolView name={{ ios: 'arrow.triangle.2.circlepath', android: 'sync', web: 'sync' }} size={13} tintColor={theme.primary} />
-                                <Text style={[styles.swapText, { color: theme.primary }]}>Đổi món</Text>
                               </Pressable>
-                            ) : null}
+                            </View>
+                            {activeDay.editable ? <MealRecipeActions title={recipe.title} disabled={planner.busy} onMove={() => setSelection({ day: activeDay.day, section, recipe, action: 'move' })} onRemove={() => setSelection({ day: activeDay.day, section, recipe, action: 'remove' })} onReplace={() => planner.requestReplacement(activeDay.day, section, recipe.title)} /> : null}
                           </View>
                         );
                       })
@@ -222,6 +241,9 @@ export function MealPlanScreen() {
           </View>
         </View>
       ) : null}
+      {selection && planner.token ? <MealEditSheet planner={planner} selection={selection} onClose={() => setSelection(null)} /> : null}
+      {panel === 'quick' && planner.token ? <QuickGenerateSheet planner={planner} onClose={() => setPanel(null)} /> : null}
+      {panel === 'shopping' && planner.token && planner.weekStart ? <MealActionSheet title="Đi chợ 🧺" subtitle={weekRange(planner.weekStart)} onClose={() => setPanel(null)}><ShoppingListPanel weekStart={planner.weekStart} onRecipe={(id) => { setPanel(null); router.push({ pathname: '/recipes/[id]', params: { id } }); }} /></MealActionSheet> : null}
     </SafeAreaView>
   );
 }
@@ -232,6 +254,8 @@ const styles = StyleSheet.create({
   center: { textAlign: 'center' },
   headerSticker: { width: 38, height: 38 },
   content: { width: '100%', maxWidth: 680, alignSelf: 'center', padding: Spacing.three, paddingBottom: Spacing.five, gap: Spacing.three },
+  journal: { minHeight: 76, borderWidth: 1, borderRadius: Radius['2xl'], padding: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  journalIcon: { width: 44, height: 44, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
   cta: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two + Spacing.one },
   ctaInner: { width: '100%', maxWidth: 680, alignSelf: 'center' },
   ctaButton: {
@@ -265,7 +289,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontFamily: Fonts.headingBold, fontSize: 16, lineHeight: 23 },
 
   dayRow: { flexDirection: 'row', gap: Spacing.one + Spacing.half },
-  dayChip: { flex: 1, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: Spacing.one, borderWidth: 1, borderRadius: Radius.xl },
+  dayChip: { flex: 1, minHeight: 58, alignItems: 'center', justifyContent: 'center', gap: Spacing.one, borderWidth: 1, borderRadius: Radius['2xl'] },
   dayText: { fontFamily: Fonts.sansBold, fontSize: 14, lineHeight: 18 },
   dayDot: { width: 5, height: 5, borderRadius: 3 },
 
@@ -275,15 +299,17 @@ const styles = StyleSheet.create({
   badge: { borderRadius: Radius['4xl'], paddingHorizontal: Spacing.two + Spacing.one, paddingVertical: Spacing.one },
   badgeText: { fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 16 },
   mealBlock: { gap: Spacing.two },
-  mealLabel: { fontFamily: Fonts.sansBold, fontSize: 11, lineHeight: 16, letterSpacing: 1.1 },
-  recipeCard: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two + Spacing.one, borderWidth: 1, borderRadius: Radius.xl, padding: Spacing.two },
-  recipeLink: { flex: 1, minWidth: 0, alignSelf: 'stretch', justifyContent: 'center', gap: 2 },
+  mealHeading: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two, marginTop: Spacing.two },
+  addMeal: { width: 44, height: 44, borderRadius: Radius.xl, alignItems: 'center', justifyContent: 'center' },
+  mealIcon: { width: 32, height: 32, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
+  mealLabel: { flex: 1, fontFamily: Fonts.headingBold, fontSize: 16, lineHeight: 24 },
+  recipeCard: { gap: 12, borderWidth: 1, borderRadius: Radius['3xl'], padding: 12 },
+  recipeTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  recipeLink: { flex: 1, minWidth: 0, minHeight: 56, justifyContent: 'center', gap: 6 },
   recipeTitle: { fontFamily: Fonts.sansSemibold, fontSize: 15, lineHeight: 21 },
   recipeWarning: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing.one },
   recipeWarningText: { flex: 1, fontFamily: Fonts.sansMedium, fontSize: 12, lineHeight: 17 },
   recipeHint: { fontFamily: Fonts.sansSemibold, fontSize: 12, lineHeight: 16 },
-  swap: { minHeight: 36, flexDirection: 'row', alignItems: 'center', gap: Spacing.one + Spacing.half, borderRadius: Radius['4xl'], paddingHorizontal: Spacing.two + Spacing.one },
-  swapText: { fontFamily: Fonts.sansBold, fontSize: 12, lineHeight: 16 },
   emptyMeal: { borderWidth: 1, borderStyle: 'dashed', borderRadius: Radius.xl, paddingVertical: Spacing.three, paddingHorizontal: Spacing.three, textAlign: 'center', fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },
 
   emptyPlan: { alignItems: 'center', gap: Spacing.three, borderWidth: 1, borderRadius: Radius['2xl'], padding: Spacing.four },

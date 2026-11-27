@@ -33,6 +33,7 @@ function amountError(item: IngredientInput) {
 
 type FormProps = {
   weekStart?: string;
+  currentWeekStart?: string;
   weeks: string[];
   onWeekChange: (week: string) => void;
   restrictions?: DietaryRestrictions;
@@ -50,7 +51,7 @@ type FormProps = {
 };
 
 /** Request form: essentials up front, extras collapsed, and a sticky footer with the send button. */
-export function MealRequestForm({ restrictions, loading, failed, busy, retry, onSubmit, onReview, onClose, seed, weekStart, weeks, onWeekChange }: FormProps) {
+export function MealRequestForm({ restrictions, loading, failed, busy, retry, onSubmit, onReview, onClose, seed, weekStart, currentWeekStart, weeks, onWeekChange }: FormProps) {
   const theme = useTheme();
   const [meals, setMeals] = useState<MealSection[]>(['BREAKFAST', 'LUNCH', 'DINNER']);
   const [people, setPeople] = useState<number | null>(null);
@@ -143,7 +144,7 @@ export function MealRequestForm({ restrictions, loading, failed, busy, retry, on
           <Text style={[styles.subtitle, { color: theme.mutedForeground }]}>Chọn vài thông tin, trợ lý sẽ lên thực đơn và lưu các món vào tuần bạn chọn.</Text>
         </View>
 
-        <MealWeekSelector weeks={weeks} selected={weekStart} onChange={onWeekChange} disabled={busy} />
+        <MealWeekSelector weeks={weeks} selected={weekStart} currentWeekStart={currentWeekStart} onChange={onWeekChange} disabled={busy} />
         <View style={[styles.avoidCard, { backgroundColor: theme.secondary, borderColor: theme.border }]}>
           <View style={styles.avoidCopy}>
             <Text style={[styles.avoidTitle, { color: theme.secondaryForeground }]}>Thực phẩm cần tránh</Text>

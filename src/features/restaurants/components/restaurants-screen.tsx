@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
+import { FlatList, Pressable, TextInput, View } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { router } from 'expo-router';
 import { Fonts } from '@/constants/theme';
@@ -12,15 +11,16 @@ import {
 } from '../hooks/use-restaurants';
 import type { LngLat } from '../types/restaurant.schema';
 import { RestaurantMap } from './restaurant-map';
+import { RestaurantDish } from './restaurant-detail-ui';
 import { DiscoveryFilter, DiscoveryHeading, DiscoveryRestaurantCard, DiscoveryWelcome } from './restaurant-discovery-ui';
 import {
   Action,
   Busy,
-  Card,
   Copy,
   Heading,
   Notice,
   RestaurantShell,
+  RestaurantEmptyState,
   ui,
 } from './restaurant-ui';
 
@@ -122,21 +122,7 @@ export function RestaurantsScreen() {
                 {dishes.data?.pages
                   .flatMap((p) => p.items)
                   .map((dish) => (
-                    <Card key={dish.id}>
-                      {dish.imageUrl && (
-                        <Image
-                          source={dish.imageUrl}
-                          style={ui.photo}
-                          contentFit="cover"
-                        />
-                      )}
-                      <Heading>{dish.name}</Heading>
-                      <Copy>
-                        {dish.priceVnd === null
-                          ? 'Liên hệ giá'
-                          : `${dish.priceVnd.toLocaleString('vi-VN')} đ`}{' '}
-                        · {dish.category ?? 'Món ăn'}
-                      </Copy>
+                    <RestaurantDish key={dish.id} name={dish.name} image={dish.imageUrl} price={dish.priceVnd} description={dish.description} category={dish.category} available>
                       <Copy>
                         {dish.restaurant.name} · {dish.restaurant.address}
                       </Copy>
@@ -144,7 +130,7 @@ export function RestaurantsScreen() {
                         label="Xem nhà hàng"
                         onPress={() => open(dish.restaurant.pageUserId)}
                       />
-                    </Card>
+                    </RestaurantDish>
                   ))}
                 {dishes.data?.pages[0]?.items.length === 0 && (
                   <Copy>Chưa tìm thấy món phù hợp.</Copy>
@@ -174,12 +160,9 @@ export function RestaurantsScreen() {
         )}
         ListEmptyComponent={
           !restaurants.isPending && !restaurants.error ? (
-            <View style={{ alignItems: 'center', padding: 24, gap: 12 }}>
-              <Image source={require('@/assets/branding/carrot-sticker.png')} contentFit="contain" accessible={false} style={{ width: 72, height: 88 }} />
-              <Text style={{ color: theme.foreground, fontFamily: Fonts.sansBold, fontSize: 17 }}>Chưa tìm thấy quán phù hợp</Text>
-              <Copy>Thử tên quán, khu vực hoặc một món chay khác nhé.</Copy>
+            <RestaurantEmptyState title="Chưa tìm thấy quán phù hợp" description="Thử tên quán, khu vực hoặc một món chay khác nhé.">
               {q.trim() !== '' && <Action label="Xem tất cả nhà hàng" onPress={() => setQ('')} />}
-            </View>
+            </RestaurantEmptyState>
           ) : undefined
         }
       />

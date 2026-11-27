@@ -1,5 +1,42 @@
 # Kế hoạch và kết quả công việc
 
+## 2026-11-27 — Sửa mic báo gián đoạn ngay khi kết nối trong Expo Go
+
+- Kết quả đã làm: Theo phản hồi người dùng, màn gọi chuyển từ “Đang kết nối” sang “Mic bị gián đoạn” trước khi trò chuyện. Đọc source `expo-audio` SDK 58: `AudioStream.start()` mở engine iOS ở chế độ record; code mobile cũ đổi category ngay sau đó, có thể làm engine ngừng cấp PCM rồi chạm ngưỡng báo lỗi 3 giây. Chuyển cấu hình audio trước lúc mở mic; khi phát lời trợ lý, dừng engine rồi mới chuyển sang playback, mở lại mic sau khi phát xong/ngắt lời. Tuần tự hóa các lần chuyển chế độ, giữ các frame im lặng gửi Gateway trong lúc mic tạm dừng để giữ nhịp audio input.
+- Xử lý vòng đời: Chờ qua lần deactivation trì hoãn 100 ms của Expo sau khi dừng stream (khoảng chờ 150 ms) trước khi bật lại audio hoặc cho phiên mới mở mic; tránh cuộc gọi cũ tắt audio của lần gọi lại ngay sau đó. Không coi snapshot `isStreaming: false` hoặc lúc chủ động phát loa là lỗi mic. Kiểm tra bằng PCM thực nhận: cho buffer đầu tối đa 8 giây, sau khi đã có buffer thì phát hiện mất dữ liệu quá 3 giây; thông báo riêng nếu mic chưa gửi được âm thanh từ đầu. Dọn tài nguyên cả khi đóng trong lúc chuyển audio mode. Vẫn dùng Expo Go, không chạy development/native build.
+- Kiểm tra kỹ thuật: 37/37 kiểm thử voice/audio đạt, có giả lập engine mất input khi đổi category và deactivation iOS trễ để kiểm tra lần gọi lại; TypeScript, lint và export bundle Android/iOS/web đạt. Chưa tái hiện/kiểm tra mic trên chính điện thoại của người dùng, nên chưa khẳng định đã hết lỗi trên thiết bị thật.
+- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện trên thiết bị):
+  1. Đóng màn gọi cũ, tải lại ứng dụng trong Expo Go; vào **Trợ lý → Gọi**, cho phép quyền mic nếu được hỏi. Kiểm tra chuyển từ đang kết nối sang đang nghe, không báo gián đoạn ngay.
+  2. Nói “Bạn có nghe mình không?”; kiểm tra có transcript của câu nói và nghe được phản hồi tiếng Việt.
+  3. Nhờ trợ lý giải thích một món chay đủ dài để loa phát hơn 4 giây; kiểm tra không báo lỗi mic trong lúc trợ lý đang nói.
+  4. Nhấn **Nói tiếp**, nói yêu cầu mới; kiểm tra lời cũ dừng, transcript mới xuất hiện và mic tự hoạt động lại sau phản hồi.
+  5. Kết thúc rồi nhấn gọi lại ngay 2–3 lần; kiểm tra phiên mới không bị phiên cũ tắt mic/loa. Thử tắt mic, bật mic và nói lại.
+  6. Nếu vẫn thất bại lúc kết nối, ghi nhận thông báo mới là chưa nhận âm thanh hay mic bị gián đoạn; thử loa ngoài rồi tai nghe để phân biệt đường âm thanh. Khi chuyển ứng dụng ra nền, kiểm tra cuộc gọi dừng theo thiết kế.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Chuyển voice sang Expo Go, không dùng development build
+
+- Kết quả đã làm: Fetch và đọc lại `origin/main` BE `3e1f9b1`, FE web `be4c119`; đối chiếu phiên voice, Gateway Live PCM16 mono 24 kHz, delegation, SSE và trạng thái màn hình. Thay `react-native-audio-api` bằng `expo-audio` có sẵn trong Expo Go SDK 58; bỏ dependency/plugin âm thanh cần build riêng. Thu PCM trực tiếp, đổi về 24 kHz theo sample rate thật; đóng gói phản hồi thành từng WAV ngắn và phát qua playlist. Dọn mic, listener, playlist và file tạm khi phát xong/ngắt lời/kết thúc; gọi lại chờ phiên cũ giải phóng tài nguyên. Không chạy EAS, prebuild hay development/native build.
+- Đồng bộ và trải nghiệm: Xử lý `data-state` mới, làm mới đúng dữ liệu kể cả sự kiện chỉ có patch; giữ tương thích `data-refresh` cũ. Có thông báo quyền mic/Expo Go cũ, phát hiện mic/loa gián đoạn, giới hạn hàng đợi âm thanh và nút **Nói tiếp** để dừng lời trợ lý, bật mic và bỏ các đoạn âm thanh cũ. Bộ thu Expo không có cấu hình AEC nên native nghe/nói luân phiên để tránh trợ lý nghe lại tiếng loa, yêu cầu trợ lý chờ người dùng nói xong thay vì chen tiếng đệm giữa câu; web vẫn dùng bộ thu trình duyệt. Giữ các màn mobile hiện có (thực đơn, công thức, nhật ký, BMI); nếu BE yêu cầu danh sách đi chợ hoặc tab weekly/dietary mới của web, báo rõ chưa có màn mobile thay vì báo đã mở hoặc làm hỏng lượt voice.
+- Kiểm tra kỹ thuật: TypeScript và lint đạt; 70/70 kiểm thử voice, audio Expo, SSE, thực đơn/chat, Ghi nhớ và trace đạt. Export bundle JavaScript Android/iOS/web đạt; cấu hình không còn `expo-dev-client`/`react-native-audio-api`, script khởi động vẫn dùng Expo Go. Đây chưa phải nghiệm thu mic/loa trên thiết bị thật hoặc giao dịch BE bằng tài khoản thật; chưa xác nhận độ trễ, Bluetooth và thay đổi audio route trên iPhone/Android.
+- Các bước kiểm tra luồng UI trên màn hình (checklist cần thực hiện trên thiết bị, chưa thực hiện):
+  1. Mở dự án bằng Expo Go tương thích SDK 58, đăng nhập bằng email; vào **Trợ lý** hoặc **Thực đơn**, nhấn **Gọi**.
+  2. Cho phép mic của Expo Go; chờ trạng thái đang nghe và nghe lời chào tiếng Việt. Nếu từng từ chối quyền, thử gọi, kiểm tra hướng dẫn bật quyền trong Cài đặt, bật quyền rồi gọi lại.
+  3. Nói một yêu cầu thực đơn; kiểm tra lời nói xuất hiện và nội dung phản hồi khớp dữ liệu đã cập nhật. Trong lúc trợ lý nói, nhấn **Nói tiếp**, nói yêu cầu mới và kiểm tra lời cũ không tiếp tục phát.
+  4. Nhấn **Tắt mic**, nói thử để kiểm tra không gửi thêm yêu cầu; nhấn **Bật mic** rồi kiểm tra nghe lại bình thường.
+  5. Nhờ mở công thức, chuyển đến nguyên liệu/bước nấu, cuộn và đóng; nhờ mở nhật ký một ngày, ghi món đã ăn, rồi kiểm tra nhật ký và thực đơn sau khi đóng cuộc gọi.
+  6. Nhờ mở **BMI**, cập nhật cân nặng hoặc Ghi nhớ; kiểm tra dữ liệu mới hiện trên các màn tương ứng. Thử yêu cầu danh sách đi chợ/tab dinh dưỡng chỉ có trên web và kiểm tra thông báo giới hạn, cuộc gọi vẫn tiếp tục.
+  7. Kết thúc bằng nút hoặc lời chào tạm biệt; kiểm tra mic dừng, âm thanh không còn phát. Gọi lại ngay, kiểm tra phiên mới thu/phát bình thường.
+  8. Khi đang gọi, thử mất mạng, chuyển ứng dụng ra nền hoặc ngắt tai nghe; kiểm tra cuộc gọi dừng/báo lỗi phù hợp và có thể gọi lại. Kiểm tra thêm loa ngoài/tai nghe trên cả Android và iPhone để đánh giá vọng và độ trễ.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Làm mới phần đánh giá trên chi tiết từng nhà hàng
+
+- Kết quả đã làm: Tách phần đánh giá thành component riêng dùng chung cho mọi trang chi tiết nhà hàng. Tổng điểm nổi bật cùng dãy sao và thanh phân bố; bộ sắp xếp dạng pill có trạng thái chọn. Thẻ nhận xét có avatar/chữ cái thay thế, tên, nhãn chuyên gia, ngày và sao; chạm thông tin tác giả để mở hồ sơ. Form dùng chạm chọn sao, nhãn cảm nhận, ô nhận xét có viền focus/bộ đếm; có thiết kế cho khách chưa đăng nhập, giới hạn quyền và danh sách trống. Giữ luồng viết/sửa/xóa có xác nhận, xử lý lỗi và tải thêm; dùng màu theme sáng/tối, vùng chạm tối thiểu 44 và bố cục tự xuống dòng.
+- Kiểm tra kỹ thuật: Lint, TypeScript, 11/11 test nhà hàng và export Android đạt; web `/restaurants` trả HTTP 200 và bundle thành công. Chưa nghiệm thu UI trực tiếp hay gửi đánh giá thật. Browser host không khả dụng; bộ duyệt tự động từ chối đọc cửa sổ Edge hiện có vì có thể chứa nội dung riêng tư ngoài dự án. Phiên Metro web phục vụ kiểm tra đã dừng.
+- Các bước kiểm tra luồng UI trên màn hình (checklist cần thực hiện): (1) Khám phá → Nhà hàng chay → chọn từng quán → cuộn xuống Đánh giá nhà hàng, kiểm tra điểm/sao/thanh phân bố theo dữ liệu quán. (2) Chọn Mới nhất/Sao cao nhất/Sao thấp nhất, kiểm tra pill đang chọn, thứ tự và Xem thêm đánh giá. (3) Kiểm tra thẻ có/không có avatar, nhãn chuyên gia, nhận xét dài/chỉ có sao; chạm tác giả để mở đúng hồ sơ rồi quay lại. (4) Đăng nhập tài khoản cá nhân không quản lý quán → Viết đánh giá → chạm từng sao, nhập nhận xét, kiểm tra nhãn cảm nhận/bộ đếm/viền focus; thử Hủy rồi mở lại. (5) Lưu đánh giá bằng tài khoản thử nghiệm, kiểm tra tổng điểm và đánh giá của bạn; thử sửa, hủy xóa rồi xác nhận xóa dữ liệu thử. (6) Kiểm tra khách chưa đăng nhập quay lại đúng quán sau đăng nhập, tài khoản Trang và người quản lý không thể tự đánh giá. (7) Mở quán chưa có đánh giá, thử lỗi mạng/Thử lại, giao diện sáng/tối, màn hình hẹp, cỡ chữ lớn và bàn phím khi viết nhận xét.
+- Người thực hiện: Codex.
+
 ## 2026-11-27 — Tích hợp nhà hàng cho khách, chủ Trang và quản lý
 
 - Kết quả đã làm: Đọc lại BE `eed31d2` và FE web `878f9e0` mới nhất; triển khai module `restaurants` trên branch `feat/mobile-restaurants`. Mở từ biểu tượng nhà hàng ở Khám phá hoặc Hồ sơ. Có danh sách/bản đồ nhà hàng, sắp xếp gần nhất khi người dùng cấp vị trí, tìm nhà hàng/địa chỉ và tìm món có phân trang; chi tiết quán, liên hệ/chỉ đường, bài đăng/nhắn tin, menu theo danh mục và trạng thái phục vụ; tổng hợp sao, sắp xếp/phân trang đánh giá, viết/sửa/xóa đánh giá cá nhân và quay lại đúng quán sau đăng nhập.
@@ -1541,42 +1578,30 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Các bước kiểm tra luồng UI trên màn hình (đề nghị, chưa thực hiện): (1) Đăng nhập cùng tài khoản web/mobile, sửa Ghi nhớ và nhờ trợ lý ghi nhớ thêm, mở lại hồ sơ/form thực đơn. (2) Tạo Blog có bìa A và ảnh nội dung B, lưu/mở lại; so luồng chèn video. (3) Lưu thực đơn rồi mở Đi chợ trên web, chọn ngày/xem lượng và đối chiếu điểm vào mobile. (4) Thêm nhật ký, so sửa khẩu phần/kcal và nút nhờ trợ lý nhận xét tuần; so dinh dưỡng công thức/lịch và chọn tuần cũ. (5) Cuộn feed hai bên nhiều trang; tạo bài chỉ chữ/nhiều video/nháp POST; sửa bài đã đăng và so upload video mới; tìm người dùng. (6) So voice, thống kê, nhà hàng/menu/đánh giá, Trang theo quyền và lựa chọn theme. (7) So badge với unread ngoài 50 hội thoại đầu mỗi ngăn, lỗi login tài khoản bị khóa; thử refresh khi đang nhập và đổi tài khoản khi upload. (8) Hồi quy ticket kèm ảnh/mở từ thông báo, báo cáo bài/bình luận và sửa POST. Checklist chi tiết và bằng chứng source trong báo cáo.
 - Người thực hiện: Codex.
 
-## 2026-11-27 — Sửa mic báo gián đoạn ngay khi kết nối trong Expo Go
-
-- Kết quả đã làm: Theo phản hồi người dùng, màn gọi chuyển từ “Đang kết nối” sang “Mic bị gián đoạn” trước khi trò chuyện. Đọc source `expo-audio` SDK 58: `AudioStream.start()` mở engine iOS ở chế độ record; code mobile cũ đổi category ngay sau đó, có thể làm engine ngừng cấp PCM rồi chạm ngưỡng báo lỗi 3 giây. Chuyển cấu hình audio trước lúc mở mic; khi phát lời trợ lý, dừng engine rồi mới chuyển sang playback, mở lại mic sau khi phát xong/ngắt lời. Tuần tự hóa các lần chuyển chế độ, giữ các frame im lặng gửi Gateway trong lúc mic tạm dừng để giữ nhịp audio input.
-- Xử lý vòng đời: Chờ qua lần deactivation trì hoãn 100 ms của Expo sau khi dừng stream (khoảng chờ 150 ms) trước khi bật lại audio hoặc cho phiên mới mở mic; tránh cuộc gọi cũ tắt audio của lần gọi lại ngay sau đó. Không coi snapshot `isStreaming: false` hoặc lúc chủ động phát loa là lỗi mic. Kiểm tra bằng PCM thực nhận: cho buffer đầu tối đa 8 giây, sau khi đã có buffer thì phát hiện mất dữ liệu quá 3 giây; thông báo riêng nếu mic chưa gửi được âm thanh từ đầu. Dọn tài nguyên cả khi đóng trong lúc chuyển audio mode. Vẫn dùng Expo Go, không chạy development/native build.
-- Kiểm tra kỹ thuật: 37/37 kiểm thử voice/audio đạt, có giả lập engine mất input khi đổi category và deactivation iOS trễ để kiểm tra lần gọi lại; TypeScript, lint và export bundle Android/iOS/web đạt. Chưa tái hiện/kiểm tra mic trên chính điện thoại của người dùng, nên chưa khẳng định đã hết lỗi trên thiết bị thật.
-- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện trên thiết bị):
-  1. Đóng màn gọi cũ, tải lại ứng dụng trong Expo Go; vào **Trợ lý → Gọi**, cho phép quyền mic nếu được hỏi. Kiểm tra chuyển từ đang kết nối sang đang nghe, không báo gián đoạn ngay.
-  2. Nói “Bạn có nghe mình không?”; kiểm tra có transcript của câu nói và nghe được phản hồi tiếng Việt.
-  3. Nhờ trợ lý giải thích một món chay đủ dài để loa phát hơn 4 giây; kiểm tra không báo lỗi mic trong lúc trợ lý đang nói.
-  4. Nhấn **Nói tiếp**, nói yêu cầu mới; kiểm tra lời cũ dừng, transcript mới xuất hiện và mic tự hoạt động lại sau phản hồi.
-  5. Kết thúc rồi nhấn gọi lại ngay 2–3 lần; kiểm tra phiên mới không bị phiên cũ tắt mic/loa. Thử tắt mic, bật mic và nói lại.
-  6. Nếu vẫn thất bại lúc kết nối, ghi nhận thông báo mới là chưa nhận âm thanh hay mic bị gián đoạn; thử loa ngoài rồi tai nghe để phân biệt đường âm thanh. Khi chuyển ứng dụng ra nền, kiểm tra cuộc gọi dừng theo thiết kế.
-- Người thực hiện: Codex.
-
-## 2026-11-27 — Chuyển voice sang Expo Go, không dùng development build
-
-- Kết quả đã làm: Fetch và đọc lại `origin/main` BE `3e1f9b1`, FE web `be4c119`; đối chiếu phiên voice, Gateway Live PCM16 mono 24 kHz, delegation, SSE và trạng thái màn hình. Thay `react-native-audio-api` bằng `expo-audio` có sẵn trong Expo Go SDK 58; bỏ dependency/plugin âm thanh cần build riêng. Thu PCM trực tiếp, đổi về 24 kHz theo sample rate thật; đóng gói phản hồi thành từng WAV ngắn và phát qua playlist. Dọn mic, listener, playlist và file tạm khi phát xong/ngắt lời/kết thúc; gọi lại chờ phiên cũ giải phóng tài nguyên. Không chạy EAS, prebuild hay development/native build.
-- Đồng bộ và trải nghiệm: Xử lý `data-state` mới, làm mới đúng dữ liệu kể cả sự kiện chỉ có patch; giữ tương thích `data-refresh` cũ. Có thông báo quyền mic/Expo Go cũ, phát hiện mic/loa gián đoạn, giới hạn hàng đợi âm thanh và nút **Nói tiếp** để dừng lời trợ lý, bật mic và bỏ các đoạn âm thanh cũ. Bộ thu Expo không có cấu hình AEC nên native nghe/nói luân phiên để tránh trợ lý nghe lại tiếng loa, yêu cầu trợ lý chờ người dùng nói xong thay vì chen tiếng đệm giữa câu; web vẫn dùng bộ thu trình duyệt. Giữ các màn mobile hiện có (thực đơn, công thức, nhật ký, BMI); nếu BE yêu cầu danh sách đi chợ hoặc tab weekly/dietary mới của web, báo rõ chưa có màn mobile thay vì báo đã mở hoặc làm hỏng lượt voice.
-- Kiểm tra kỹ thuật: TypeScript và lint đạt; 70/70 kiểm thử voice, audio Expo, SSE, thực đơn/chat, Ghi nhớ và trace đạt. Export bundle JavaScript Android/iOS/web đạt; cấu hình không còn `expo-dev-client`/`react-native-audio-api`, script khởi động vẫn dùng Expo Go. Đây chưa phải nghiệm thu mic/loa trên thiết bị thật hoặc giao dịch BE bằng tài khoản thật; chưa xác nhận độ trễ, Bluetooth và thay đổi audio route trên iPhone/Android.
-- Các bước kiểm tra luồng UI trên màn hình (checklist cần thực hiện trên thiết bị, chưa thực hiện):
-  1. Mở dự án bằng Expo Go tương thích SDK 58, đăng nhập bằng email; vào **Trợ lý** hoặc **Thực đơn**, nhấn **Gọi**.
-  2. Cho phép mic của Expo Go; chờ trạng thái đang nghe và nghe lời chào tiếng Việt. Nếu từng từ chối quyền, thử gọi, kiểm tra hướng dẫn bật quyền trong Cài đặt, bật quyền rồi gọi lại.
-  3. Nói một yêu cầu thực đơn; kiểm tra lời nói xuất hiện và nội dung phản hồi khớp dữ liệu đã cập nhật. Trong lúc trợ lý nói, nhấn **Nói tiếp**, nói yêu cầu mới và kiểm tra lời cũ không tiếp tục phát.
-  4. Nhấn **Tắt mic**, nói thử để kiểm tra không gửi thêm yêu cầu; nhấn **Bật mic** rồi kiểm tra nghe lại bình thường.
-  5. Nhờ mở công thức, chuyển đến nguyên liệu/bước nấu, cuộn và đóng; nhờ mở nhật ký một ngày, ghi món đã ăn, rồi kiểm tra nhật ký và thực đơn sau khi đóng cuộc gọi.
-  6. Nhờ mở **BMI**, cập nhật cân nặng hoặc Ghi nhớ; kiểm tra dữ liệu mới hiện trên các màn tương ứng. Thử yêu cầu danh sách đi chợ/tab dinh dưỡng chỉ có trên web và kiểm tra thông báo giới hạn, cuộc gọi vẫn tiếp tục.
-  7. Kết thúc bằng nút hoặc lời chào tạm biệt; kiểm tra mic dừng, âm thanh không còn phát. Gọi lại ngay, kiểm tra phiên mới thu/phát bình thường.
-  8. Khi đang gọi, thử mất mạng, chuyển ứng dụng ra nền hoặc ngắt tai nghe; kiểm tra cuộc gọi dừng/báo lỗi phù hợp và có thể gọi lại. Kiểm tra thêm loa ngoài/tai nghe trên cả Android và iPhone để đánh giá vọng và độ trễ.
-- Người thực hiện: Codex.
-
 ## 2026-11-27 — Chuyển chế độ chạy mặc định sang Expo Go
 
 - Kết quả đã làm: Gỡ expo-dev-client và các phụ thuộc đi kèm; bỏ profile EAS development; đặt lệnh start/android/ios dùng Expo Go. Cập nhật README và thông báo vị trí/Google/giọng nói để không yêu cầu cài development build. Giữ liên kết project kaorihzemou và cấu hình preview hiện có. Google OAuth và cuộc gọi giọng nói native chưa hỗ trợ trong Expo Go; dùng email và chat chữ.
 - Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu điện thoại): (1) Dừng Metro cũ, khởi động lại và xác nhận terminal hiển thị Expo Go. (2) Mở Expo Go tương thích SDK 58 rồi quét QR mới; kiểm tra mở màn hình chào/Khám phá. (3) Đăng nhập bằng email, mở bảng tin và phát video. (4) Mở nhà hàng, cấp quyền vị trí và thử ghim bản đồ. (5) Thử nút Google và gọi trợ lý, kiểm tra thông báo hướng dẫn dùng email/chat chữ. (6) Nếu mạng LAN bị chặn, mở phiên tunnel mới và quét QR mới; kiểm tra lỗi kết nối riêng với lỗi ứng dụng.
 - Người thực hiện: Codex.
 - Kiểm tra kỹ thuật: Lint, TypeScript và bundle Android đạt; phiên Metro kiểm tra đã hiển thị QR cùng trạng thái Using Expo Go, sau đó đã dừng. Chưa xác nhận kết nối tunnel hay thao tác trên điện thoại.
+
+## 2026-11-27 — Chẩn đoán điện thoại chưa kết nối Metro
+
+- Kết quả đã làm: Xác nhận Metro đang lắng nghe mọi địa chỉ ở cổng 8081 và endpoint status trả packager-status:running. Địa chỉ 10.1.65.68 thuộc Wi-Fi thật của máy; chưa xác định điện thoại có truy cập được qua mạng Wi-Fi hay không. Log người dùng cho thấy tunnel đã dừng trước khi chuyển sang phiên LAN; chưa có thiết bị kết nối. Không sửa source hoặc quy tắc tường lửa.
+- Các bước kiểm tra luồng UI trên màn hình (cần người dùng thực hiện): (1) Giữ terminal Metro đang chạy. (2) Trên trình duyệt điện thoại, mở http://10.1.65.68:8081/status và ghi nhận có hiện packager-status:running không. (3) Nếu truy cập được, mở QR mới bằng Expo Go và ghi lại lỗi cụ thể nếu có. (4) Nếu không truy cập được, kết nối máy tính vào điểm phát Wi-Fi của điện thoại, khởi động lại Expo Go qua LAN và quét QR mới; nếu vẫn thất bại, tiếp tục kiểm tra tường lửa/kết nối dựa trên kết quả thực tế.
+- Người thực hiện: Codex.
+## 2026-11-27 — Chẩn đoán Expo Go Opening project rồi timeout
+
+- Kết quả đã làm: Metro cổng 8081 trả packager-status:running, nhưng endpoint /_expo/open?platform=ios&runtime=expo trả exp://10.1.149.72:8081 trong khi ipconfig cho thấy Wi-Fi hiện tại là 172.20.10.11. Xác định địa chỉ Metro quảng bá không khớp mạng hiện tại; hướng dẫn dừng phiên cũ, đặt REACT_NATIVE_PACKAGER_HOSTNAME theo IP Wi-Fi rồi khởi động lại và quét QR mới. Chưa sửa source hoặc dừng Metro của người dùng; chưa xác nhận hết lỗi trên điện thoại.
+- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện): (1) Đóng màn hình Opening project trong Expo Go. (2) Trên trình duyệt điện thoại mở http://172.20.10.11:8081/status, kiểm tra hiện packager-status:running. (3) Sau khi khởi động lại Metro với đúng IP, quét QR mới bằng Expo Go. (4) Kiểm tra mở được màn hình chào/Khám phá; nếu vẫn timeout, ghi lại thông báo và kết quả bước 2 để kiểm tra mạng hoặc bundle tiếp.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Làm mới giao diện món ăn và công thức với sticker
+
+- Kết quả đã làm: Thiết kế lại khu Công thức với banner xanh, sticker cà rốt/bơ, ô tìm kiếm và thẻ món có ảnh lớn, nhãn thời gian, khẩu phần, nguyên liệu và nút lưu rõ ràng. Đồng bộ danh sách tìm kiếm và món đã lưu theo lưới hai cột; chuyển về một cột khi màn hình hẹp hoặc cỡ chữ lớn. Chi tiết món tách rõ thông tin nhanh, tác giả, nguyên liệu, từng bước nấu và đánh giá; giữ cảnh báo nguyên liệu. Dùng sticker dự phòng khi ảnh thiếu hoặc tải lỗi. Trang Thực đơn có banner sticker, lối vào nhật ký rõ hơn, nhóm bữa ăn có icon và nút Đổi món nằm riêng để tên món dễ đọc. Dùng tài nguyên hiện có và giữ chế độ Expo Go.
+- Các bước kiểm tra luồng UI trên màn hình (cần nghiệm thu trên điện thoại): (1) Mở Khám phá → Công thức, xem banner/sticker, ảnh món và thông tin trên thẻ; kéo xuống và kéo làm mới. (2) Chạm ô tìm kiếm hoặc gợi ý Nấm/Đậu hũ/Canh, kiểm tra mở đúng tìm kiếm công thức và mở đúng món từ kết quả. (3) Bật Hợp với mình khi chưa đăng nhập, kiểm tra chuyển tới đăng nhập; đăng nhập rồi bật/tắt và xem kết quả. (4) Mở chi tiết món, xem ảnh/phóng to, thời gian, khẩu phần, tác giả, lưu món, cảnh báo, nguyên liệu và bước nấu; thử chấm/thay đổi/gỡ đánh giá. (5) Mở Đã lưu → Công thức, xem banner và các món đã lưu; bỏ lưu rồi kiểm tra danh sách cập nhật, kiểm tra trạng thái trống và nút Tìm món để lưu. (6) Mở Thực đơn, chọn tuần/ngày, xem nhóm bữa sáng/trưa/tối, mở công thức, phóng to ảnh, thử Đổi món ở ngày được phép và mở Nhật ký ăn uống. (7) Thử món thiếu ảnh/ảnh lỗi, dữ liệu trống và mất mạng; kiểm tra nút thử lại và sticker dự phòng. (8) Kiểm tra sáng/tối, màn hình nhỏ và chữ lớn; xác nhận nội dung đọc được, bố cục chuyển một cột và nút lưu/đổi món không đè tên món.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: TypeScript, lint, 41 bài kiểm tra liên quan công thức/đánh giá/thực đơn và export web đạt. Bổ sung kiểm tra ảnh lỗi/ảnh thay đổi, lưới thích ứng, tìm kiếm, bộ lọc yêu cầu đăng nhập và chặn tải trang trùng; sửa kỳ vọng kiểm tra cũ còn trỏ tới route /recipes đã bỏ. Công cụ xem trước trình duyệt không kết nối được; chưa nghiệm thu hiển thị trên Expo Go thực tế.
 
 ## 2026-11-27 — Làm mới giao diện Vedora Voice với sticker
 
@@ -1605,3 +1630,150 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
 - Các bước kiểm tra luồng UI trên màn hình (cần nghiệm thu trên điện thoại): (1) Mở nhánh PR bằng Expo Go, đăng nhập email và vào Thực đơn → Vedora Voice. (2) Cho phép mic, nghe lời chào, nói một yêu cầu rồi thử Nói tiếp, tắt/bật mic và Gọi lại. (3) Chọn T6, nhờ đổi món bữa trưa ngày đang xem, xác nhận đúng ngày/bữa/món được highlight. (4) Mở công thức và bước nấu, nhờ chuyển bước/cuộn; mở nhật ký, đổi ngày rồi nhờ ghi món vào ngày đang xem. (5) Xem gradient khi AI xử lý, thử chạm nút qua lớp hiệu ứng, bật Giảm chuyển động và kết thúc cuộc gọi. (6) Kiểm tra sáng/tối, chữ lớn và màn hình nhỏ theo checklist chi tiết trong các mục Voice phía trên.
 - Người thực hiện: Codex.
 - Kiểm tra kỹ thuật: 56/56 kiểm thử Voice/audio/UI/snapshot/highlight, TypeScript và lint đạt trên nhánh PR riêng; kế thừa export Android/web đã đạt với cùng source Voice và cấu hình. Chưa nghiệm thu mic/loa, gradient hoặc thao tác BE có đăng nhập trên thiết bị thật.
+
+## 2026-11-27 — Kiểm tra IP mới và lệnh Expo Go sau khi đổi Wi-Fi
+
+- Kết quả đã làm: Kiểm tra ipconfig, Wi-Fi hiện có IPv4 192.168.100.185, gateway 192.168.100.1; địa chỉ 172.21.128.1 thuộc WSL. Tại thời điểm kiểm tra không có Metro lắng nghe cổng 8081/8082, localhost:8081/status không kết nối được. Cung cấp lệnh PowerShell đặt REACT_NATIVE_PACKAGER_HOSTNAME theo IP Wi-Fi mới rồi chạy Expo Go qua LAN, xóa cache và dùng cổng 8081. Không tự khởi động/dừng Metro, không đổi cấu hình mạng hay source ứng dụng.
+- Các bước kiểm tra luồng UI trên màn hình (cần người dùng thực hiện): (1) Kết nối điện thoại và máy tính vào cùng Wi-Fi mới; dừng terminal Metro cũ nếu còn mở. (2) Chạy lệnh mới, giữ terminal mở và xác nhận hiển thị Expo Go cùng QR có IP 192.168.100.185. (3) Quét QR mới bằng Expo Go; không dùng lại liên kết Wi-Fi cũ. (4) Nếu chưa mở được app, dùng trình duyệt điện thoại mở http://192.168.100.185:8081/status và kiểm tra có hiện packager-status:running. (5) Khi app mở được, đăng nhập và vào Thực đơn/Vedora Voice để tiếp tục kiểm tra tính năng.
+- Người thực hiện: Codex.
+- Kiểm tra: Chỉ chẩn đoán mạng và cập nhật tài liệu; giữ kết quả lint/TypeScript đã đạt của source hiện tại. Chưa xác nhận kết nối từ điện thoại trên Wi-Fi mới.
+
+## 2026-11-27 — Đổi icon Nhà hàng trên Home theo ảnh tham khảo
+
+- Kết quả đã làm: Thay icon dao/nĩa ở nút Nhà hàng trên header Home/Khám phá bằng SVG nắp đậy món ăn với tay cầm, vòm và đế khay như ảnh người dùng gửi. Dùng expo-image đã có, cùng một hình trên iOS/Android/web; màu theo theme để rõ ở cả sáng/tối. Giữ nhãn trợ năng Nhà hàng chay, vùng chạm và điều hướng tới danh sách nhà hàng.
+- Các bước kiểm tra luồng UI trên màn hình (cần nghiệm thu trên Expo Go): (1) Mở Home/Khám phá, xem icon nắp đậy món ăn bên cạnh nút tìm kiếm. (2) Chạm icon và kiểm tra mở danh sách Nhà hàng chay; quay lại Home. (3) Đổi giao diện sáng/tối, kiểm tra icon đổi màu và rõ nét; kiểm tra biểu tượng trên iOS/Android nếu có thiết bị.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: TypeScript, lint và kiểm tra khoảng trắng diff đạt. Thay đổi nhỏ ở icon/tài nguyên SVG, không thêm thư viện hoặc đổi điều hướng. Chưa nghiệm thu hiển thị trực tiếp trên điện thoại.
+
+## 2026-11-27 — Đối chiếu ảnh bìa nhà hàng và hồ sơ ăn uống với BE
+
+- Kết quả đã làm: Fetch và đọc `vedora-api` tại `origin/main` commit `feedf6d66b690446a9c258c9bd1a62bffccaac1a`. Hồ sơ Trang nhà hàng kế thừa `coverUrl` (có thể null), dùng chung API tải lên/kích hoạt ảnh bìa của profile. Mobile đã truyền `coverUrl` vào phần ảnh bìa trang chi tiết nhà hàng. BE tạo tài khoản Trang riêng khi duyệt nhà hàng; chuyển danh tính chỉ đổi phiên, không xóa hồ sơ ăn uống của người sở hữu. API dietary chặn phiên Trang bằng `PAGE_SESSION_NOT_ALLOWED`; mobile đã ẩn mục Hồ sơ ăn uống khi có actor. Người sở hữu trở về tài khoản cá nhân vẫn truy cập hồ sơ ăn uống.
+- Các bước kiểm tra luồng UI trên màn hình (cần nghiệm thu với tài khoản thật): (1) Dùng tài khoản cá nhân, mở Hồ sơ ăn uống và ghi nhận thông tin đang lưu. (2) Chuyển sang Trang nhà hàng đã duyệt, mở hồ sơ và kiểm tra không hiện mục Hồ sơ ăn uống. (3) Trong sửa hồ sơ Trang, chọn ảnh bìa, lưu rồi mở chi tiết nhà hàng để kiểm tra ảnh hiển thị; kiểm tra thêm Trang chưa có ảnh bìa. (4) Chạm Về @tài_khoản_cá_nhân, mở lại Hồ sơ ăn uống và đối chiếu dữ liệu ban đầu.
+- Người thực hiện: Codex.
+- Giới hạn kiểm tra: Đối chiếu mã nguồn BE/mobile; chưa kiểm tra dữ liệu nhà hàng cụ thể hoặc thao tác với phiên đăng nhập thật. Chỉ cập nhật tài liệu, không sửa hành vi ứng dụng.
+- Kiểm tra kỹ thuật: TypeScript, lint và kiểm tra khoảng trắng diff đạt.
+
+## 2026-11-28 — Đồng bộ UI quản lý Trang và trải nghiệm nhà hàng
+
+- Kết quả đã làm: Làm mới danh sách Trang, thẻ nhận diện nhà hàng, huy hiệu chờ duyệt/đã duyệt/từ chối và các thao tác chính. Quản lý Trang chia thành Tổng quan, Thực đơn, Đội ngũ; giữ form đang nhập khi chuyển mục. Menu dùng thẻ ảnh gọn, phân biệt giá, danh mục và món tạm hết; form món có công tắc phục vụ và nút xóa riêng. Thành viên có ảnh, vai trò, thao tác theo quyền hiện có. Trang công khai chia Thực đơn, Thông tin, Đánh giá; làm gọn ảnh bìa, hiển thị điểm đánh giá và các nút liên hệ. Bản đồ chỉ gắn khi mục chứa bản đồ đang hiển thị. Đồng bộ tìm quán/tìm món, đăng ký ba bước, thông báo chuyển tài khoản và màn sửa ảnh/giới thiệu Trang bằng màu theme, thẻ bo góc, vùng chạm rõ và sticker cà chua/cà rốt/bơ sẵn có. Không thêm thư viện hoặc thay đổi API/quyền quản lý; tiếp tục dùng Expo Go.
+- Các bước kiểm tra luồng UI trên màn hình (cần nghiệm thu trên Expo Go):
+  1. Từ Hồ sơ, mở Nhà hàng của tôi; xem thẻ Trang có ảnh, tên, trạng thái duyệt và vai trò; chạm thẻ để vào Quản lý Trang.
+  2. Với Trang chờ duyệt hoặc bị từ chối, xem hướng dẫn và lý do; chủ Trang dùng tài khoản cá nhân thử mở Sửa và gửi lại đơn, kiểm tra ba bước và các ảnh giấy tờ.
+  3. Với Trang đã duyệt, xem Tổng quan và mở Trang công khai; quay lại, chuyển dùng tài khoản Trang rồi thử vào sửa tên, giới thiệu, ảnh đại diện và ảnh bìa.
+  4. Tại Tổng quan, sửa số điện thoại hoặc website nhưng chưa lưu; chuyển Thực đơn rồi quay lại, kiểm tra nội dung vừa nhập còn nguyên; lưu và kiểm tra thông báo thành công. Địa chỉ/vị trí đã duyệt vẫn khóa.
+  5. Mở Thực đơn, xem trạng thái trống nếu chưa có món; thêm món có ảnh, tên dài, danh mục, giá và thứ tự; lưu rồi kiểm tra thẻ món cập nhật.
+  6. Sửa món, bật/tắt Đang phục vụ; đổi sang mục khác rồi quay lại để kiểm tra form còn nguyên. Thử giá để trống, giá bằng 0 và món không có ảnh. Thử xóa món rồi hủy xác nhận.
+  7. Mở Đội ngũ bằng vai trò chủ Trang và quản lý; kiểm tra ảnh, tên và vai trò. Kiểm tra chỉ xuất hiện thao tác thêm/xóa/rời Trang theo quyền; hủy hộp xác nhận khi thử thao tác xóa/rời.
+  8. Mở chi tiết nhà hàng công khai; kiểm tra ảnh bìa thật và trường hợp chưa có ảnh, điểm đánh giá, nút chỉ đường/gọi điện/website/bài đăng/nhắn tin.
+  9. Chuyển Thực đơn, Thông tin và Đánh giá; lọc danh mục, xem món tạm hết, mở bản đồ sau khi chuyển mục. Nhập nháp đánh giá, đổi mục rồi quay lại để kiểm tra nội dung vẫn còn.
+  10. Quay lại danh sách nhà hàng, tìm tên quán/món ăn và xem trạng thái không có kết quả; thử vào Nhà hàng của tôi khi chưa đăng nhập.
+  11. Kiểm tra các màn trên ở giao diện sáng/tối, điện thoại hẹp và cỡ chữ lớn; xác nhận sticker không che nội dung và các tab có thể cuộn ngang khi cần.
+- Người thực hiện: Codex.
+- Kiểm tra: 14/14 kiểm thử hợp đồng nhà hàng, phân quyền, menu, đánh giá, bản đồ và vị trí đạt. Chưa nghiệm thu UI trên điện thoại hoặc dữ liệu đăng nhập thật; công cụ xem trình duyệt báo browser access host không khả dụng.
+- Kiểm tra kỹ thuật: TypeScript và lint đạt, không còn cảnh báo lint. Export bundle Android thành công với 2.455 module và đầy đủ sticker; chỉ xuất bundle kiểm tra, không tạo development build. Kết quả ở `tmp/node_modules/restaurant-ui-export-20261127`.
+
+## 2026-11-28 — Xác nhận khả năng nói chuyện tự động của Vedora Voice trên Expo Go
+
+- Kết quả đã làm: Đọc lại luồng Voice hiện tại, mã expo-audio đang cài và tài liệu SDK 58. Mobile đã có cơ chế tự mở lại mic sau khi phát xong câu trả lời; nút Nói tiếp là thao tác ngắt lời và mở mic sớm, không phải nút bắt buộc sau mỗi lượt. Khi phát loa, bản mobile chủ động dừng mic để tránh thu lại tiếng trợ lý. AudioStream hiện dùng chế độ record/measurement trên iOS, MIC trên Android và không có tùy chọn bật khử vọng trong hợp đồng stream; chưa có cơ sở cam kết ngắt lời bằng giọng nói ổn định trên Expo Go với triển khai này. Không sửa source hoặc cấu hình build.
+- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện trên điện thoại): (1) Mở Vedora Voice, cho phép mic và chờ lời chào kết thúc. (2) Khi hiện Mình đang nghe bạn, nói yêu cầu mà không bấm Nói tiếp. (3) Chờ Vedora trả lời xong rồi nói câu tiếp theo, kiểm tra mic tự trở về trạng thái nghe. (4) Khi Vedora đang nói, bấm Nói tiếp để kiểm tra ngắt lời và mở mic sớm; phân biệt với việc tự nghe sau khi AI nói xong.
+- Người thực hiện: Codex.
+- Giới hạn kiểm tra: Đối chiếu mã nguồn và tài liệu, chưa xác nhận mic/loa trên thiết bị thật. Chỉ bổ sung tài liệu; kế thừa kết quả lint và TypeScript đã đạt của source hiện tại.
+
+## 2026-11-28 — Đồng bộ prompt web và nói chuyện realtime trong Expo Go
+
+- Kết quả đã làm: Đọc frontend web `origin/main` tại `6cfa75d`, đối chiếu các module voice-session, voice-capture và hook gọi Voice. Đồng bộ nguyên văn prompt và lời chào ngắn: trả lời tiếng Việt tự nhiên, ít chen lời, dừng khi người dùng ngắt lời và chuyển yêu cầu sửa/thu hồi cho Planner ngay.
+- Kết quả audio: Thay luồng native luân phiên thu/phát bằng Web Audio trong tài liệu HTML cục bộ của react-native-webview đã có trong Expo Go SDK 58. Thu mic liên tục cả khi AI phát tiếng, yêu cầu khử vọng/khử nhiễu của trình duyệt, gửi PCM 24 kHz qua cầu nối nội bộ; giữ Gateway, token, Planner và snapshot màn hình trong React Native. Không thêm thư viện native hoặc tạo development build. Nút Ngắt lời là tùy chọn, không cần bấm để nói tiếp.
+- Xử lý vòng đời: Tách ID từng cuộc gọi, bỏ sự kiện âm thanh từ phiên cũ, chờ xác nhận đóng mic khi gọi lại, kiểm tra mất luồng PCM và giải phóng track/processor/loa khi kết thúc. Giữ kiểm tra quyền mic hệ điều hành, lỗi quyền trên WebView và hủy khởi tạo khi đóng trong lúc chờ quyền. Xóa mã đóng gói WAV của luồng cũ, cập nhật README.
+- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện trên Expo Go iOS và Android):
+  1. Đăng nhập bằng email, vào Trợ lý hoặc Thực đơn, mở Vedora Voice và bấm Gọi; đồng ý quyền mic của hệ điều hành/WebView nếu được hỏi.
+  2. Chờ lời chào ngắn kết thúc, nói yêu cầu đầu tiên mà không chạm Ngắt lời; kiểm tra lời thoại người dùng và câu trả lời xuất hiện.
+  3. Trong lúc Vedora đang nói, nói chen vào một yêu cầu mới; kiểm tra tiếng trợ lý dừng và hệ thống nghe yêu cầu mới mà không cần bấm nút.
+  4. Yêu cầu sửa một món vào một ngày; khi Planner đang làm, nói thay đổi ngày hoặc hủy yêu cầu. Kiểm tra tác vụ theo ý định mới nhất, đúng ô ngày/món được highlight và không thông báo thành công khi lưu thất bại.
+  5. Bật loa ngoài, để Vedora nói mà không nói theo; kiểm tra không thu nhầm tiếng trợ lý. Lặp lại thao tác ngắt lời bằng tai nghe và so sánh độ trễ.
+  6. Bấm Tắt mic, nói thử và kiểm tra không gửi tiếng lên cuộc gọi; bật lại mic, nói tiếp. Thử Ngắt lời thủ công để kiểm tra đây vẫn là thao tác tùy chọn.
+  7. Kết thúc và Gọi lại vài lần; đóng màn gọi khi đang kết nối hoặc đang chờ quyền mic. Kiểm tra cuộc gọi cũ không phát tiếng hoặc điều khiển UI của cuộc gọi mới, chỉ báo mic tắt sau khi đóng.
+  8. Từ chối quyền mic rồi cấp lại trong Cài đặt và Gọi lại. Thử chuyển ứng dụng ra nền, ngắt mạng hoặc ngắt thiết bị thu; kiểm tra thông báo lỗi rõ ràng, không treo ở Đang kết nối và có thể gọi lại.
+  9. Mở bản web, gọi Voice và thử nói/ngắt lời để kiểm tra web vẫn dùng audio trình duyệt trực tiếp, không khởi tạo WebView native.
+- Người thực hiện: Codex.
+- Kiểm tra: Prompt khớp nguyên văn frontend web; 53/53 kiểm thử Voice đạt, gồm thu/phát đồng thời, ngắt lời, fallback ScriptProcessor/AudioWorklet, resample PCM, quyền mic, gọi lại, phiên cũ và giải phóng audio. TypeScript, lint, bundle Android và export web 50 trang đạt; kết quả trong `tmp/node_modules/voice-realtime-android-20261128` và `tmp/node_modules/voice-realtime-web-20261128`. Chưa nghiệm thu quyền mic, secure origin của WebView, khử vọng hoặc độ trễ trên thiết bị thật; kiểm thử mô phỏng và export không xác nhận được các phần cứng này.
+
+## 2026-11-28 — Rà lại tính năng mobile với BE và frontend web mới nhất
+
+- Kết quả đã làm: Fetch thành công BE `main` tại `9ce48ce` và web `main` tại `6cfa75d`; đọc controller/DTO, API caller, hook, schema và nơi mount UI; đối chiếu với toàn bộ source mobile hiện tại, gồm thay đổi chưa commit. Thêm `docs/MOBILE_PARITY_REVIEW_2026-11-28.md` với 20 mục: 4 lệch hành vi cần sửa và 16 nhóm parity thiếu/một phần. Phát hiện mới thông báo duyệt/từ chối Trang bị mất workspaceId; xác nhận QuickGenerate và chỉnh lịch đã có caller/mount web. Giữ Voice, nhà hàng/quản lý Trang trong phần đã có; tách giới hạn Voice và Expo Go. Loại public-config khỏi API có thể nối vì BE đang chặn. Gắn liên kết báo cáo mới vào bản 27/11; chỉ cập nhật tài liệu, không sửa source ứng dụng/BE/web.
+- Các bước kiểm tra luồng UI trên màn hình (đề nghị nghiệm thu, chưa thực hiện):
+  1. Dùng cùng tài khoản trên web/mobile; chọn/đổi/gỡ bìa Blog, chèn ảnh nội dung, lưu/mở lại để so bìa; đối chiếu upload video và tự lưu nháp.
+  2. Với tài khoản test chủ Trang, mở thông báo duyệt/từ chối, đọc lý do và chạm mở đúng Trang; so badge tin nhắn với tài khoản có unread ngoài 50 hội thoại đầu/ngăn và lời báo login khi tài khoản bị đình chỉ.
+  3. Mở thực đơn, so Đi chợ, thêm/gỡ/chuyển món trực tiếp, đánh dấu Đã ăn, Lên nhanh/hoàn tác, kcal/5 nhóm chất và tuần cũ; đối chiếu các điểm vào còn thiếu trên mobile.
+  4. Mở nhật ký, thử sửa khẩu phần/kcal và nhờ trợ lý nhận xét tuần; vào Voice nói mở Đi chợ/dinh dưỡng tuần/Ghi nhớ, so bảng được mở và snapshot.
+  5. So Dành cho bạn/Đang theo dõi; tạo nháp POST trên web rồi tìm trên mobile; sửa bài và tìm thao tác thêm video. Tìm người/món nhà hàng/danh mục công thức và hỏi AI tìm món để so thẻ kết quả có thể bấm.
+  6. Mở Thống kê và lựa chọn giao diện trên web; so điểm vào mobile. Kiểm tra audio Voice/quyền mic/khử vọng/ngắt lời trên Expo Go thật theo checklist của tính năng Voice.
+- Người thực hiện: Codex.
+- Kiểm tra: TypeScript và lint mobile đạt. Assert trên schema/helper hiện tại xác nhận thông báo Trang bị strip workspaceId và rơi vào lời thông báo chung. Không chạy BE/DB, API/tài khoản hoặc UI trên thiết bị, không đo tải và không tạo build; bằng chứng và giới hạn ghi trong báo cáo.
+
+## 28/11/2026 — Hoàn thiện Thực đơn tương đương web trong Expo Go
+
+- Kết quả đã làm:
+  - Thêm Đi chợ từ thực đơn bằng cùng API web: chọn một/nhiều ngày còn hiệu lực, 1–4 người, cộng lượng theo khẩu phần gốc từng công thức, giữ cảnh báo lượng chưa rõ, xem món dùng nguyên liệu/mở công thức, đánh dấu đã mua và sao chép. Dấu tick/số người lưu trên thiết bị theo tài khoản/tuần; BE hiện không có API đồng bộ dấu tick giữa thiết bị.
+  - Thêm món từ danh mục phù hợp hồ sơ ăn uống; gỡ có xác nhận; chuyển món sang ngày/bữa khác. Ghi các ngày nguồn/đích trong một request, giữ các bữa khác, kiểm tra ngày khóa/món trùng/tối đa 5 món mỗi bữa. Khóa thao tác gửi lặp, cập nhật thực đơn/Đi chợ/nhật ký sau khi lưu và bảo vệ cache khi đổi tài khoản.
+  - Lên nhanh không dùng lượt chat: Các bữa trống/Cả tuần/Hôm nay, chọn bữa/thời gian/ưu tiên món. Đọc đúng preview đủ bốn bữa từ BE, chỉ lưu các ô đã chọn thực sự thay đổi. Hoàn tác chỉ các ô đã đổi, từ chối khi chúng đã được chỉnh tiếp.
+  - Xem tuần từ minWeekStart, Trước/Sau/Về tuần này, khóa chỉnh tuần/ngày đã qua; form lập thực đơn giữ tuần hiện tại/tương lai. Giữ sticker và màu giao diện hiện có.
+  - Vedora Voice mở Đi chợ trong cuộc gọi, chọn ngày/cả tuần/số người, tick/gỡ tick/xóa tick, mở công thức và gửi snapshot/ngữ cảnh mới cho Planner. Không thay luồng audio. Thêm expo-clipboard đúng SDK 58, thư viện có sẵn trong Expo Go; không tạo development build.
+- Các bước kiểm tra luồng UI trên màn hình (checklist nghiệm thu, chưa thực hiện trên thiết bị thật):
+  1. Đăng nhập cùng tài khoản trên web và Expo Go → mở Thực đơn → so tuần hiện tại, T2–CN và các món đã lưu.
+  2. Chọn một ngày còn hiệu lực → bấm + Thêm món ở bữa trưa → tìm món → chọn một kết quả → kiểm tra món xuất hiện → tải lại web để đối chiếu. Thử thêm lại món đã có và bữa đủ 5 món.
+  3. Bấm Chỉnh món → Chuyển món → chọn ngày và bữa khác → xác nhận → kiểm tra món biến mất ở nguồn, xuất hiện ở đích, các bữa khác giữ nguyên. Thử đích đã có món và ngày cũ bị khóa.
+  4. Bấm Chỉnh món → Gỡ khỏi bữa → Giữ món để hủy → thao tác lại và Xác nhận gỡ → kiểm tra món bị gỡ → Hoàn tác để khôi phục.
+  5. Mở Lên nhanh → Các bữa trống → chọn bữa và 30 phút, nhập ưu tiên nếu cần → Lên món và lưu → so các ô được điền, các bữa khác giữ nguyên → Hoàn tác. Thử Cả tuần/Hôm nay, bỏ hết bữa, không có kết quả và ngắt mạng khi lưu.
+  6. Lùi về tuần cũ trong khoảng có lịch sử → kiểm tra nhãn chỉ xem lại và không có thao tác chỉnh → mở công thức → trở về → Về tuần này. Mở một thẻ thực đơn tuần cũ trong lịch sử chat để kiểm tra điều hướng.
+  7. Mở Đi chợ → chọn/bỏ chọn ngày và thử bỏ hết → đổi 1/2/3/4 người → so lượng với web, gồm nguyên liệu ở nhiều món có khẩu phần khác nhau, lượng 0 và lượng chưa rõ → mở Món dùng → mở công thức.
+  8. Tick vài nguyên liệu → đóng/mở Đi chợ và khởi động lại app → kiểm tra dấu được giữ đúng tuần → Sao chép danh sách và dán vào ứng dụng ghi chú → Bỏ dấu đã mua. Đổi tuần/tài khoản để kiểm tra không lẫn checklist.
+  9. Gọi Vedora Voice → nói “Mở đi chợ thứ bảy cho 2 người” → kiểm tra bảng/phạm vi/số người → nói “Đã mua đậu hũ”, “Bỏ dấu đậu hũ”, “Bỏ hết dấu đã mua” → so tick và snapshot → mở công thức → Về thực đơn → kiểm tra cuộc gọi vẫn tiếp tục.
+  10. Sửa thực đơn trên web khi mobile đang mở → mở lại/tải mới màn Thực đơn và Đi chợ hoặc chờ lượt tải định kỳ → so dữ liệu. Với các bữa vừa Lên nhanh, sửa tiếp trên web rồi Hoàn tác ở mobile → kiểm tra thông báo từ chối ghi đè.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: 72/72 bài kiểm tra logic/API/cache/UI giả lập đạt, bao phủ chuyển món nguyên tử, ngày khóa/giới hạn, Lên nhanh/hoàn tác, phiên đổi giữa request, quy đổi nguyên liệu, lưu cục bộ và snapshot Voice. Kiểm tra kiểu dữ liệu và lint đạt. Xuất Android tại `tmp/meal-parity-android`, web tại `tmp/meal-parity-web-final` thành công; web CLI có cảnh báo tự ép thoát sau khi xuất đủ 50 route, mã kết thúc 0. Không chạy API/DB hoặc Expo Go thật. Các mục kcal/5 nhóm chất, Đã ăn trực tiếp và chỉnh nhật ký chưa thuộc phạm vi lượt này.
+
+## 28/11/2026 — Làm rõ Đi chợ/Lên nhanh và gọn các lựa chọn
+
+- Kết quả đã làm:
+  - Đưa Đi chợ và Lên nhanh thành hai ô thao tác lớn, có biểu tượng/mô tả/màu riêng, cố định ngay dưới tiêu đề ngoài vùng cuộn. Bỏ banner chiếm chỗ, tự xếp dọc trên màn hình nhỏ hoặc khi tăng cỡ chữ. Lên nhanh ở tuần cũ có nhãn chỉ xem lại.
+  - Dropdown dùng chung trong module Thực đơn: chọn nhiều có checkbox, đếm mục đã chọn, Chọn tất cả/Bỏ chọn/Xong; chọn một tự đóng sau khi chọn. Bung ngay trong nội dung, dùng được trong cả modal chỉnh thực đơn và modal Voice; không thêm thư viện native.
+  - Đi chợ dùng dropdown nhiều ngày và dropdown số người, giữ ngày cũ bị khóa, thêm thanh tiến độ đã mua và thẻ nguyên liệu có nút mở các món đóng góp. Giữ lưu tick, sao chép, mở công thức và snapshot Voice.
+  - Lên nhanh dùng dropdown phạm vi/bữa/thời gian, nhóm trường rõ ràng, sticker, tổng số bữa sẽ tác động và cảnh báo thay món. Nút lưu cùng lỗi/trạng thái nằm cố định ở cuối màn; bỏ hết bữa sẽ khóa nút và hướng dẫn chọn lại.
+  - Chuyển món dùng dropdown ngày/bữa. Sửa gợi ý cuối tuần để tìm tuần sau từ tuần hiện tại, không nhầm vị trí trong danh sách có tuần cũ.
+- Các bước kiểm tra luồng UI trên màn hình (checklist nghiệm thu, chưa thực hiện trên Expo Go thật):
+  1. Reload Expo Go → đăng nhập → mở Thực đơn → kiểm tra hai ô Đi chợ/Lên nhanh xuất hiện ngay dưới tiêu đề → cuộn danh sách món và kiểm tra hai ô vẫn hiện.
+  2. Mở Đi chợ → bung Ngày đi chợ → tick nhiều ngày → Bỏ chọn → Chọn tất cả → kiểm tra ngày đã qua bị khóa → Xong → kiểm tra nhãn tóm tắt và số mục đã chọn. Đổi Số người ăn và đối chiếu lượng nguyên liệu.
+  3. Tick một nguyên liệu → kiểm tra tiến độ tăng → mở nút mũi tên cạnh nguyên liệu → xem món đóng góp và mở công thức → trở lại → sao chép danh sách và kiểm tra dấu tick vẫn giữ.
+  4. Mở Lên nhanh → chọn phạm vi → bung Bữa ăn và chọn nhiều bữa → Xong → chọn thời gian, nhập ưu tiên → kiểm tra tổng số bữa. Cuộn lên/xuống, mở bàn phím và kiểm tra nút lưu/lỗi vẫn dễ thấy → lưu → Hoàn tác.
+  5. Trong Lên nhanh, Bỏ chọn tất cả bữa → kiểm tra hướng dẫn và nút lưu bị khóa → chọn lại một bữa → kiểm tra có thể lưu. Khi đang lưu, các trường và nút Đóng bị khóa.
+  6. Chỉnh món → Chuyển món → chọn ngày và bữa bằng dropdown → xác nhận → kiểm tra đúng nguồn/đích. Xem tuần cũ để kiểm tra Lên nhanh bị khóa và thông tin chỉ xem lại.
+  7. Gọi Vedora Voice → nhờ mở Đi chợ cho một ngày/số người → chỉnh dropdown và tick thủ công → hỏi lại danh sách để so ngữ cảnh → kiểm tra cuộc gọi vẫn tiếp tục.
+  8. Thử màn hình hẹp và cỡ chữ lớn, giao diện sáng/tối → kiểm tra nhãn nút/dropdown không bị cắt và vẫn cuộn được danh sách. Ở cuối tuần, mở Lên thực đơn tuần sau khi tài khoản có tuần cũ và kiểm tra đúng tuần kế tiếp.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: 76/76 kiểm tra tự động liên quan đạt; gồm chọn nhiều/chọn một/ngày khóa, đổi bộ lọc Đi chợ và snapshot, CTA ngoài vùng cuộn, bố cục màn hình hẹp và request Lên nhanh. TypeScript, lint và xuất bundle Android tại `tmp/meal-ui-android` đạt. Browser access host không khả dụng trong phiên nên chưa xem trực tiếp bằng trình duyệt hoặc Expo Go thật.
+
+## 28/11/2026 — Thu gọn nút Thực đơn và thao tác món
+
+- Kết quả đã làm: Đi chợ/Lên nhanh thành hai nút gọn có icon, cùng một hàng ngay dưới tiêu đề, bỏ mô tả dài/mũi tên. Các món có một hàng ba nút cân đối Chuyển/Gỡ/Đổi, dùng icon và nhãn ngắn; màn hình hẹp hoặc chữ lớn dùng icon với nhãn hỗ trợ đọc màn hình. Thêm món dùng dấu +. Chuyển mở trực tiếp dropdown ngày/bữa, Gỡ mở xác nhận, Đổi giữ luồng nhờ trợ lý; nút trong bảng chỉnh món/xác nhận được căn đều hai cột. Giữ vùng chạm tối thiểu 44px và khóa nút khi bận.
+- Các bước kiểm tra luồng UI trên màn hình (chưa thực hiện trên thiết bị thật):
+  1. Reload Expo Go → vào Thực đơn → kiểm tra Đi chợ/Lên nhanh gọn trên một hàng → lần lượt bấm để mở đúng màn → cuộn thực đơn và kiểm tra hai nút vẫn hiện.
+  2. Chọn ngày còn hiệu lực → bấm dấu + ở tiêu đề bữa → kiểm tra mở tìm món; bữa đủ 5 món phải khóa nút thêm.
+  3. Trên một món, bấm icon Chuyển → kiểm tra hiện ngay dropdown ngày/bữa → chọn đích khác và xác nhận → đối chiếu món ở nguồn/đích.
+  4. Bấm icon Gỡ → chọn Giữ món để hủy và kiểm tra món vẫn còn → thực hiện lại và Xác nhận gỡ món → kiểm tra món bị gỡ → Hoàn tác.
+  5. Bấm icon Đổi → kiểm tra mở Trợ lý với đúng tên món/ngày/bữa. Khi đang lưu hoặc AI đang xử lý, các nút thao tác phải bị khóa.
+  6. Thử màn hình hẹp/cỡ chữ lớn → kiểm tra ba icon cân đối trên một hàng, vẫn có nhãn khi đọc màn hình; xem tuần/ngày cũ để kiểm tra không chỉnh được món.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: TypeScript và lint đạt; kiểm tra tự động xác nhận ba nút gọi đúng thao tác, Gỡ không xóa khi hủy và Chuyển ghi đúng đích. Chưa nghiệm thu UI trên Expo Go thật.
+
+## 28/11/2026 — Bàn giao thực đơn, Voice realtime và UI nhà hàng
+
+- Kết quả đã làm: Đối chiếu `main` sau khi PR #67 và #68 đã merge; gom các thay đổi còn lại vào nhánh `feat/mobile-meal-plan-and-restaurant-refresh` để tạo PR mới vào `main`. Phạm vi gồm Đi chợ, Lên nhanh, chỉnh món/hoàn tác và tuần cũ; nút/dropdown gọn cho mobile; Voice thu/phát đồng thời trong Expo Go với prompt web; UI món ăn, đánh giá và quản lý nhà hàng; báo cáo đối chiếu BE/web. Không đưa file môi trường hoặc thư mục tạm vào commit.
+- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện trên Expo Go thật):
+  1. Đăng nhập bằng email → Thực đơn → kiểm tra Đi chợ/Lên nhanh cùng một hàng; mở từng nút và chọn nhiều ngày/bữa trong dropdown.
+  2. Thêm món → Chuyển sang ngày/bữa khác → Gỡ rồi hủy xác nhận → Gỡ và xác nhận → Hoàn tác; kiểm tra đúng món/ngày và dữ liệu sau khi tải lại.
+  3. Lên nhanh cho các bữa đã chọn → kiểm tra kết quả → Hoàn tác; chuyển tuần cũ và kiểm tra chỉ xem, không chỉnh sửa.
+  4. Đi chợ → đổi số người → tick nguyên liệu → mở công thức nguồn → quay lại và sao chép danh sách; kiểm tra lượng nguyên liệu và dấu tick.
+  5. Gọi Vedora Voice → cho phép mic → nói liên tiếp và ngắt lời bằng giọng nói → yêu cầu chỉnh món/mở Đi chợ → kiểm tra UI, highlight và cuộc gọi; kết thúc rồi gọi lại.
+  6. Mở Nhà hàng từ Home → xem chi tiết/đánh giá → chuyển Trang nhà hàng → quản lý thực đơn và sửa thông tin; kiểm tra giao diện sáng/tối, màn hình hẹp và chữ lớn.
+- Người thực hiện: Codex.
+- Kiểm tra kỹ thuật: TypeScript, lint và kiểm tra khoảng trắng diff đạt. Toàn bộ 269 kiểm thử chạy được, 268 đạt; 1 kiểm thử Billing thiếu `imageLimit` trong fixture cũng lỗi trên mã nền của PR #68 và các file Billing không thay đổi so với `main`. Chưa kiểm thử thiết bị thật hoặc luồng API với tài khoản thật; các lần export Android/web của phần triển khai đã đạt, không tạo development build.

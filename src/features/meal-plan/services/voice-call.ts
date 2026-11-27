@@ -4,7 +4,7 @@ import { createVoiceSession, sendVoiceTurn } from './voice.service';
 import { createVoiceAudio } from './voice-audio';
 import type { VoiceAudio } from '../utils/voice-audio';
 import { FarewellTracker, TurnQueue, UtteranceAssembler } from './voice-call-state';
-import { VOICE_INSTRUCTIONS } from '../utils/voice-config';
+import { VOICE_INSTRUCTIONS, voiceGreeting } from '../utils/voice-config';
 import { savedPlanChanges } from '../utils/planner-changes';
 import type { PlanChange } from '../types/meal-plan.schema';
 import { delegationSchema, realtimeEventSchema, transcriptSchema, voiceRefreshSchema, voiceStateSchema, voiceScreenCommandSchema, VOICE_MAX_SECONDS, type VoiceRefresh, type VoiceScreen, type VoiceScreenCommand } from '../types/voice.schema';
@@ -85,9 +85,9 @@ export class PlannerVoiceCall {
       this.socket = socket;
       this.startup = setTimeout(() => this.fail('Kết nối mất quá lâu. Hãy thử lại.'), 30_000);
       socket.onopen = () => this.send({ type: 'session-start', modelId: session.model, config: {
-        instructions: this.audio?.canListenWhileSpeaking ? VOICE_INSTRUCTIONS : `${VOICE_INSTRUCTIONS}\nNative turn-taking overrides backchannel policy: microphone input is silenced during your playback to prevent speaker echo. Stay silent while the user speaks, never backchannel or interject, and wait for their complete utterance before replying. The user can tap Nói tiếp to interrupt you.`,
+        instructions: VOICE_INSTRUCTIONS,
         inputAudioFormat: { type: 'audio/pcm', rate: 24_000 }, outputAudioFormat: { type: 'audio/pcm', rate: 24_000 },
-        providerOptions: { openai: { delegation: { type: 'client' }, input: [{ type: 'message', role: 'developer', content: [{ type: 'input_text', text: `Greet the user right away in natural Vietnamese${this.options.fullName ? ` (name: ${this.options.fullName})` : ''}. Briefly introduce yourself as Vedora's assistant, then pause and listen.` }] }] } },
+        providerOptions: { openai: { delegation: { type: 'client' }, input: [{ type: 'message', role: 'developer', content: [{ type: 'input_text', text: voiceGreeting(this.options.fullName) }] }] } },
       } });
       socket.onmessage = (event) => {
         if (this.stopped || typeof event.data !== 'string') return;

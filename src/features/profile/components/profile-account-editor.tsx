@@ -60,13 +60,14 @@ export function ProfileImagesEditor({ profile }: { profile: Profile }) {
     <View style={styles.wrap}>
       <View>
         <View style={[styles.cover, { backgroundColor: theme.secondary }]}>
-          {profile.coverUrl ? <Image source={{ uri: profile.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Ảnh bìa hiện tại" /> : null}
+          {profile.coverUrl ? <Image source={{ uri: profile.coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" accessibilityLabel="Ảnh bìa hiện tại" /> : profile.restaurant ? <Image source={require('@/assets/branding/avocado-sticker.png')} contentFit="contain" accessible={false} style={styles.coverSticker} /> : null}
           {images.pending ? <View style={[StyleSheet.absoluteFill, styles.busy]}><ActivityIndicator color="#fff" /></View> : null}
         </View>
         <ProfileAvatar profile={profile} size={76} style={styles.avatar} />
       </View>
       {controls('AVATAR')}
       {controls('COVER')}
+      {profile.restaurant && <Text style={[styles.hint, { color: theme.mutedForeground }]}>Chọn ảnh không gian hoặc món đặc trưng để làm ảnh bìa của quán.</Text>}
       {images.pending ? <Text style={[styles.hint, { color: theme.mutedForeground }]}>Đang cập nhật ảnh…</Text> : null}
       {images.errorMessage && !images.pending ? <Text accessibilityRole="alert" style={[styles.hint, { color: theme.destructive }]}>{images.errorMessage}</Text> : null}
     </View>
@@ -131,11 +132,12 @@ const styles = StyleSheet.create({
   wrap: { gap: Spacing.two },
   grow: { flex: 1 },
   cover: { height: 104, borderRadius: Radius['2xl'], overflow: 'hidden' },
+  coverSticker: { width: 56, height: 76, alignSelf: 'flex-end', marginRight: 24, marginTop: 12, transform: [{ rotate: '10deg' }] },
   busy: { backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
   avatar: { marginTop: -38, marginLeft: Spacing.three },
   controlRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  chipButton: { minHeight: 36, borderRadius: 999, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
-  iconButton: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  chipButton: { minHeight: 44, borderRadius: 14, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
+  iconButton: { width: 44, height: 44, borderRadius: 14, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   label: { fontFamily: Fonts.sansSemibold, fontSize: 14 },
   buttonText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   hint: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19 },

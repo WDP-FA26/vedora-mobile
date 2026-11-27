@@ -1,5 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
+import { Image } from 'expo-image';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -55,7 +56,7 @@ function BasicInfoForm({ profile, token }: { profile: Profile; token: string }) 
         <Text style={[styles.label, { color: theme.foreground }]}>Giới thiệu</Text>
         <Text style={[styles.hint, { color: theme.mutedForeground }]}>{bio.length}/500</Text>
       </View>
-      <TextInput accessibilityLabel="Giới thiệu" value={bio} onChangeText={(value) => { setBio(value); setSaved(false); }} maxLength={500} multiline textAlignVertical="top" placeholder="Chia sẻ đôi chút về bạn và thói quen ăn uống…" placeholderTextColor={theme.mutedForeground} style={[styles.input, styles.bioInput, { color: theme.foreground, borderColor: theme.border, backgroundColor: theme.background }]} />
+      <TextInput accessibilityLabel="Giới thiệu" value={bio} onChangeText={(value) => { setBio(value); setSaved(false); }} maxLength={500} multiline textAlignVertical="top" placeholder={profile.restaurant ? 'Món đặc trưng, không gian và câu chuyện của quán…' : 'Chia sẻ đôi chút về bạn và thói quen ăn uống…'} placeholderTextColor={theme.mutedForeground} style={[styles.input, styles.bioInput, { color: theme.foreground, borderColor: theme.border, backgroundColor: theme.background }]} />
       {error ? <Text accessibilityRole="alert" style={[styles.hint, { color: theme.destructive }]}>{error}</Text> : null}
       {saved ? <Text style={[styles.hint, { color: theme.primary }]}>Đã lưu thông tin hồ sơ.</Text> : null}
       <Pressable accessibilityRole="button" disabled={update.isPending || !dirty} onPress={() => void save()} style={[styles.primaryButton, { backgroundColor: theme.primary, opacity: update.isPending || !dirty ? 0.5 : 1 }]}>
@@ -81,7 +82,7 @@ export function ProfileEditScreen() {
         <Pressable accessibilityRole="button" accessibilityLabel="Quay lại" onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))} hitSlop={10} style={[styles.back, { backgroundColor: theme.muted }]}>
           <SymbolView name={{ ios: 'chevron.left', android: 'arrow_back', web: 'arrow_back' }} size={20} tintColor={theme.foreground} />
         </Pressable>
-        <Text style={[styles.title, { color: theme.foreground }]}>Chỉnh sửa hồ sơ</Text>
+        <Text style={[styles.title, { color: theme.foreground }]}>{profile?.restaurant ? 'Chỉnh sửa Trang nhà hàng' : 'Chỉnh sửa hồ sơ'}</Text>
       </View>
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
@@ -93,10 +94,17 @@ export function ProfileEditScreen() {
             </View>
           ) : null}
           {profile && token ? <>
-            <Section title="Ảnh hồ sơ" description="Ảnh đại diện tỉ lệ 1:1, ảnh bìa tỉ lệ 3:1.">
+            {profile.restaurant && <View style={[styles.restaurantIntro, { backgroundColor: theme.secondary }]}>
+              <View style={{ flex: 1, gap: 6 }}>
+                <Text style={[styles.sectionTitle, { color: theme.secondaryForeground }]}>Một diện mạo thật riêng</Text>
+                <Text style={[styles.hint, { color: theme.secondaryForeground }]}>Ảnh đẹp và lời giới thiệu gần gũi giúp khách nhớ đến quán.</Text>
+              </View>
+              <Image source={require('@/assets/branding/tomato-sticker.png')} contentFit="contain" accessible={false} style={styles.restaurantSticker} />
+            </View>}
+            <Section title={profile.restaurant ? 'Hình ảnh nhà hàng' : 'Ảnh hồ sơ'} description="Ảnh đại diện tỉ lệ 1:1, ảnh bìa tỉ lệ 3:1.">
               <ProfileImagesEditor profile={profile} />
             </Section>
-            <Section title="Thông tin công khai" description="Hiển thị trên hồ sơ và bài viết của bạn.">
+            <Section title="Thông tin công khai" description={profile.restaurant ? 'Tên và giới thiệu xuất hiện trên Trang nhà hàng, bài viết và tìm kiếm.' : 'Hiển thị trên hồ sơ và bài viết của bạn.'}>
               <BasicInfoForm key={profile.id} profile={profile} token={token} />
             </Section>
             <Section title="Tài khoản">
@@ -111,6 +119,8 @@ export function ProfileEditScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  restaurantIntro: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 20, borderRadius: 24 },
+  restaurantSticker: { width: 56, height: 72, transform: [{ rotate: '10deg' }] },
   header: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: Spacing.three, paddingHorizontal: Spacing.three, borderBottomWidth: 1 },
   back: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   title: { fontFamily: Fonts.headingBold, fontSize: 18 },

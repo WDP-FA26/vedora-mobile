@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -115,6 +115,8 @@ function PostResults({ q }: { q: string }) {
 
 function RecipeResults({ q }: { q: string }) {
   const theme = useTheme();
+  const { width, fontScale } = useWindowDimensions();
+  const columns = width < 360 || fontScale > 1.2 ? 1 : 2;
   const token = useSessionStore((state) => state.accessToken);
   const [suitableForMe, setSuitableForMe] = useState(false);
   const suitable = !!token && suitableForMe;
@@ -133,13 +135,16 @@ function RecipeResults({ q }: { q: string }) {
 
   return (
     <FlatList
+      key={columns}
+      numColumns={columns}
+      columnWrapperStyle={columns === 2 ? styles.columns : undefined}
       data={items}
       keyExtractor={(recipe) => recipe.id}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={[styles.list, styles.recipeList]}
       onEndReached={() => { if (recipes.hasNextPage && !recipes.isFetching && !recipes.isFetchNextPageError) void recipes.fetchNextPage(); }}
       onEndReachedThreshold={0.5}
-      renderItem={({ item }) => <RecipeCard recipe={item} />}
+      renderItem={({ item }) => <View style={columns === 2 ? styles.gridItem : styles.singleItem}><RecipeCard recipe={item} /></View>}
       ListHeaderComponent={(
         <Pressable
           accessibilityRole="switch"
@@ -176,6 +181,9 @@ const styles = StyleSheet.create({
   tabText: { fontFamily: Fonts.sansBold, fontSize: 14 },
   list: { width: '100%', maxWidth: 680, alignSelf: 'center' },
   recipeList: { paddingHorizontal: Spacing.three, paddingVertical: Spacing.three, gap: Spacing.three },
+  columns: { justifyContent: 'space-between' },
+  gridItem: { width: '48.5%' },
+  singleItem: { width: '100%' },
   filter: { alignSelf: 'flex-start', minHeight: 40, borderWidth: 1, borderRadius: 22, paddingHorizontal: Spacing.three, flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
   filterText: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   state: { padding: Spacing.five, alignItems: 'center', textAlign: 'center' },

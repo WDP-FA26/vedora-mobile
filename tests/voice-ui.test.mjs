@@ -67,6 +67,8 @@ mock.module('expo-symbols', { exports: { SymbolView: 'Symbol' } });
 mock.module(local('hooks/use-theme.ts'), { exports: { useTheme: () => ({}) } });
 mock.module(local('hooks/use-reduce-motion.ts'), { exports: { useReduceMotion: () => reduceMotion } });
 mock.module(local('features/meal-plan/hooks/use-meal-planner-voice.ts'), { exports: { useMealPlannerVoice: () => voice } });
+mock.module(local('features/meal-plan/components/voice-audio-host.tsx'), { exports: { VoiceAudioHost: 'VoiceAudioHost' } });
+mock.module(local('features/meal-plan/components/shopping-list-panel.tsx'), { exports: { ShoppingListPanel: 'ShoppingListPanel' } });
 mock.module(local('features/meal-plan/hooks/use-meal-plan.ts'), { exports: { useMealPlan: () => plan } });
 mock.module(local('features/recipes/hooks/use-recipes.ts'), { exports: { useRecipe: () => ({ data: recipe }) } });
 mock.module(local('features/nutrition-chat/components/sprout-pet.tsx'), { exports: { SproutPet: 'SproutPet' } });
@@ -99,7 +101,7 @@ test('all call states preserve mic/interrupt restrictions and expose retry only 
     if (finished) assert.ok(labelled(tree, 'Đóng cuộc gọi'));
     else {
       assert.equal(labelled(tree, status === 'muted' ? 'Bật mic' : 'Tắt mic').props.disabled, status === 'connecting');
-      assert.equal(labelled(tree, 'Ngắt lời trợ lý để nói tiếp').props.disabled, !['speaking', 'muted', 'ending'].includes(status));
+      assert.equal(labelled(tree, 'Ngắt lời trợ lý để nói tiếp').props.disabled, !['speaking', 'ending'].includes(status));
       assert.ok(labelled(tree, 'Kết thúc cuộc gọi'));
     }
     assert.ok(labelled(tree, 'Thời gian cuộc gọi 1 phút 1 giây'));

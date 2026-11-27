@@ -19,12 +19,13 @@ export function WorkspaceWelcome({ title, description, children }: PropsWithChil
   const t = useTheme();
   return (
     <View style={[styles.welcome, { backgroundColor: t.secondary }]}>
+      <View pointerEvents="none" style={[styles.welcomeRing, { borderColor: t.primary }]} />
       <View style={styles.welcomeTop}>
         <View style={styles.copy}>
           <Text style={[styles.eyebrow, { color: t.secondaryForeground }]}>GÓC NHÀ HÀNG</Text>
           <Text style={[styles.title, { color: t.secondaryForeground }]}>{title}</Text>
         </View>
-        <Image source={require('@/assets/branding/tomato-sticker.png')} contentFit="contain" accessible={false} style={styles.sticker} />
+        <View style={[styles.stickerTile, { backgroundColor: t.card }]}><Image source={require('@/assets/branding/tomato-sticker.png')} contentFit="contain" accessible={false} style={styles.sticker} /></View>
       </View>
       <Text style={[styles.description, { color: t.secondaryForeground }]}>{description}</Text>
       {children}
@@ -62,9 +63,7 @@ export function ApplicationIntro({ step }: { step: number }) {
         <Text accessibilityRole="header" style={[styles.formTitle, { color: t.foreground }]}>{['Thông tin nhà hàng', 'Thông tin pháp lý', 'Hồ sơ xác minh'][step - 1]}</Text>
         <Text style={[styles.description, { color: t.mutedForeground }]}>{['Thiết lập thông tin hiển thị và địa chỉ nhà hàng.', 'Cung cấp thông tin đúng theo giấy tờ đăng ký.', 'Tải minh chứng và xác nhận thông tin trước khi gửi.'][step - 1]}</Text>
       </View>
-      <View style={[styles.introIcon, { backgroundColor: t.secondary }]}>
-        <SymbolView name={{ ios: 'storefront', android: 'storefront', web: 'storefront' }} size={26} tintColor={t.primary} />
-      </View>
+      <Image source={step === 1 ? require('@/assets/branding/tomato-sticker.png') : step === 2 ? require('@/assets/branding/carrot-sticker.png') : require('@/assets/branding/avocado-sticker.png')} contentFit="contain" accessible={false} style={styles.introSticker} />
     </View>
   );
 }
@@ -124,12 +123,14 @@ export function ApplicationConsent({ label, checked, disabled, onPress }: { labe
 
 const styles = StyleSheet.create({
   refresh: { width: 44, height: 44, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  welcome: { padding: 20, borderRadius: Radius['4xl'], gap: 12 },
+  welcome: { padding: 22, borderRadius: Radius['4xl'], gap: 16, overflow: 'hidden' },
+  welcomeRing: { position: 'absolute', width: 220, height: 220, borderRadius: 110, borderWidth: 1, opacity: 0.12, right: -100, top: -100 },
   welcomeTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   copy: { flex: 1, gap: 6 },
   eyebrow: { fontFamily: Fonts.sansBold, fontSize: 11, letterSpacing: 1.4 },
-  title: { fontFamily: Fonts.headingBold, fontSize: 22, lineHeight: 32 },
-  sticker: { width: 64, height: 72 },
+  title: { fontFamily: Fonts.headingBold, fontSize: 23, lineHeight: 34 },
+  stickerTile: { width: 68, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center', transform: [{ rotate: '8deg' }] },
+  sticker: { width: 50, height: 64 },
   description: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
   progress: { flexDirection: 'row', paddingVertical: 12 },
   progressItem: { flex: 1, gap: 8, alignItems: 'center' },
@@ -141,16 +142,16 @@ const styles = StyleSheet.create({
   stepNumber: { fontFamily: Fonts.sansBold, fontSize: 16 },
   stepLabel: { fontFamily: Fonts.sansSemibold, fontSize: 13 },
   activeStepLabel: { fontFamily: Fonts.sansBold },
-  section: { padding: 18, borderRadius: 16, borderWidth: 1, gap: 20 },
+  section: { padding: 20, borderRadius: 24, borderWidth: 1, gap: 20 },
   sectionHeader: { gap: 6, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  sectionTitle: { fontFamily: Fonts.sansBold, fontSize: 17 },
+  sectionTitle: { fontFamily: Fonts.headingBold, fontSize: 17 },
   consent: { padding: 14, borderWidth: 1, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },
   consentText: { flex: 1, fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21 },
   intro: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
-  introIcon: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  introSticker: { width: 54, height: 76, transform: [{ rotate: '8deg' }] },
   formTitle: { fontFamily: Fonts.headingBold, fontSize: 23, lineHeight: 32 },
   fieldLabel: { fontFamily: Fonts.sansSemibold, fontSize: 15 },
-  input: { fontFamily: Fonts.sans, fontSize: 16, minHeight: 52, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1, borderRadius: 10 },
+  input: { fontFamily: Fonts.sans, fontSize: 16, minHeight: 52, paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1, borderRadius: 14 },
   hint: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 18 },
   upload: { alignItems: 'center', gap: 8, padding: 18, borderWidth: 1, borderStyle: 'dashed', borderRadius: 16 },
 });

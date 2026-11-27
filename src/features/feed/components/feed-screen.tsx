@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { Image as ExpoImage } from "expo-image";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -109,7 +110,7 @@ export function FeedScreen() {
           </View>
           <View style={styles.headerActions}>
             <Pressable accessibilityRole="button" accessibilityLabel="Nhà hàng chay" onPress={() => router.push('/restaurants')} style={styles.searchButton}>
-              <SymbolView name={{ ios: 'fork.knife', android: 'restaurant', web: 'restaurant' }} size={22} tintColor={theme.foreground} />
+              <ExpoImage source={require('@/assets/icons/restaurant-cloche.svg')} style={styles.restaurantIcon} contentFit="contain" tintColor={theme.foreground} accessible={false} />
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -307,6 +308,7 @@ const styles = StyleSheet.create({
   },
   headerActions: { flexDirection: "row", alignItems: "center" },
   searchButton: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
+  restaurantIcon: { width: 24, height: 24 },
   wordmarkFrame: { paddingHorizontal: 3, paddingVertical: 2, borderRadius: Radius.md },
   wordmarkDark: { backgroundColor: "#fffefa" },
   wordmark: { width: 105, height: 38 },

@@ -16,14 +16,17 @@ import type { VoiceFocus } from '../types/voice.schema';
 import { VoiceCallControls } from './voice-call-controls';
 import { VoiceCalendar } from './voice-calendar';
 import { VoiceScreenGlow } from './voice-screen-glow';
+import { VoiceAudioHost } from './voice-audio-host';
+import { ShoppingListPanel } from './shopping-list-panel';
 
 export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onClose: () => void }) {
   const theme = useTheme();
-  const { screen, focus, status, error, reply, heard, elapsed, highlight, glowing, sendContext, scrollRef, scrollProps, closePanel, end, toggleMute, interrupt, applyScreen, selectDay, setLogDate, retry } = useMealPlannerVoice(planner);
+  const { screen, focus, status, error, reply, heard, elapsed, highlight, glowing, sendContext, scrollRef, scrollProps, closePanel, end, toggleMute, interrupt, applyScreen, selectDay, setLogDate, setShoppingSnapshot, retry } = useMealPlannerVoice(planner);
   const token = planner.token;
   const close = () => { end(); onClose(); };
   return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
+      <VoiceAudioHost />
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.headerInner}>
           <View style={[styles.callAvatar, { backgroundColor: theme.secondary }]}><SproutPet size={38} accessible={false} /></View>
@@ -50,6 +53,7 @@ export function VoiceCallSheet({ planner, onClose }: { planner: MealPlanner; onC
             <Text style={[styles.label, { color: theme.primary }]}>Về thực đơn</Text>
           </Pressable>}
           {screen.panel === 'recipe' && focus?.kind === 'recipe' ? <VoiceRecipe focus={focus} scrollRef={scrollRef} onContext={sendContext} onStep={(step) => applyScreen({ close: null, focus: { ...focus, step, section: 'steps' } })} />
+            : screen.panel === 'shoppingList' ? <ShoppingListPanel key={screen.weekStart} weekStart={screen.weekStart} command={focus?.kind === 'shoppingList' ? focus : undefined} onSnapshot={setShoppingSnapshot} onContext={sendContext} onRecipe={(id, title) => applyScreen({ close: null, focus: { kind: 'recipe', recipeId: id, title, section: 'top' } })} />
             : screen.panel === 'bodyMetrics' && token ? <NutritionSection token={token} />
               : <VoiceCalendar key={screen.weekStart} screen={screen} token={token} highlight={highlight} scrollRef={scrollRef} onDay={selectDay} onRecipe={(id, title) => applyScreen({ close: null, focus: { kind: 'recipe', recipeId: id, title, section: 'top' } })} />}
         </ScrollView>}
