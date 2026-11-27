@@ -46,9 +46,6 @@ export function PlannerChatScreen() {
         subtitle="Hỏi về dinh dưỡng thực vật và lên thực đơn"
         action={
           <View style={styles.headerActions}>
-            <Pressable accessibilityRole="button" accessibilityLabel="Gọi trợ lý giọng nói" disabled={busy || !planner.plan.data} onPress={() => planner.setVoiceOpen(true)} style={[styles.newChat, { backgroundColor: theme.secondary, opacity: busy || !planner.plan.data ? 0.4 : 1 }]}>
-              <SymbolView name={{ ios: 'waveform', android: 'graphic_eq', web: 'graphic_eq' }} size={20} tintColor={theme.primary} />
-            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Lịch sử trò chuyện"
@@ -175,6 +172,11 @@ export function PlannerChatScreen() {
           sendLabel="Gửi yêu cầu"
           sendDisabled={busy}
           maxLength={4000}
+          accessory={
+            <Pressable accessibilityRole="button" accessibilityLabel="Gọi trợ lý giọng nói" accessibilityState={{ disabled: busy || !planner.plan.data }} disabled={busy || !planner.plan.data} onPress={() => planner.setVoiceOpen(true)} style={({ pressed }) => [styles.voiceButton, { backgroundColor: theme.secondary, opacity: busy || !planner.plan.data ? 0.4 : pressed ? 0.7 : 1 }]}>
+              <SymbolView name={{ ios: 'waveform', android: 'graphic_eq', web: 'graphic_eq' }} size={20} tintColor={theme.primary} />
+            </Pressable>
+          }
           hint={`Thêm/đổi món được lưu trực tiếp. Tìm web: ${planner.webSearchAllowed ? 'đã cho phép trong cuộc trò chuyện này' : 'chưa cho phép'}.`}
             />
           </>
@@ -207,6 +209,7 @@ function QuickChip({ label, onPress }: { label: string; onPress: () => void }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  voiceButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerActions: { flexDirection: 'row', gap: Spacing.two },
   newChat: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   banner: {

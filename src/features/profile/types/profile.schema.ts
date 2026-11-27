@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 export const profileSchema = z.object({
+  accountType: z.enum(['PERSONAL', 'PAGE']).optional(),
+  restaurant: z.object({ workspaceId: z.string(), address: z.string(), longitude: z.number(), latitude: z.number(), phone: z.string().nullable(), website: z.string().nullable(), averageRating: z.number().nullable(), reviewCount: z.number() }).nullable().optional(),
   id: z.string(),
   username: z.string(),
   fullName: z.string(),

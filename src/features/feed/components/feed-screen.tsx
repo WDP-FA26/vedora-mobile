@@ -108,6 +108,9 @@ export function FeedScreen() {
             />
           </View>
           <View style={styles.headerActions}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Nhà hàng chay" onPress={() => router.push('/restaurants')} style={styles.searchButton}>
+              <SymbolView name={{ ios: 'fork.knife', android: 'restaurant', web: 'restaurant' }} size={22} tintColor={theme.foreground} />
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={filter === "recipes" ? "Tìm công thức" : "Tìm kiếm"}

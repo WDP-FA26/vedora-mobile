@@ -1,5 +1,5 @@
 import { SymbolView } from 'expo-symbols';
-import { useState, type Ref, type ComponentRef } from 'react';
+import { useState, type Ref, type ComponentRef, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
 import { Fonts, Radius, Spacing } from '@/constants/theme';
@@ -20,6 +20,7 @@ type ChatComposerProps = {
   maxLength?: number;
   onFocus?: TextInputProps['onFocus'];
   hint?: string;
+  accessory?: ReactNode;
 };
 
 const CONTROL_SIZE = 40;
@@ -40,6 +41,7 @@ export function ChatComposer({
   maxLength,
   onFocus,
   hint,
+  accessory,
 }: ChatComposerProps) {
   const theme = useTheme();
   const blocked = !!inputDisabled || !!sendDisabled || !value.trim();
@@ -53,6 +55,7 @@ export function ChatComposer({
   return (
     <View style={[styles.wrap, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
       <View style={[styles.box, { backgroundColor: theme.muted, borderColor: theme.border }]}>
+        {accessory}
         <View style={styles.field}>
         <Text
           accessible={false}

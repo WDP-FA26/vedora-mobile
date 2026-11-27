@@ -8,9 +8,11 @@ export const useSessionStore = create<SessionState>()((set) => ({
   accessTokenExpiresAt: null,
   refreshToken: null,
   displayName: null,
+  userId: null,
+  actor: null,
   isHydrated: Platform.OS === 'web',
-  setSession: ({ accessToken, accessTokenExpiresAt, refreshToken, displayName }) => set({ accessToken, accessTokenExpiresAt, refreshToken, displayName }),
+  setSession: ({ accessToken, accessTokenExpiresAt, refreshToken, displayName, userId, actor }) => set({ accessToken, accessTokenExpiresAt, refreshToken, displayName, userId: userId ?? null, actor: actor ?? null }),
   restoreRefreshToken: (refreshToken) => set({ refreshToken }),
   finishHydration: () => set({ isHydrated: true }),
-  clearSession: () => set({ accessToken: null, accessTokenExpiresAt: null, refreshToken: null, displayName: null }),
+  clearSession: () => set({ accessToken: null, accessTokenExpiresAt: null, refreshToken: null, displayName: null, userId: null, actor: null }),
 }));
