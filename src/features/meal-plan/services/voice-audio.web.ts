@@ -12,6 +12,7 @@ export async function createVoiceAudio(): Promise<VoiceAudio> {
   const gate = new VoiceNoiseGate();
   const interrupt = () => { for (const source of sources) source.stop(); sources.clear(); until = 0; };
   return {
+    canListenWhileSpeaking: true,
     async start(onAudio, onError) {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Trình duyệt cần HTTPS và quyền mic để gọi giọng nói.');
       context = new AudioContext({ sampleRate: VOICE_SAMPLE_RATE });

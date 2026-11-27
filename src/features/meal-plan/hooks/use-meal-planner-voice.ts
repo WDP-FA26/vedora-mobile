@@ -9,6 +9,7 @@ import type { MealPlanner } from './meal-planner-provider';
 import { useVoiceScroll } from './use-voice-scroll';
 import { PlannerVoiceCall, type VoiceStatus } from '../services/voice-call';
 import type { VoiceFocus, VoiceRefresh, VoiceScreen, VoiceScreenCommand } from '../types/voice.schema';
+import { voicePlanHighlight, type VoicePlanHighlight } from '../utils/voice-plan-highlight';
 
 export function useMealPlannerVoice(planner: MealPlanner) {
   const client = useQueryClient();
@@ -20,36 +21,51 @@ export function useMealPlannerVoice(planner: MealPlanner) {
   const [focus, setFocus] = useState<VoiceFocus | null>(null);
   const [screen, setScreen] = useState<VoiceScreen>({ weekStart: planner.weekStart!, day: planner.selectedDay, panel: 'none' });
   const [elapsed, setElapsed] = useState(0);
+  const [highlight, setHighlight] = useState<VoicePlanHighlight | null>(null);
+  const [lastActionAt, setLastActionAt] = useState<number | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
   const scroll = useVoiceScroll(scrollRef);
   const current = useRef({ planner, screen, scroll, status });
   const call = useRef<PlannerVoiceCall | null>(null);
   const sendContext = useCallback((text: string) => call.current?.context(text), []);
-  const setLogDate = useCallback((date: string) => setScreen((value) => value.eatingLogDate === date ? value : { ...value, eatingLogDate: date }), []);
-  const command = useRef<(command: VoiceScreenCommand) => void>(() => undefined);
-  useEffect(() => { current.current = { planner, screen, scroll, status }; });
+  // Read each turn from this synchronous snapshot, even before React commits the next screen.
+  const showScreen = useCallback((next: VoiceScreen) => {
+    current.current.screen = next;
+    setScreen(next);
+    call.current?.updateScreen(next);
+  }, []);
+  const setLogDate = useCallback((date: string) => {
+    const value = current.current.screen;
+    if (value.panel === 'eatingLog' && value.eatingLogDate !== date) showScreen({ ...value, eatingLogDate: date });
+  }, [showScreen]);
+  const command = useRef<(command: VoiceScreenCommand) => string | void>(() => undefined);
+  useEffect(() => { Object.assign(current.current, { planner, scroll, status }); });
   useEffect(() => {
     command.current = (next) => {
+      // shortcut: New web panels have no mobile UI; add navigation when those mobile screens exist.
+      if (next.focus?.kind === 'shoppingList') return 'Danh sách đi chợ hiện chưa có trên mobile. Bạn có thể mở mục này trên web; màn hình hiện tại vẫn được giữ.';
+      if (next.focus?.kind === 'bodyMetrics' && next.focus.tab && next.focus.tab !== 'bmi') return 'Tab dinh dưỡng này hiện chưa có trong màn gọi trên mobile. Bạn có thể xem trên web hoặc nhờ mình mở chỉ số BMI.';
       if (next.close === 'all' || next.close === current.current.screen.panel) {
-        current.current.scroll.reset();
+        if (current.current.screen.panel !== 'none') current.current.scroll.reset();
         setFocus(null);
-        setScreen(({ weekStart, day }) => ({ weekStart, day, panel: 'none' }));
+        const { weekStart, day } = current.current.screen;
+        showScreen({ weekStart, day, panel: 'none' });
       }
       if (next.focus) {
         const target = next.focus;
-        if (target.kind !== current.current.screen.panel || (target.kind === 'recipe' && target.recipeId !== current.current.screen.recipeId)) current.current.scroll.reset();
+        const panel = target.kind === 'planDay' ? 'none' : target.kind;
+        if (panel !== current.current.screen.panel || (target.kind === 'recipe' && target.recipeId !== current.current.screen.recipeId)) current.current.scroll.reset();
         setFocus(target);
         if (target.kind === 'planDay') {
           current.current.planner.changeWeek(target.weekStart);
           if (target.day) current.current.planner.setSelectedDay(target.day);
         }
-        setScreen((value) => {
-          const base = { weekStart: value.weekStart, day: value.day };
-          if (target.kind === 'recipe') return { ...base, panel: 'recipe', recipeId: target.recipeId, recipeSection: target.section ?? 'top', ...(target.step ? { recipeStep: target.step } : {}) };
-          if (target.kind === 'eatingLog') return { ...base, panel: 'eatingLog', ...(target.date ? { eatingLogDate: target.date } : {}) };
-          if (target.kind === 'bodyMetrics') return { ...base, panel: 'bodyMetrics' };
-          return { weekStart: target.weekStart, ...(target.day ? { day: target.day } : {}), panel: 'none' };
-        });
+        const { weekStart, day } = current.current.screen;
+        const base = { weekStart, day };
+        if (target.kind === 'recipe') showScreen({ ...base, panel: 'recipe', recipeId: target.recipeId, recipeSection: target.section ?? 'top', ...(target.step ? { recipeStep: target.step } : {}) });
+        else if (target.kind === 'eatingLog') showScreen({ ...base, panel: 'eatingLog', ...(target.date ? { eatingLogDate: target.date } : {}) });
+        else if (target.kind === 'bodyMetrics') showScreen({ ...base, panel: 'bodyMetrics', bodyMetricsTab: 'bmi' });
+        else showScreen({ weekStart: target.weekStart, ...(target.day ? { day: target.day } : {}), panel: 'none' });
       }
       if (next.scroll) requestAnimationFrame(() => current.current.scroll.move(next.scroll!));
     };
@@ -73,7 +89,23 @@ export function useMealPlannerVoice(planner: MealPlanner) {
       threadId, fullName: useSessionStore.getState().displayName, today: initial.planner.plan.data?.today ?? '', screen: initial.screen,
       getScreen: () => ({ ...current.current.screen, scrollState: current.current.scroll.read() }),
       onStatus: setStatus, onError: setError, onText: setReply, onHeard: setHeard,
-      onScreen: (next) => command.current(next), onRefresh: refresh,
+      onScreen: (next) => {
+        if (disposed || useSessionStore.getState().accessToken !== token) return;
+        const notice = command.current(next);
+        if (!notice && (next.focus || next.close || next.scroll)) setLastActionAt(Date.now());
+        return notice;
+      }, onRefresh: refresh,
+      onTurnStart: () => {
+        if (!disposed && useSessionStore.getState().accessToken === token) { setHighlight(null); setLastActionAt(null); }
+      },
+      onPlanChange: (change) => {
+        if (disposed || useSessionStore.getState().accessToken !== token) return;
+        const next = voicePlanHighlight(change);
+        if (!next) return;
+        setHighlight((previous) => voicePlanHighlight(change, previous));
+        command.current({ close: null, focus: { kind: 'planDay', weekStart: next.weekStart, day: next.targets[0].day } });
+        setLastActionAt(Date.now());
+      },
       onTurnEnd: () => {
         if (disposed || useSessionStore.getState().accessToken !== token) return;
         void client.invalidateQueries({ queryKey: mealPlanKeys.plannerHistory });
@@ -88,7 +120,11 @@ export function useMealPlannerVoice(planner: MealPlanner) {
     return () => { disposed = true; subscription.remove(); voice.end(); if (call.current === voice) call.current = null; };
   }, [attempt, client, threadId, token]);
 
-  useEffect(() => { call.current?.updateScreen(screen); }, [screen]);
+  useEffect(() => {
+    if (lastActionAt === null) return;
+    const timer = setTimeout(() => setLastActionAt(null), 3200);
+    return () => clearTimeout(timer);
+  }, [lastActionAt]);
   const running = status !== 'ended' && status !== 'error' && status !== 'connecting';
   useEffect(() => {
     if (!running) return;
@@ -99,11 +135,14 @@ export function useMealPlannerVoice(planner: MealPlanner) {
   function closePanel() { command.current({ close: 'all', focus: null }); }
   const finished = status === 'ended' || status === 'error';
   return {
-    screen, focus, status, error, reply, heard, elapsed, finished, sendContext, scrollRef, scrollProps: scroll.props, closePanel,
-    end: () => call.current?.end(), toggleMute: () => call.current?.toggleMute(),
+    screen, focus, status, error, reply, heard, elapsed, finished, highlight,
+    glowing: !finished && (status === 'thinking' || lastActionAt !== null), sendContext, scrollRef, scrollProps: scroll.props, closePanel,
+    end: () => call.current?.end(), toggleMute: () => call.current?.toggleMute(), interrupt: () => call.current?.interrupt(),
     applyScreen: (next: VoiceScreenCommand) => command.current(next),
-    selectDay: (day: NonNullable<VoiceScreen['day']>) => { setScreen((value) => ({ ...value, day })); planner.setSelectedDay(day); },
+    selectDay: (day: NonNullable<VoiceScreen['day']>) => {
+      showScreen({ ...current.current.screen, day }); planner.setSelectedDay(day);
+    },
     setLogDate,
-    retry: () => { setError(''); setHeard(''); setElapsed(0); setStatus('connecting'); setAttempt((value) => value + 1); },
+    retry: () => { setError(''); setHeard(''); setHighlight(null); setLastActionAt(null); setElapsed(0); setStatus('connecting'); setAttempt((value) => value + 1); },
   };
 }
