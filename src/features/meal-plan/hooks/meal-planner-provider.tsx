@@ -52,7 +52,7 @@ function friendlyError(error: unknown, planWriteSeen: boolean) {
 }
 
 function useMealPlannerState() {
-  const token = useSessionStore((s) => s.accessToken);
+  const token = useSessionStore((s) => s.actor ? null : s.accessToken);
   const client = useQueryClient();
   const [selectedWeek, setSelectedWeek] = useState<string>();
   const currentPlan = useMealPlan(token);

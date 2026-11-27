@@ -11,6 +11,7 @@ import { BrandColors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useSignOut } from '@/features/auth/hooks/use-auth-actions';
 import { MyBlogsScreen } from '@/features/blogs/components/my-blogs-screen';
 import { VerificationEntry } from '@/features/verification/components/verification-entry';
+import { RestaurantProfileEntry } from '@/features/restaurants/components/restaurant-profile-entry';
 import { blogsKeys } from '@/features/blogs/data/blogs.keys';
 import { PostCard } from '@/features/feed/components/post-card';
 import { useScrollPostViews } from '@/features/feed/hooks/use-post-views';
@@ -55,10 +56,11 @@ function HeaderButton({ label, icon, color, onPress, busy }: { label: string; ic
 export function ProfileScreen() {
   const theme = useTheme();
   const token = useSessionStore((state) => state.accessToken);
+  const actor = useSessionStore((state) => state.actor);
   const hydrated = useSessionStore((state) => state.isHydrated);
   const profileQuery = useMyProfile(token);
   const profile = profileQuery.data;
-  const dietary = useDietaryRestrictions(token);
+  const dietary = useDietaryRestrictions(actor ? null : token);
   const postsQuery = useProfilePosts(profile?.id, token);
   const signOut = useSignOut();
   const [contentTab, setContentTab] = useState<'posts' | 'blogs' | 'reposts'>('posts');
@@ -70,7 +72,7 @@ export function ProfileScreen() {
   const queryClient = useQueryClient();
   const pull = usePullToRefresh(() => Promise.all([
     profileQuery.refetch(),
-    dietary.refetch(),
+    actor ? undefined : dietary.refetch(),
     // refetch() ignores `enabled`, so posts wait until the profile id is known.
     profile ? postsQuery.refetch() : undefined,
     profile && contentTab === 'reposts' ? reposts.refetch() : undefined,
@@ -165,7 +167,8 @@ export function ProfileScreen() {
             </Pressable>
           </View>
 
-          <VerificationEntry />
+          {!actor && <VerificationEntry />}
+          <RestaurantProfileEntry />
 
           <Pressable accessibilityRole="button" onPress={() => router.push('/support')} style={({ pressed }) => [styles.card, styles.dietary, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.8 : 1 }]}>
             <View style={styles.dietaryTop}>
@@ -180,7 +183,7 @@ export function ProfileScreen() {
             </View>
           </Pressable>
 
-          <Pressable accessibilityRole="button" accessibilityLabel="Xem chi tiết hồ sơ ăn uống" onPress={() => router.push('/dietary-profile')} style={({ pressed }) => [styles.card, styles.dietary, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.85 : 1 }]}>
+          {!actor && <><Pressable accessibilityRole="button" accessibilityLabel="Xem chi tiết hồ sơ ăn uống" onPress={() => router.push('/dietary-profile')} style={({ pressed }) => [styles.card, styles.dietary, { backgroundColor: theme.card, borderColor: theme.border, opacity: pressed ? 0.85 : 1 }]}>
             <View style={styles.dietaryTop}>
               <View style={[styles.dietaryIcon, { backgroundColor: theme.secondary }]}>
                 <Image source={require('@/assets/branding/avocado-sticker.png')} style={styles.dietarySticker} contentFit="contain" />
@@ -219,6 +222,7 @@ export function ProfileScreen() {
             </View>
           </Pressable>
 
+          </>}
           <View style={[styles.segment, { backgroundColor: theme.muted }]}>
             {(['posts', 'blogs', 'reposts'] as const).map((tab) => {
               const selected = contentTab === tab;

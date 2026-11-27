@@ -83,6 +83,7 @@ export function PublicProfileScreen() {
               </View>
               <Text style={[styles.handle, { color: theme.mutedForeground }]}>@{data.username}</Text>
               {data.bio ? <Text style={[styles.bio, { color: theme.foreground }]}>{data.bio}</Text> : null}
+              {data.restaurant && <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/restaurants/[id]', params: { id: data.id } })} style={{ paddingVertical: 12 }}><Text style={{ color: theme.primary, fontWeight: '700' }}>Nhà hàng · Xem thực đơn và đánh giá</Text><Text style={{ color: theme.mutedForeground }}>{data.restaurant.address}</Text></Pressable>}
               <View style={styles.counts}>
                 <Pressable accessibilityRole="link" onPress={() => router.push({ pathname: '/profile/[id]/following', params: { id: data.id } })}>
                   <Text style={[styles.count, { color: theme.foreground }]}><Text style={styles.countNumber}>{data.followingCount}</Text> Đang theo dõi</Text>
