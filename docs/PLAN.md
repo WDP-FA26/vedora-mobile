@@ -1,5 +1,29 @@
 # Kế hoạch và kết quả công việc
 
+## 2026-11-27 — Tích hợp nhà hàng cho khách, chủ Trang và quản lý
+
+- Kết quả đã làm: Đọc lại BE `eed31d2` và FE web `878f9e0` mới nhất; triển khai module `restaurants` trên branch `feat/mobile-restaurants`. Mở từ biểu tượng nhà hàng ở Khám phá hoặc Hồ sơ. Có danh sách/bản đồ nhà hàng, sắp xếp gần nhất khi người dùng cấp vị trí, tìm nhà hàng/địa chỉ và tìm món có phân trang; chi tiết quán, liên hệ/chỉ đường, bài đăng/nhắn tin, menu theo danh mục và trạng thái phục vụ; tổng hợp sao, sắp xếp/phân trang đánh giá, viết/sửa/xóa đánh giá cá nhân và quay lại đúng quán sau đăng nhập.
+- Phần chủ quán: Danh sách Trang, đăng ký theo quy trình mới 3 bước (thông tin quán, pháp lý, giấy tờ/cam kết), danh sách 34 tỉnh và phường/xã đồng bộ FE/BE, upload giấy tờ theo loại và hạn mức. Hiện trạng thái chờ duyệt/lý do từ chối, làm mới trạng thái, sửa/gửi lại đơn; cập nhật liên hệ, khóa địa chỉ/ghim sau khi duyệt; thêm/sửa/xóa món, ảnh, giá, danh mục, thứ tự, tạm hết món; thêm/xóa quản lý hoặc tự rời Trang theo quyền. Chuyển cá nhân ↔ Trang qua `/auth/switch`, giữ `actor` qua refresh, hủy query trước chuyển và xóa cache theo phiên; ngăn dùng trợ lý/thực đơn/hồ sơ cá nhân dưới tài khoản Trang. Tên/giới thiệu/ảnh Trang dùng màn sửa hồ sơ hiện có khi đang hoạt động dưới tên Trang.
+- Vị trí: Bản đồ Leaflet/OpenStreetMap trong WebView sẵn có; không cần khóa Mapbox. Giữ bản đồ và mức zoom khi kéo ghim, validate thông điệp từ bản đồ. Hỗ trợ ghim, nhập tọa độ và vị trí hiện tại; tìm địa chỉ/điền địa chỉ từ ghim dùng geocoder Android/iOS. Web dùng bản đồ, tọa độ và định vị trình duyệt; không bật geocoder native trên web. Thêm `expo-location` đúng Expo SDK 58, quyền foreground; cần development build mới để dùng module native.
+- Kiểm tra kỹ thuật: API công khai thật trả HTTP 200 và qua schema cho danh sách, hai hồ sơ nhà hàng, hai menu, hai danh sách đánh giá và tìm món. Lint/TypeScript và export Android/iOS/web đạt; 19/19 test mới đạt, toàn suite đạt 207/209. Hai lỗi nền đã có từ trước: fixture billing thiếu trường và recipe-favorite kỳ vọng route `/recipes`. Test riêng kiểm tra hợp đồng API, xác thực biểu mẫu/ảnh/giá/tọa độ, quyền thành viên, geocoder, map update và race khi đổi phiên; revision giữ ổn định qua refresh và thay đổi khi đăng nhập/chuyển Trang/đăng xuất để chặn kết quả của phiên cũ. Native Android development build đã gửi [EAS](https://expo.dev/accounts/kaorihzemou/projects/vedora-mobile/builds/bd21f43b-2550-4f62-8fa4-f2dfa113accb), đã FINISHED lúc 12:26 ngày 27/11/2026 (giờ Việt Nam), có [APK development mới](https://expo.dev/artifacts/eas/wkdmirdoLHbygQTec-JQvmgWMioCwzqTtcnpIgIgXj4.apk) chứa module vị trí. Cần kết nối Metro để chạy ứng dụng; chưa nghiệm thu trên điện thoại. Không tự tạo đơn, đánh giá hoặc thay đổi thành viên trên backend thật.
+- Các bước kiểm tra luồng UI trên màn hình (checklist cần thực hiện, chưa coi là nghiệm thu thiết bị):
+  1. Mở Khám phá → biểu tượng Nhà hàng; kiểm tra danh sách, bản đồ và chạm ghim mở đúng quán. Kéo xuống làm mới.
+  2. Chọn Gần tôi nhất; thử cho phép rồi từ chối vị trí. Kiểm tra khoảng cách/thứ tự, thông báo lỗi và vẫn dùng được danh sách A–Z.
+  3. Tìm theo tên quán/địa chỉ và tên món; mở quán từ kết quả món, tải thêm khi có nhiều kết quả, thử từ khóa không có dữ liệu.
+  4. Vào chi tiết quán → menu; lọc danh mục, kiểm tra ảnh/giá/giá liên hệ/tạm hết; thử Chỉ đường, Gọi điện, Website, Bài đăng và Nhắn tin.
+  5. Khi chưa đăng nhập, chọn đánh giá → đăng nhập → kiểm tra quay lại đúng quán. Chọn sao/nhận xét, lưu, sửa rồi xác nhận xóa; kiểm tra tổng sao và ba thứ tự đánh giá cập nhật. Không cho tài khoản Trang hoặc người quản lý tự đánh giá quán.
+  6. Vào Hồ sơ → Trang nhà hàng của tôi → Đăng ký. Bước 1: điền quán/tài khoản, chọn tỉnh rồi phường/xã; đổi tỉnh và kiểm tra phường cũ bị xóa. Thử ghim/kéo ghim, nhập tọa độ sai/đúng, lấy vị trí hiện tại và tìm địa chỉ trên điện thoại.
+  7. Bước 2: thử Cá nhân/Hộ kinh doanh/Doanh nghiệp; kiểm tra CCCD/mã số thuế, tên pháp lý, địa chỉ, người đại diện và email. Quay lại bước trước để kiểm tra còn dữ liệu.
+  8. Bước 3: tải đúng ảnh theo từng loại, thử ảnh quá dung lượng/sai loại, xóa/thay ảnh, bỏ thiếu giấy tờ hoặc cam kết để kiểm tra báo lỗi; hoàn thành rồi gửi đơn. Kiểm tra trạng thái chờ duyệt và nút làm mới.
+  9. Với Trang bị từ chối: xem lý do → Sửa và gửi lại → cập nhật thông tin và tải lại đầy đủ giấy tờ → gửi lại, kiểm tra về chờ duyệt.
+  10. Với Trang đã duyệt: kiểm tra địa chỉ/ghim bị khóa; sửa điện thoại/website và mở chi tiết công khai để đối chiếu.
+  11. Thêm món kèm ảnh, tên/giá/danh mục/thứ tự; thử giá 0 và để trống, sửa/tạm hết/gỡ ảnh, xác nhận xóa; kiểm tra menu công khai cập nhật.
+  12. Chủ Trang thêm quản lý theo username, thử trùng/không tồn tại, rồi xóa. Đăng nhập bằng quản lý: kiểm tra không xóa chủ Trang/người khác, được sửa menu/liên hệ và được rời Trang khi đang ở tài khoản cá nhân.
+  13. Chuyển sang Trang → Hồ sơ → sửa tên/giới thiệu/ảnh, đăng bài và nhắn tin dưới tên quán. Thử tab Trợ lý/Thực đơn để thấy yêu cầu về cá nhân; chuyển về cá nhân, thử lại dữ liệu cá nhân. Kiểm tra quản lý không tự rời Trang khi đang dùng chính phiên Trang đó.
+  14. Đăng xuất/đổi tài khoản khi đang tải dữ liệu; kiểm tra không hiện cache/giấy tờ của phiên cũ. Thử mất mạng khi lưu, xem lỗi và kiểm tra dữ liệu đã lưu trước khi thử lại.
+- Giới hạn kiểm tra: Browser host không kết nối được; bộ duyệt tự động từ chối đọc cửa sổ Edge đang mở tài khoản Apple cá nhân, nên không dùng cửa sổ đó để kiểm tra UI. Luồng ghi cần tài khoản chủ/quản lý và thiết bị thật để nghiệm thu. iOS chưa build ký/cài do Apple 2FA còn bị chặn từ công việc trước.
+- Người thực hiện: Codex.
+
 ## 2026-11-27 — Đóng gói code hiện tại để bàn giao qua PR
 
 - Kết quả đã làm: Theo yêu cầu người dùng, gom toàn bộ code/tài liệu hiện tại vào branch `feat/mobile-voice-and-backend-sync` từ `origin/main` đã có PR #55. Phạm vi gồm trợ lý giọng nói, Ghi nhớ dị ứng/sở thích theo hợp đồng BE mới, request chat `message`, sửa guard/lỗi mạng đăng nhập, domain API và EAS development build, cùng báo cáo đối chiếu. Đã commit code `cbdffdf`, push branch và tạo [PR #56](https://github.com/WDP-FA26/vedora-mobile/pull/56) vào main; cập nhật tài liệu bàn giao trong commit tiếp theo. File môi trường và dữ liệu tạm/build artifacts vẫn được gitignore.
@@ -1401,6 +1425,90 @@ Sau mỗi task/tính năng, thêm một mục ngắn theo mẫu:
   6. Tải màn sửa xong rồi ngắt mạng, sửa và nhấn lưu: phải giữ bản nhập và báo lỗi. Bật mạng và thử lại; nhấn lưu nhanh nhiều lần chỉ gửi một lần trong khi chờ.
   7. Đổi sang tài khoản khác/khách: không thấy mục sửa bài của người khác; mở trực tiếp đường dẫn sửa phải bị chặn. Kiểm tra bài đang xử lý/bị gỡ/có khiếu nại mở không sửa được, còn bài bị từ chối hoặc xử lý thất bại cho phép sửa khi không bị khóa.
   8. Trên iPhone, kiểm tra bàn phím không che nút lưu, cuộn danh sách video và xác nhận khi vuốt quay lại; thử theme sáng/tối và màn hình nhỏ.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Chia thay đổi thành 10 PR tiếng Anh
+
+- Kết quả đã làm: Chia toàn bộ 56 file thành 10 commit/nhánh nối tiếp từ main: phiên Page, hợp đồng nhà hàng, bản đồ/vị trí, query/UI chung, đăng ký, quản lý, khám phá/chi tiết, điều hướng, voice UI và test/tài liệu. Tiêu đề commit và nội dung PR dùng tiếng Anh; các PR phụ thuộc nhau và cần merge từ 1 đến 10. Lint/TypeScript đạt; suite 207/209 với hai lỗi nền billing và recipe-favorite.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Sau khi hợp nhất đủ stack, mở Khám phá → Nhà hàng chay → chi tiết/menu/đánh giá. (2) Hồ sơ → Nhà hàng của tôi → Đăng ký; kiểm tra đủ 3 bước và thanh tiến trình. (3) Mở Trang quản lý để kiểm tra menu/thành viên và chuyển tài khoản. (4) Mở Trợ lý, kiểm tra voice bên trái ô nhập và UI cuộc gọi trên development build. Các checklist chi tiết nằm ở các mục trước.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Đưa voice về đầu thanh nhắn tin
+
+- Kết quả đã làm: Đổi thứ tự thanh nhập Trợ lý thành nút voice → ô nhập → nút gửi theo yêu cầu mới nhất.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Reload app → Trợ lý, kiểm tra voice ở bên trái ô nhập và gửi ở bên phải. (2) Nhập nhiều dòng, kiểm tra không chồng lấn hai nút. (3) Thử gửi tin và mở voice khi trợ lý sẵn sàng.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Đổi voice sang phải nút gửi
+
+- Kết quả đã làm: Đổi thứ tự trong thanh nhập Trợ lý thành ô nhập → nút gửi → nút voice.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Reload app → Trợ lý, kiểm tra voice nằm bên phải nút gửi. (2) Nhập nhiều dòng và kiểm tra hai nút vẫn cùng hàng. (3) Gửi tin và thử mở voice khi trợ lý sẵn sàng.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Đặt voice cạnh nút gửi chat
+
+- Kết quả đã làm: Đưa nút voice dạng tròn ngay bên trái nút gửi, trong cùng thanh nhập Trợ lý; bỏ hàng voice bên dưới. ChatComposer nhận accessory tùy chọn để các màn chat khác giữ bố cục hiện có. Giữ điều kiện khóa voice khi bận/chưa tải thực đơn.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Mở Trợ lý, kiểm tra icon voice nằm sát nút gửi trong thanh nhập. (2) Nhập một/nhiều dòng, kiểm tra hai nút giữ vị trí và ô nhập còn cuộn được. (3) Gửi tin, kiểm tra voice khóa khi bận. (4) Chạm voice khi sẵn sàng trên development build, kiểm tra mở cuộc gọi. (5) Mở chat tin nhắn/bình luận/trợ lý blog, kiểm tra thanh nhập không có thêm nút voice.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Đưa voice xuống dưới chat và làm mới giao diện cuộc gọi
+
+- Kết quả đã làm: Chuyển nút gọi voice khỏi header Trợ lý xuống ngay dưới thanh nhập chat, dạng pill có icon và nhãn rõ ràng; giữ điều kiện khóa khi đang xử lý/chưa tải thực đơn. Giao diện cuộc gọi có mascot Vedora, nhãn trạng thái và đồng hồ, khối nội dung nghe/nói riêng, nút mic/kết thúc/gọi lại dạng tròn có icon và nhãn truy cập. Giữ nguyên xử lý âm thanh, phiên gọi, công cụ và panel thực đơn/công thức/nhật ký/chỉ số. Lint, TypeScript và 16/16 test voice đạt.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Mở Trợ lý, kiểm tra nút voice dưới ô chat và header chỉ còn lịch sử/tạo chat mới. (2) Mở bàn phím, nhập/gửi tin rồi kiểm tra nút voice khóa khi trợ lý bận. (3) Trên development build có module âm thanh, bấm voice, cấp mic; kiểm tra trạng thái kết nối/nghe/nói và đồng hồ. (4) Tắt/bật mic, kiểm tra icon/nhãn và âm thanh. (5) Yêu cầu mở công thức/nhật ký/chỉ số và kiểm tra nội dung cùng các nút gọi còn dùng được. (6) Kết thúc, thử gọi lại và đóng; kiểm tra mic được giải phóng. (7) Thử sáng/tối, màn hình hẹp và cỡ chữ lớn. Expo Go chưa dùng được phần native voice; chưa nghiệm thu mic/loa trên điện thoại.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Đồng bộ giao diện chi tiết nhà hàng chay
+
+- Kết quả đã làm: Trang chi tiết có ảnh bìa lớn, ảnh đại diện và tên quán nổi bật; khi thiếu ảnh dùng nền minh họa có sẵn. Nhóm địa chỉ, đánh giá, chỉ đường/gọi điện/website có icon rõ ràng. Menu dùng thẻ ngang, giá nổi bật và trạng thái tạm hết; món thiếu ảnh có icon thay thế. Tổng hợp đánh giá hiển thị thanh phân bố sao theo dữ liệu thật; giữ luồng viết/sửa/xóa, phân trang và quyền đánh giá hiện có. Lint và TypeScript đạt.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Khám phá → Nhà hàng chay → chọn quán, kiểm tra ảnh bìa/đại diện/tên/giới thiệu. (2) Thử quán thiếu ảnh và thông tin liên hệ. (3) Chạm Chỉ đường, Gọi điện, Website, Bài đăng và Nhắn tin; kiểm tra đúng đích. (4) Cuộn menu, lọc danh mục; kiểm tra món có/không có ảnh, giá liên hệ/giá 0 và tạm hết món. (5) Cuộn đánh giá, kiểm tra tổng sao và thanh phân bố, đổi sắp xếp và tải thêm. (6) Thử viết/sửa/xóa bằng tài khoản phù hợp, kiểm tra chủ quán không tự đánh giá. (7) Kiểm tra sáng/tối, cỡ chữ lớn và màn hình hẹp.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Làm nổi bật các quán trên trang Nhà hàng chay
+
+- Kết quả đã làm: Thiết kế lại trang khám phá với khối giới thiệu xanh nhẹ và sticker bơ, tìm kiếm có icon/xóa nhanh, bộ lọc dạng pill. Mặc định hiển thị danh sách, mở bản đồ khi cần. Thẻ quán dùng ảnh lớn hoặc nền sticker khi thiếu ảnh, tên rõ, nhãn đánh giá/khoảng cách, địa chỉ và lời mời khám phá; toàn thẻ có thể chạm. Dùng điểm/số đánh giá/khoảng cách thật từ API, không gán nhãn nổi bật giả. Trạng thái rỗng có hướng dẫn và nút xóa tìm kiếm. Lint và TypeScript đạt.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Khám phá → Nhà hàng chay, kiểm tra danh sách là nội dung chính, ảnh/tên quán và sticker giới thiệu. (2) Chạm thẻ quán, kiểm tra mở đúng chi tiết rồi quay lại. (3) Tìm tên quán/địa chỉ/món, thử nút xóa và từ khóa không có kết quả. (4) Chọn Gần tôi nhất, cho phép/từ chối định vị; kiểm tra khoảng cách hoặc lỗi rõ ràng. (5) Mở bản đồ, chạm ghim và ẩn lại. (6) Kéo làm mới, kiểm tra quán thiếu ảnh/đánh giá; thử màn hình hẹp, cỡ chữ lớn và sáng/tối. (7) Tìm món, mở quán từ món và tải thêm kết quả nếu có.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Nối và nhấn mạnh tiến trình đăng ký nhà hàng
+
+- Kết quả đã làm: Thêm đường nối giữa bước 1–2–3; đoạn đã hoàn thành chuyển màu xanh theo theme. Bước hiện tại có vòng nền nổi bật và nhãn đậm, bước đã hoàn thành giữ dấu tích. Lint và TypeScript đạt.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Mở Đăng ký nhà hàng, kiểm tra đường nối và vòng nhấn bước 1. (2) Điền đủ thông tin → Tiếp tục, kiểm tra đường 1–2 chuyển xanh, bước 1 có dấu tích và bước 2 được nhấn. (3) Sang bước 3 rồi quay lại, kiểm tra màu đường và bước hiện tại cập nhật đúng. (4) Thử giao diện tối và màn hình hẹp để kiểm tra đường không đè số/nhãn.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Giao diện chuyên nghiệp cho chi tiết đăng ký nhà hàng
+
+- Kết quả đã làm: Chuyển form đăng ký sang phong cách trung tính, thay sticker trong form bằng icon cửa hàng, tiêu đề và mô tả ngắn theo bước. Tiết chế bo góc, nhóm thông tin có đường phân cách, vùng upload nền trung tính. Cố định thanh Quay lại/Tiếp tục/Gửi xét duyệt dưới màn hình, hiển thị bước kế tiếp và lỗi xác thực ngay cạnh nút. Giới hạn chiều rộng form để dễ đọc trên web. Lint và TypeScript đạt; không thay đổi hợp đồng đăng ký.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Hồ sơ → Nhà hàng của tôi → Đăng ký nhà hàng, kiểm tra giao diện trung tính và icon cửa hàng. (2) Cuộn form dài, kiểm tra thanh Tiếp tục vẫn ở cuối màn hình và nội dung cuối không bị che. (3) Bấm Tiếp tục khi thiếu thông tin, kiểm tra lỗi hiện ngay trên nút. (4) Điền đủ, chuyển sang Pháp lý rồi Hồ sơ xác minh, thử Quay lại và kiểm tra dữ liệu còn giữ. (5) Tải/xóa ảnh, kiểm tra số lượng; bật cam kết. (6) Kiểm tra màn hình hẹp, giao diện tối và bàn phím khi nhập; chỉ gửi hồ sơ thật theo chủ ý người dùng.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Trau chuốt màn hình chi tiết đăng ký nhà hàng
+
+- Kết quả đã làm: Chỉnh trực tiếp form sau khi bấm Đăng ký nhà hàng: phần giới thiệu gọn, tiến trình vòng tròn có dấu hoàn thành, ô nhập có viền focus và nhãn bắt buộc theo schema, bộ đếm giới thiệu. Vùng thêm giấy tờ có icon, viền nét đứt và giới hạn ảnh; cuối form có khối hướng dẫn và nút điều hướng rõ ràng. Dùng màu theo theme sáng/tối và sticker sẵn có. Lint và TypeScript đạt.
+- Các bước kiểm tra luồng UI trên màn hình (checklist chưa nghiệm thu thiết bị): (1) Hồ sơ → Nhà hàng của tôi → Đăng ký nhà hàng; kiểm tra phần giới thiệu và 3 bước. (2) Chạm ô tên, nhập và rời ô; kiểm tra viền focus, dấu bắt buộc và bộ đếm giới thiệu. (3) Điền thông tin, sang Pháp lý rồi quay lại; kiểm tra dữ liệu giữ nguyên và bước hoàn thành hiện dấu tích. (4) Sang Giấy tờ, chạm vùng thêm ảnh, kiểm tra ảnh và bộ đếm sau khi chọn/xóa. (5) Bật/tắt cam kết, kiểm tra các nút ở cuối form; thử màn hình hẹp/cỡ chữ lớn và giao diện tối. Không gửi hồ sơ thật trong kiểm tra tự động.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Làm mới giao diện quản lý và đăng ký nhà hàng
+
+- Kết quả đã làm: Chuyển làm mới danh sách/trạng thái Trang thành icon trên header, có trạng thái đang tải và nhãn hỗ trợ đọc màn hình. Nút đăng ký nhà hàng nằm trong thẻ giới thiệu nổi bật kèm sticker cà chua. Form có thanh tiến trình 3 bước, chia nhóm thông tin, mô tả thân thiện, ô chọn dạng dropdown, gợi ý nhập và bàn phím phù hợp. Mục giấy tờ có nhãn Bắt buộc/Tùy chọn, bộ đếm ảnh; cam kết dùng checkbox có trạng thái truy cập. Chuyển bước đưa vùng cuộn về đầu và giữ dữ liệu form. Không thay đổi hợp đồng API/xét duyệt. Lint, TypeScript và 19/19 test nhà hàng/phiên/vị trí đạt.
+- Các bước kiểm tra luồng UI trên màn hình (checklist chưa nghiệm thu thiết bị): (1) Hồ sơ → Nhà hàng của tôi; kiểm tra icon làm mới góc phải, chạm và kiểm tra trạng thái tải. (2) Chọn Đăng ký nhà hàng; kiểm tra thanh bước 1 và các nhóm Quán của bạn, địa chỉ, ẩm thực/liên hệ. (3) Mở chọn tỉnh/phường, tìm và chọn; thử nhập thiếu để kiểm tra lỗi. (4) Điền đủ bước 1 → Tiếp tục; kiểm tra đầu bước 2, chọn từng loại pháp lý và bàn phím email/CCCD/mã thuế. (5) Quay lại bước 1 kiểm tra dữ liệu còn giữ. (6) Sang bước 3, kiểm tra nhãn giấy tờ, chọn/xóa ảnh, bộ đếm và giới hạn. (7) Bật/tắt hai checkbox, thử gửi thiếu và xem lỗi; chỉ gửi hồ sơ thật khi người dùng chủ động. (8) Mở Trang có sẵn, kiểm tra icon làm mới trạng thái; thử sáng/tối và màn hình hẹp/cỡ chữ lớn.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Bỏ thẻ Nhà hàng chay và đổi sticker quản lý nhà hàng
+
+- Kết quả đã làm: Bỏ thẻ Nhà hàng chay khỏi Hồ sơ; giữ Nhà hàng của tôi dưới Xác minh chuyên gia, đổi sticker cà rốt thành cà chua để tránh trùng các mục lân cận. Lối vào khám phá nhà hàng ở Khám phá vẫn hoạt động.
+- Các bước kiểm tra luồng UI trên màn hình (chưa nghiệm thu thiết bị): (1) Reload app → Hồ sơ → cuộn xuống Xác minh chuyên gia. (2) Kiểm tra chỉ còn Nhà hàng của tôi với sticker cà chua. (3) Chạm thẻ và kiểm tra mở danh sách Trang. (4) Quay lại Khám phá, kiểm tra vẫn mở được danh sách nhà hàng.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Sắp xếp và làm thân thiện lối vào nhà hàng trên Hồ sơ
+
+- Kết quả đã làm: Chuyển Nhà hàng chay và Nhà hàng của tôi vào vùng cuộn Hồ sơ, ngay dưới Xác minh chuyên gia. Thay hàng nút bằng hai thẻ bo góc có mô tả, mũi tên và sticker bơ/cà rốt sẵn có. Dùng màu theme sáng/tối, toàn thẻ có thể chạm, chữ mô tả tự xuống dòng; giữ chuyển về tài khoản cá nhân khi dùng Trang. Lint và TypeScript đạt.
+- Các bước kiểm tra luồng UI trên màn hình (checklist chưa nghiệm thu thiết bị): (1) Đăng nhập tài khoản cá nhân → Hồ sơ → cuộn xuống Xác minh chuyên gia; kiểm tra hai thẻ nhà hàng nằm ngay bên dưới. (2) Kiểm tra sticker và chữ trên màn hình hẹp, tăng cỡ chữ và đổi sáng/tối. (3) Chạm Nhà hàng chay → kiểm tra mở danh sách quán → quay lại. (4) Chạm Nhà hàng của tôi → kiểm tra mở danh sách Trang → quay lại. (5) Chuyển sang Trang → Hồ sơ; kiểm tra vẫn có hai thẻ và nút về tài khoản cá nhân; thử chuyển về.
+- Người thực hiện: Codex.
+
+## 2026-11-27 — Chẩn đoán Expo Go không hiện dữ liệu
+
+- Kết quả đã làm: Kiểm tra EXPO_PUBLIC_API_URL trong .env.local đang trỏ HTTPS server thật. GET /posts?limit=1 và /restaurants đều trả HTTP 200, có bài đăng và 2 nhà hàng. Chưa tái hiện lỗi trên điện thoại, chưa kết luận nguyên nhân hoặc sửa source. Đã hỏi màn hình bị ảnh hưởng và thông báo lỗi.
+- Các bước kiểm tra luồng UI trên màn hình (cần thực hiện): (1) Đóng phiên app cũ và quét QR của Metro hiện tại. (2) Mở Khám phá rồi Nhà hàng, kéo xuống làm mới và ghi nhận thông báo lỗi nếu có. (3) Mở endpoint https://vedora-api.quanphung.dev/api/v1/restaurants bằng trình duyệt trên cùng điện thoại, kiểm tra có JSON hay lỗi kết nối. (4) Reload toàn bộ app sau khi xác nhận cấu hình môi trường; đối chiếu kết quả với trình duyệt điện thoại.
 - Người thực hiện: Codex.
 
 ## 2026-11-27 — Bàn giao sửa bài POST qua PR
